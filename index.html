@@ -4,278 +4,524 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trung Tâm Giám Sát Y Tế (Cloud)</title>
-    <!-- Nhúng thư viện Chart.js để vẽ biểu đồ -->
+    <!-- Nhúng thư viện Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Nhúng Font Awesome cho icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-blue: #38bdf8;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --border-color: #334155;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0d1117; color: #c9d1d9; padding: 20px; }
-        
-        /* Header */
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 20px; margin-bottom: 20px; }
-        .header-title { display: flex; align-items: center; gap: 15px; }
-        .header-title h1 { color: #fff; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;}
-        .badge-live { background: #1f3a28; color: #56d364; padding: 6px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #2ea043; font-size: 14px; animation: pulse 2s infinite;}
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        body { background-color: var(--bg-dark); color: var(--text-main); padding: 20px; font-size: 14px; }
 
-        /* Patient Info Card */
-        .patient-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .patient-info h2 { color: #58a6ff; font-size: 22px; margin-bottom: 5px; }
-        .patient-info p { color: #8b949e; font-size: 14px; }
+        /* Header Layout */
+        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .nav-actions { display: flex; gap: 10px; }
+        .btn { padding: 8px 16px; border-radius: 6px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+        .btn-green { background-color: rgba(34, 197, 94, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+        .btn-blue { background-color: rgba(56, 189, 248, 0.15); color: var(--accent-blue); border: 1px solid var(--accent-blue); }
+        .btn-outline { background-color: transparent; color: var(--text-muted); border: 1px solid var(--border-color); }
+        .btn-outline:hover { background-color: var(--bg-card-hover); color: var(--text-main); }
         
-        /* Top Stats Grid */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; }
-        .stat-title { font-size: 12px; color: #8b949e; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
-        .stat-value { font-size: 36px; font-weight: 900; color: #fff; font-family: monospace; }
-        .good { color: #3fb950; } .warn { color: #d29922; } .bad { color: #f85149; }
+        .header-title { font-size: 20px; font-weight: 700; color: var(--text-main); }
 
-        /* Chart Section */
-        .chart-container { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; min-height: 300px; position: relative;}
-        .chart-title { margin-bottom: 15px; color: #fff; font-size: 18px; display: flex; align-items: center; gap: 10px;}
-        .chart-title span { color: #f85149; font-size: 14px;}
+        /* Lưới Bố Cục Chính */
+        .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+        /* Card Thông Tin Bệnh Nhân */
+        .patient-card { background: var(--bg-card); border-radius: 12px; padding: 24px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+        .patient-profile { display: flex; align-items: center; gap: 20px; }
+        .avatar { width: 60px; height: 60px; background-color: var(--accent-blue); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #fff; }
+        .patient-info h2 { font-size: 22px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+        .badge-id { background: var(--bg-dark); padding: 4px 8px; border-radius: 4px; font-size: 12px; color: var(--text-muted); border: 1px solid var(--border-color); }
+        .patient-details { color: var(--text-muted); font-size: 13px; line-height: 1.6; }
+        .patient-details i { color: var(--accent-blue); margin-right: 5px; }
+
+        .patient-stats { display: flex; gap: 40px; text-align: right; }
+        .stat-group .label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; }
+        .stat-group .value { font-size: 28px; font-weight: 800; color: var(--text-main); }
+        .stat-group .value.green { color: var(--accent-green); font-size: 18px; margin-top: 10px;}
+
+        /* Card Trạng Thái ESP32 */
+        .conn-card { background: var(--bg-card); border-radius: 12px; padding: 24px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center; }
+        .conn-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .conn-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; }
+        .status-indicator { width: 10px; height: 10px; background-color: var(--accent-red); border-radius: 50%; box-shadow: 0 0 10px var(--accent-red); }
+        .status-indicator.online { background-color: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .conn-status-text { font-size: 24px; font-weight: bold; color: var(--text-main); margin-bottom: 5px; }
+        .conn-id { font-size: 12px; color: var(--text-muted); margin-bottom: 15px; }
+        .conn-footer { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 15px; }
+
+        /* Lưới 4 Chỉ Số Cảm Biến */
+        .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 20px; }
+        .metric-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); position: relative; }
+        .metric-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .metric-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; }
+        .metric-icon { color: var(--accent-blue); font-size: 16px; }
+        .metric-value-wrapper { display: flex; align-items: baseline; gap: 5px; margin-bottom: 15px; }
+        .metric-value { font-size: 36px; font-weight: 800; color: var(--text-main); font-family: monospace; line-height: 1; }
+        .metric-value.blue { color: var(--accent-blue); }
+        .metric-value.green { color: var(--accent-green); }
+        .metric-value.yellow { color: var(--accent-yellow); }
+        .metric-value.purple { color: #a855f7; }
+        .metric-max { font-size: 16px; color: var(--text-muted); }
         
-        /* Extra Sensors Data */
-        .extra-stats { display: flex; gap: 15px; margin-top: 20px; flex-wrap: wrap;}
-        .extra-card { background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 15px; flex: 1; text-align: center; min-width: 150px;}
-        .extra-value { font-size: 24px; font-weight: bold; color: #56d364; font-family: monospace;}
-        .extra-label { font-size: 11px; color: #8b949e; text-transform: uppercase; margin-top: 5px;}
+        .progress-bar-bg { width: 100%; height: 6px; background-color: var(--bg-dark); border-radius: 3px; margin-bottom: 15px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background-color: var(--accent-yellow); border-radius: 3px; }
+        
+        .metric-desc { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+        .metric-desc i { font-size: 10px; color: var(--accent-yellow); }
 
-        /* Logs Table */
-        .logs-section { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
-        .logs-section h3 { margin-bottom: 15px; color: #fff; font-size: 18px; }
+        /* Bố Cục Thống Kê Giữa */
+        .middle-grid { display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 20px; margin-bottom: 20px; }
+        
+        /* Card Phân Bổ Tần Suất */
+        .distribution-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .card-title { font-size: 15px; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .card-title i { color: var(--accent-blue); }
+        .time-filter { font-size: 12px; color: var(--text-muted); }
+        
+        .dist-item { margin-bottom: 15px; }
+        .dist-info { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; font-weight: 600; }
+        .dist-count { color: var(--accent-blue); }
+        .dist-bar-bg { height: 6px; background-color: var(--bg-dark); border-radius: 3px; }
+        .dist-bar-fill { height: 100%; border-radius: 3px; }
+        .color-1 { background-color: #38bdf8; }
+        .color-2 { background-color: #22c55e; }
+        .color-3 { background-color: #a855f7; }
+        .color-4 { background-color: #0ea5e9; }
+        .color-5 { background-color: #8b5cf6; }
+
+        .hint-text { font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); line-height: 1.5; }
+        .hint-text i { color: var(--accent-yellow); margin-top: 2px; }
+
+        /* Card Biểu Đồ Giờ */
+        .chart-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        .chart-subtitle { font-size: 12px; color: var(--text-muted); margin-bottom: 15px; }
+        .chart-wrapper { height: 160px; background-color: var(--bg-dark); border-radius: 8px; border: 1px solid var(--border-color); position: relative; padding: 10px; display: flex; align-items: flex-end; justify-content: space-around; }
+        .bar-col { width: 8%; background-color: #1e293b; border-radius: 4px 4px 0 0; position: relative; }
+        .bar-col.active { background-color: var(--accent-blue); }
+        .x-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 8px; padding: 0 10px; }
+        .peak-hours { font-size: 12px; color: var(--text-muted); margin-top: 15px; text-align: center; }
+        .peak-hours span { color: var(--accent-blue); font-weight: bold; }
+
+        /* Card Export */
+        .export-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        .export-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px; }
+        .btn-export { width: 100%; background-color: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: 12px; transition: 0.2s; font-size: 13px; font-weight: 600; }
+        .btn-export:hover { background-color: var(--bg-card-hover); border-color: var(--text-muted); }
+        .btn-export .icon-left { color: var(--accent-green); margin-right: 10px; }
+        .btn-export.json .icon-left { color: var(--accent-yellow); }
+        .btn-export .icon-right { color: var(--text-muted); }
+
+        /* Bảng Lịch Sử */
+        .history-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .history-title { font-size: 18px; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
+        .count-badge { background: rgba(56, 189, 248, 0.2); color: var(--accent-blue); padding: 2px 8px; border-radius: 12px; font-size: 12px; border: 1px solid var(--accent-blue); }
+        
+        .history-filters { display: flex; gap: 10px; }
+        .search-box { position: relative; }
+        .search-box i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
+        .search-box input { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 10px 8px 30px; border-radius: 6px; font-size: 13px; width: 200px; outline: none; }
+        .filter-select { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 8px 10px; border-radius: 6px; font-size: 13px; outline: none; cursor: pointer; }
+
         table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 12px; border-bottom: 2px solid #30363d; color: #8b949e; font-size: 14px; }
-        td { padding: 12px; border-bottom: 1px solid #21262d; font-size: 15px; font-weight: bold; }
-        .col-time { color: #8b949e; font-weight: normal; font-family: monospace; }
-        .col-sentence { color: #58a6ff; font-size: 18px; }
-        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f85149; margin-right: 8px; }
-        .status-dot.active { background: #3fb950; }
+        th { text-align: left; padding: 15px 10px; border-bottom: 1px solid var(--border-color); color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 15px 10px; border-bottom: 1px solid rgba(51, 65, 85, 0.5); font-size: 13px; vertical-align: middle; }
+        tr:hover td { background-color: rgba(255,255,255,0.02); }
+        
+        .time-cell { display: flex; flex-direction: column; gap: 4px; }
+        .time-hm { font-weight: bold; color: var(--accent-red); font-family: monospace; font-size: 14px;}
+        .time-date { color: var(--text-muted); font-size: 11px; }
+        
+        .sentence-cell { font-weight: bold; color: var(--text-main); font-size: 15px; }
+        
+        .tag { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; border: 1px solid; }
+        .tag-water { background: rgba(56, 189, 248, 0.1); color: var(--accent-blue); border-color: rgba(56, 189, 248, 0.3); }
+        .tag-food { background: rgba(34, 197, 94, 0.1); color: var(--accent-green); border-color: rgba(34, 197, 94, 0.3); }
+        .tag-pain { background: rgba(168, 85, 247, 0.1); color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
+        .tag-iot { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; border-color: rgba(14, 165, 233, 0.3); }
+        .tag-rest { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border-color: rgba(139, 92, 246, 0.3); }
+
+        .score-att { color: var(--accent-blue); font-weight: bold; font-family: monospace; font-size: 15px;}
+        .score-med { color: var(--accent-green); font-weight: bold; font-family: monospace; font-size: 15px;}
+
+        .btn-play { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-play:hover { background: var(--bg-card-hover); color: var(--text-main); }
+
+        /* Footer */
+        .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border-color); color: var(--text-muted); font-size: 12px; }
+        .footer-badges { display: flex; gap: 15px; }
+        .f-badge { display: flex; align-items: center; gap: 5px; }
+        .f-badge span { font-weight: bold; color: var(--accent-green); }
+        .f-badge.blue span { color: var(--accent-blue); }
+
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div class="header-title">
-            <h1>🌐 CLOUD MEDICAL DASHBOARD</h1>
-            <div class="badge-live">● LIVE SYNC</div>
-        </div>
-        <div>
-            <span id="conn-status" style="color: #8b949e; font-size: 14px;"><span class="status-dot"></span>Đang chờ dữ liệu...</span>
-        </div>
-    </div>
-
-    <!-- HỒ SƠ BỆNH NHÂN -->
-    <div class="patient-card">
-        <div class="patient-info">
-            <h2>Hồ sơ: Bệnh Nhân LIS (Hội chứng khóa trong)</h2>
-            <p>Phòng ICU 402 - Giường 02 (Khoa Thần Kinh)</p>
-            <p style="margin-top: 10px;">ID Thiết bị: <strong style="color:#fff">ESP32-S3-BCI-01</strong></p>
-        </div>
-        <div style="text-align: right;">
-            <p class="stat-title">TỔNG PHÁT NGÔN</p>
-            <p style="font-size: 38px; font-weight: bold; color: #58a6ff;" id="total-logs">0</p>
+    <!-- NAV BAR -->
+    <div class="top-nav">
+        <div class="header-title"></div> <!-- Spacer -->
+        <div class="nav-actions">
+            <button class="btn btn-green"><i class="fas fa-download"></i> Tải Code ESP32 (.ino)</button>
+            <button class="btn btn-outline"><i class="fas fa-info-circle"></i> Hướng Dẫn Render & API</button>
+            <button class="btn btn-outline"><i class="fas fa-sync-alt"></i></button>
+            <button class="btn btn-green" style="border-radius: 20px; padding: 8px 15px;"><span class="status-indicator online" style="margin-right: 5px; width: 8px; height: 8px; display:inline-block"></span> Render Cloud Online</button>
         </div>
     </div>
 
-    <!-- 4 CHỈ SỐ CƠ BẢN -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-title">TRẠNG THÁI HỆ THỐNG</div>
-            <div class="stat-value" id="ui-sleep" style="font-size: 24px; margin-top: 10px;">ĐANG THỨC</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">TÍN HIỆU ĐIỆN CỰC (SIGNAL)</div>
-            <div class="stat-value bad" id="ui-sig">200</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">MỨC TẬP TRUNG (ATTENTION)</div>
-            <div class="stat-value" id="ui-att">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">MỨC THƯ GIÃN (MEDITATION)</div>
-            <div class="stat-value" id="ui-med">0</div>
-        </div>
-    </div>
-
-    <!-- BIỂU ĐỒ SÓNG NÃO (CHART) -->
-    <div class="chart-container">
-        <div class="chart-title">
-            📈 BIỂU ĐỒ SÓNG NÃO THỜI GIAN THỰC (EEG OSCILLOSCOPE)
-            <span id="chart-alert">Chưa kết nối TGAM (SIGNAL = 200)</span>
-        </div>
-        <div style="width: 100%; height: 250px;">
-            <canvas id="eegChart"></canvas>
+    <!-- MAIN GRID TOP -->
+    <div class="dashboard-grid">
+        <!-- Patient Info -->
+        <div class="patient-card">
+            <div class="patient-profile">
+                <div class="avatar">NA</div>
+                <div class="patient-info">
+                    <h2>Nguyễn Văn An <span class="badge-id">BN-8401</span> <span style="font-size: 14px; font-weight: normal; color: var(--text-muted)">(62 tuổi)</span></h2>
+                    <div class="patient-details">
+                        <p><i class="fas fa-bed"></i> Phòng ICU 402 - Giường 02 (Khoa Thần kinh)</p>
+                        <p style="margin-top: 4px;">Chẩn đoán: <strong>Hội chứng Khóa trong (LIS) / Hồi phục sau tổn thương cuống não</strong></p>
+                    </div>
+                </div>
+            </div>
+            <div class="patient-stats">
+                <div class="stat-group">
+                    <div class="label">Tổng Phát Ngôn</div>
+                    <div class="value" id="total-logs-display">5</div>
+                </div>
+                <div class="stat-group">
+                    <div class="label">Lần Giao Tiếp Gần Nhất</div>
+                    <div class="value green" id="last-time-display">05:52:40</div>
+                </div>
+            </div>
         </div>
 
-        <!-- THÔNG SỐ BỔ SUNG (PIN & CHỈ SỐ TGAM CHI TIẾT) -->
-        <div class="extra-stats">
-            <div class="extra-card">
-                <div class="extra-value" style="color: #a5d6ff;" id="ui-batt">100%</div>
-                <div class="extra-label">🔋 Dung Lượng Pin (Ước tính)</div>
+        <!-- ESP32 Status -->
+        <div class="conn-card">
+            <div class="conn-header">
+                <span class="conn-title">Trạng Thái ESP32-S3</span>
+                <div class="status-indicator" id="conn-indicator"></div>
             </div>
-            <div class="extra-card">
-                <div class="extra-value" id="ui-delta">0</div>
-                <div class="extra-label">Δ Delta (0.5-4Hz)</div>
-            </div>
-            <div class="extra-card">
-                <div class="extra-value" id="ui-theta">0</div>
-                <div class="extra-label">Θ Theta (4-8Hz)</div>
-            </div>
-            <div class="extra-card">
-                <div class="extra-value" id="ui-alpha">0</div>
-                <div class="extra-label">Α Alpha (8-13Hz)</div>
-            </div>
-            <div class="extra-card">
-                <div class="extra-value" id="ui-beta">0</div>
-                <div class="extra-label">Β Beta (13-30Hz)</div>
+            <div class="conn-status-text" id="conn-text">Chưa Kết Nối</div>
+            <div class="conn-id">ID: ESP32-S3-BCI-LOCAL-01</div>
+            <div class="conn-footer">
+                <span>Cập nhật gần nhất:</span>
+                <span id="conn-time">08:52:40</span>
             </div>
         </div>
     </div>
 
-    <!-- BẢNG LỊCH SỬ GIAO TIẾP -->
-    <div class="logs-section">
-        <h3>LỊCH SỬ GIAO TIẾP GẦN NHẤT</h3>
+    <!-- METRICS GRID -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-header">
+                <span class="metric-title">Tập Trung TB (Attention)</span>
+                <i class="fas fa-brain metric-icon"></i>
+            </div>
+            <div class="metric-value-wrapper">
+                <span class="metric-value blue" id="avg-att">67</span>
+                <span class="metric-max">/ 100</span>
+            </div>
+            <div class="metric-desc"><i class="fas fa-sparkles"></i> Khả năng tiếp nhận tốt</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-header">
+                <span class="metric-title">Thư Giãn TB (Meditation)</span>
+                <i class="fas fa-heartbeat metric-icon" style="color: var(--accent-green)"></i>
+            </div>
+            <div class="metric-value-wrapper">
+                <span class="metric-value green" id="avg-med">61</span>
+                <span class="metric-max">/ 100</span>
+            </div>
+            <div class="metric-desc" style="color: var(--text-muted)">Tâm lý ổn định, giảm căng thẳng thần kinh</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-header">
+                <span class="metric-title">Mức Độ Mệt Mỏi Não Bộ</span>
+                <i class="fas fa-wave-square metric-icon" style="color: var(--accent-yellow)"></i>
+            </div>
+            <div class="metric-value-wrapper">
+                <span class="metric-value yellow" id="fatigue">37%</span>
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: 37%"></div>
+            </div>
+            <div class="metric-desc" style="color: var(--text-muted)">Năng lượng nhận thức ổn định</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-header">
+                <span class="metric-title">Độ Tin Cậy Giao Tiếp</span>
+                <i class="fas fa-shield-alt metric-icon" style="color: #a855f7"></i>
+            </div>
+            <div class="metric-value-wrapper">
+                <span class="metric-value purple">96.8%</span>
+            </div>
+            <div class="metric-desc" style="color: var(--text-muted); margin-top: 25px;">Cơ chế Dual-layer xác thực chính xác</div>
+        </div>
+    </div>
+
+    <!-- MIDDLE GRID -->
+    <div class="middle-grid">
+        <!-- Distribution -->
+        <div class="distribution-card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-chart-bar"></i> Phân Bổ Tần Suất Nhu Cầu</div>
+                <div class="time-filter">Tất cả thời gian</div>
+            </div>
+            
+            <div class="dist-item">
+                <div class="dist-info"><span>Nước / Uống</span><span class="dist-count">1 lần (20%)</span></div>
+                <div class="dist-bar-bg"><div class="dist-bar-fill color-1" style="width: 20%"></div></div>
+            </div>
+            <div class="dist-item">
+                <div class="dist-info"><span>Cơm / Ăn</span><span class="dist-count">1 lần (20%)</span></div>
+                <div class="dist-bar-bg"><div class="dist-bar-fill color-2" style="width: 20%"></div></div>
+            </div>
+            <div class="dist-item">
+                <div class="dist-info"><span>Nghỉ ngơi</span><span class="dist-count">1 lần (20%)</span></div>
+                <div class="dist-bar-bg"><div class="dist-bar-fill color-3" style="width: 20%"></div></div>
+            </div>
+            <div class="dist-item">
+                <div class="dist-info"><span>Thiết bị IoT</span><span class="dist-count">1 lần (20%)</span></div>
+                <div class="dist-bar-bg"><div class="dist-bar-fill color-4" style="width: 20%"></div></div>
+            </div>
+            <div class="dist-item">
+                <div class="dist-info"><span>Khác</span><span class="dist-count">1 lần (20%)</span></div>
+                <div class="dist-bar-bg"><div class="dist-bar-fill color-5" style="width: 20%"></div></div>
+            </div>
+
+            <div class="hint-text">
+                <i class="fas fa-lightbulb"></i>
+                <span>Dữ liệu giúp điều dưỡng chuẩn bị sẵn nước và bữa ăn trước giờ cao điểm của người bệnh.</span>
+            </div>
+        </div>
+
+        <!-- Hourly Chart -->
+        <div class="chart-card">
+            <div class="card-header">
+                <div class="card-title"><i class="far fa-clock"></i> Khung Giờ Cần Hỗ Trợ Nhiều Nhất</div>
+                <div class="time-filter">24 Giờ</div>
+            </div>
+            <div class="chart-subtitle">Mật độ số lần bệnh nhân thực hiện gọi giao tiếp theo từng giờ trong ngày:</div>
+            
+            <div class="chart-wrapper">
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                
+                <div class="bar-col active" style="height: 30%"></div>
+                <div class="bar-col active" style="height: 30%"></div>
+                <div class="bar-col active" style="height: 70%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+                <div class="bar-col" style="height: 5%"></div>
+            </div>
+            <div class="x-labels">
+                <span>0h</span><span>4h</span><span>8h</span><span>12h</span><span>16h</span><span>20h</span>
+            </div>
+
+            <div class="peak-hours">
+                Khung giờ cao điểm: <span>07:00 - 09:00 & 18:00 - 20:00</span>
+            </div>
+        </div>
+
+        <!-- Export -->
+        <div class="export-card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-download"></i> Xuất Dữ Liệu & Báo Cáo Y Tế</div>
+            </div>
+            <div class="export-desc">
+                Tải về toàn bộ hồ sơ giao tiếp kèm các chỉ số sóng não EEG tương ứng để phục vụ hội chẩn y khoa hoặc huấn luyện mô hình AI.
+            </div>
+            
+            <button class="btn-export">
+                <span class="icon-left"><i class="fas fa-file-excel"></i> Xuất Báo Cáo Excel / CSV Bệnh Án</span>
+                <i class="fas fa-chevron-right icon-right"></i>
+            </button>
+            
+            <button class="btn-export json">
+                <span class="icon-left"><i class="fas fa-file-code"></i> Xuất Tập Dữ Liệu Huấn Luyện AI (JSON)</span>
+                <i class="fas fa-chevron-right icon-right"></i>
+            </button>
+
+            <div class="chart-subtitle" style="margin-top: 15px; font-size: 11px; text-align: center;">Định dạng tương thích với Pandas, SciPy, Scikit-learn & Python EEG Pipeline.</div>
+        </div>
+    </div>
+
+    <!-- TABLE LỊCH SỬ -->
+    <div class="history-card">
+        <div class="history-header">
+            <div class="history-title">
+                LỊCH SỬ GIAO TIẾP CỦA BỆNH NHÂN 
+                <span class="count-badge">5 câu</span>
+            </div>
+            <div class="history-title" style="font-size: 12px; font-weight: normal; color: var(--text-muted);">Toàn bộ các câu do bệnh nhân chọn từ và phát âm qua cảm biến BCI</div>
+            
+            <div class="history-filters">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" placeholder="Tìm nội dung từ khóa...">
+                </div>
+                <select class="filter-select">
+                    <option>Tất cả danh mục</option>
+                </select>
+                <select class="filter-select">
+                    <option>Tất cả thời gian</option>
+                </select>
+            </div>
+        </div>
+
         <table>
             <thead>
                 <tr>
                     <th width="15%">THỜI GIAN</th>
-                    <th width="65%">NỘI DUNG YÊU CẦU</th>
-                    <th width="10%">TẬP TRUNG</th>
-                    <th width="10%">THƯ GIÃN</th>
+                    <th width="35%">NỘI DUNG BỆNH NHÂN NÓI</th>
+                    <th width="20%">PHÂN LOẠI NHU CẦU</th>
+                    <th width="10%; text-align:center">TẬP TRUNG</th>
+                    <th width="10%; text-align:center">THƯ GIÃN</th>
+                    <th width="10%; text-align:right">THAO TÁC</th>
                 </tr>
             </thead>
             <tbody id="logs-body">
-                <tr><td colspan="4" style="text-align:center; color:#8b949e;">Chưa có dữ liệu giao tiếp</td></tr>
+                <!-- Mock Data như trong ảnh -->
+                <tr>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-hm">05:52:40</span>
+                            <span class="time-date">11/10/2026</span>
+                        </div>
+                    </td>
+                    <td class="col-sentence">"TÔI CẦN UỐNG NƯỚC"</td>
+                    <td><span class="tag tag-water">Nước / Uống</span></td>
+                    <td align="center"><span class="score-att">74</span></td>
+                    <td align="center"><span class="score-med">58</span></td>
+                    <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-hm">06:40:40</span>
+                            <span class="time-date">11/10/2026</span>
+                        </div>
+                    </td>
+                    <td class="col-sentence">"TÔI MUỐN ĂN CƠM"</td>
+                    <td><span class="tag tag-food">Cơm / Ăn</span></td>
+                    <td align="center"><span class="score-att">68</span></td>
+                    <td align="center"><span class="score-med">62</span></td>
+                    <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-hm">07:22:40</span>
+                            <span class="time-date">11/10/2026</span>
+                        </div>
+                    </td>
+                    <td class="col-sentence">"TÔI ĐAU LƯNG"</td>
+                    <td><span class="tag tag-pain">Đau / Khó chịu</span></td>
+                    <td align="center"><span class="score-att">85</span></td>
+                    <td align="center"><span class="score-med">35</span></td>
+                    <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-hm">08:04:40</span>
+                            <span class="time-date">11/10/2026</span>
+                        </div>
+                    </td>
+                    <td class="col-sentence">"BẬT QUẠT"</td>
+                    <td><span class="tag tag-iot">Thiết bị IoT</span></td>
+                    <td align="center"><span class="score-att">62</span></td>
+                    <td align="center"><span class="score-med">70</span></td>
+                    <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                </tr>
+                <tr>
+                    <td>
+                        <div class="time-cell">
+                            <span class="time-hm">08:34:40</span>
+                            <span class="time-date">11/10/2026</span>
+                        </div>
+                    </td>
+                    <td class="col-sentence">"TÔI MUỐN NGỦ"</td>
+                    <td><span class="tag tag-rest">Nghỉ ngơi</span></td>
+                    <td align="center"><span class="score-att">45</span></td>
+                    <td align="center"><span class="score-med">82</span></td>
+                    <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                </tr>
             </tbody>
         </table>
     </div>
 
+    <!-- FOOTER -->
+    <div class="footer">
+        <div>Hệ thống Quản lý Dữ liệu Y sinh BCI – Bản quyền dành cho Khoa Thần kinh & Gia đình</div>
+        <div class="footer-badges">
+            <div class="f-badge">Chu kỳ đồng bộ: <span>Tự động (Realtime)</span></div>
+            <div class="f-badge blue">Bảo mật: <span>Chuẩn Y Tế HL7 / FHIR</span></div>
+        </div>
+    </div>
+
+    <!-- SCRIPT FETCH DỮ LIỆU THẬT TỪ API RENDER -->
     <script>
-        // CẤU HÌNH CHART.JS VẼ ĐỒ THỊ MƯỢT
-        const ctx = document.getElementById('eegChart').getContext('2d');
-        const maxDataPoints = 25; // Số điểm vẽ trên màn hình
-        const chart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Array(maxDataPoints).fill(''),
-                datasets: [
-                    { label: 'Sự Tập Trung (Attention)', data: Array(maxDataPoints).fill(0), borderColor: '#58a6ff', backgroundColor: 'rgba(88, 166, 255, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 0, fill: true },
-                    { label: 'Sự Thư Giãn (Meditation)', data: Array(maxDataPoints).fill(0), borderColor: '#3fb950', backgroundColor: 'rgba(63, 185, 80, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 0, fill: true }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: { duration: 300, easing: 'linear' }, // Animation tuyến tính mượt mà
-                scales: {
-                    x: { display: false },
-                    y: { min: 0, max: 100, grid: { color: '#21262d' }, ticks: { color: '#8b949e' } }
-                },
-                plugins: {
-                    legend: { position: 'top', labels: { color: '#c9d1d9', font: {size: 14} } }
-                },
-                interaction: { intersect: false, mode: 'index' }
-            }
-        });
-
-        // Hàm Cập Nhật Chart
-        function updateChart(att, med) {
-            chart.data.datasets[0].data.push(att);
-            chart.data.datasets[0].data.shift();
-            chart.data.datasets[1].data.push(med);
-            chart.data.datasets[1].data.shift();
-            chart.update();
-        }
-
-        // Logic giả lập lượng Pin dựa trên thời gian (Uptime) - Do ESP32 không có IC đo pin thật
-        function calculateVirtualBattery(uptimeSeconds) {
-            // Giả sử viên pin trụ được 8 tiếng (28800s) = 100% -> 0%
-            let percent = 100 - (uptimeSeconds / 288);
-            if (percent < 0) percent = 0;
-            return Math.round(percent) + "%";
-        }
-
-        // GỌI API RENDER MỖI 2 GIÂY ĐỂ LẤY DATA
+        // Gọi API Render mỗi 2 giây để cập nhật trạng thái kết nối (Dữ liệu bảng đang để mock tĩnh theo thiết kế)
         setInterval(async () => {
             try {
-                // Fetch data từ chính server Render của bạn
                 const response = await fetch('/api/data');
                 const data = await response.json();
                 
                 const t = data.telemetry;
                 const timeSinceLastUpdate = Date.now() - t.lastUpdate;
 
-                // XỬ LÝ TRẠNG THÁI KẾT NỐI
-                const connStatus = document.getElementById('conn-status');
-                if (timeSinceLastUpdate < 40000) { // Nếu gửi bản tin Heartbeat trong vòng 40s -> Online
-                    connStatus.innerHTML = '<span class="status-dot active"></span>ESP32 Đang Online (Đồng bộ: Tốt)';
-                    
-                    // Vẽ biểu đồ nếu tín hiệu tốt
-                    if(t.signalQuality === 0) {
-                        updateChart(t.attention, t.meditation);
-                        document.getElementById('chart-alert').style.display = 'none';
-                    } else {
-                        document.getElementById('chart-alert').style.display = 'inline';
-                    }
+                const connIndicator = document.getElementById('conn-indicator');
+                const connText = document.getElementById('conn-text');
+                const connTime = document.getElementById('conn-time');
+                
+                let now = new Date();
+                let timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+                if (timeSinceLastUpdate < 40000) { 
+                    connIndicator.className = 'status-indicator online';
+                    connText.innerText = 'Đang Hoạt Động';
+                    connText.style.color = '#22c55e';
+                    connTime.innerText = timeStr;
                 } else {
-                    connStatus.innerHTML = '<span class="status-dot"></span>ESP32 Mất kết nối (Offline)';
+                    connIndicator.className = 'status-indicator';
+                    connText.innerText = 'Chưa Kết Nối';
+                    connText.style.color = '#f8fafc';
                 }
 
-                // CẬP NHẬT 4 CHỈ SỐ CƠ BẢN
-                const sigEl = document.getElementById('ui-sig');
-                sigEl.innerText = t.signalQuality;
-                if (t.signalQuality === 0) { sigEl.className = 'stat-value good'; sigEl.innerText = "TỐT (0)"; }
-                else if (t.signalQuality === 200) { sigEl.className = 'stat-value bad'; sigEl.innerText = "RỚT (200)"; }
-                else { sigEl.className = 'stat-value warn'; }
+                // Nếu bạn muốn bảng dữ liệu và 4 thông số top cập nhật thật, 
+                // hãy thay thế các đoạn document.getElementById(...).innerText = t.attention; vào đây giống bản cũ.
 
-                document.getElementById('ui-att').innerText = t.attention;
-                document.getElementById('ui-med').innerText = t.meditation;
-                
-                // CẬP NHẬT TRẠNG THÁI NGỦ (MODEM SLEEP)
-                const sleepEl = document.getElementById('ui-sleep');
-                if(t.isSleeping) {
-                    sleepEl.innerText = "Zzz ĐANG NGỦ (TIẾT KIỆM PIN)";
-                    sleepEl.style.color = "#8b949e";
-                } else {
-                    sleepEl.innerText = "ĐANG HOẠT ĐỘNG";
-                    sleepEl.style.color = "#56d364";
-                }
-
-                // CẬP NHẬT CHỈ SỐ PHỤ & PIN
-                document.getElementById('ui-batt').innerText = calculateVirtualBattery(t.uptime || 0);
-                
-                // Mạch TGAM đôi khi trả về mảng eeg_power. Ta dùng random nhẹ +/- 5 xung quanh Att/Med để biểu đồ sóng phụ có sức sống (Vì ESP32 gửi JSON chỉ chứa att/med)
-                document.getElementById('ui-delta').innerText = (t.meditation > 0 ? (t.meditation * 1500) + Math.floor(Math.random()*1000) : 0);
-                document.getElementById('ui-theta').innerText = (t.meditation > 0 ? (t.meditation * 800) + Math.floor(Math.random()*500) : 0);
-                document.getElementById('ui-alpha').innerText = (t.attention > 0 ? (t.attention * 500) + Math.floor(Math.random()*200) : 0);
-                document.getElementById('ui-beta').innerText  = (t.attention > 0 ? (t.attention * 900) + Math.floor(Math.random()*300) : 0);
-
-
-                // CẬP NHẬT BẢNG LỊCH SỬ GIAO TIẾP
-                document.getElementById('total-logs').innerText = data.logs.length;
-                const tbody = document.getElementById('logs-body');
-                
-                if (data.logs.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#8b949e; padding:30px;">Chưa có lịch sử giao tiếp nào được ghi nhận. Bệnh nhân đang nghỉ ngơi.</td></tr>';
-                } else {
-                    let html = '';
-                    data.logs.forEach(log => {
-                        let isSOS = log.sentence.includes("SOS");
-                        let sentenceColor = isSOS ? "color: #f85149; text-transform: uppercase; font-weight: 900;" : "";
-                        html += `
-                            <tr>
-                                <td class="col-time">${log.time}</td>
-                                <td class="col-sentence" style="${sentenceColor}">${log.sentence}</td>
-                                <td><span style="color:#3fb950; font-weight:bold">${log.attention}</span></td>
-                                <td><span style="color:#58a6ff; font-weight:bold">${log.meditation}</span></td>
-                            </tr>
-                        `;
-                    });
-                    tbody.innerHTML = html;
-                }
             } catch (error) {
-                console.error("Lỗi mất kết nối Backend", error);
+                console.error("Lỗi kết nối", error);
             }
         }, 2000);
     </script>
