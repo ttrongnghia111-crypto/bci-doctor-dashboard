@@ -30,8 +30,9 @@ app.post('/api/telemetry', (req, res) => {
 
 app.post('/api/logs', (req, res) => {
     const { sentence, attention, meditation, signalQuality } = req.body;
+    
     const newLog = {
-        time: new Date().toLocaleTimeString('vi-VN'),
+        timestamp: new Date().toISOString(), // Đã sửa chuẩn để Web đọc được
         sentence: sentence || "Không rõ",
         attention: attention || 0,
         meditation: meditation || 0
@@ -48,7 +49,7 @@ app.get('/api/data', (req, res) => {
 });
 
 // ==========================================
-// 3. RENDER GIAO DIỆN WEB BÁC SĨ (Lấy từ file index.html)
+// 3. RENDER GIAO DIỆN WEB BÁC SĨ
 // ==========================================
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));

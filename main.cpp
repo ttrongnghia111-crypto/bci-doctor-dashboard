@@ -5,7 +5,7 @@
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ESPmDNS.h>
-
+#include <WiFiClientSecure.h>
 // =========================================================================
 // HỆ THỐNG BCI ESP32-S3 - BÀN PHÍM TRỢ NĂNG GIAO TIẾP & ĐIỀU KHIỂN THIẾT BỊ
 // ĐỒNG BỘ DỮ LIỆU TỪ XA LÊN WEB SERVER RENDER CHO BÁC SĨ & NGƯỜI THÂN
@@ -1060,12 +1060,14 @@ void syncSentenceToCloud(String sentence) {
   if (strlen(CLOUD_SERVER_URL) == 0) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
-  HTTPClient http;
-  http.begin(CLOUD_SERVER_URL);
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(2500);
+  WiFiClientSecure client;     // THÊM DÒNG NÀY
+  client.setInsecure();        // THÊM DÒNG NÀY (Bỏ qua check chứng chỉ SSL)
 
-  // Gói tin JSON gửi lên Web Server Bác sĩ trên Render
+  HTTPClient http;
+  http.begin(client, CLOUD_SERVER_URL); // SỬA DÒNG NÀY (Truyền client vào)
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000);      // SỬA DÒNG NÀY (Tăng thời gian chờ lên 10 giây)
+
   String jsonPayload = "{\"sentence\":\"" + sentence + "\"," +
                        "\"attention\":" + String(attention) + "," +
                        "\"meditation\":" + String(meditation) + "," +
@@ -1087,10 +1089,13 @@ void syncTelemetryToCloud() {
   if (strlen(CLOUD_TELEMETRY_URL) == 0) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
+  WiFiClientSecure client;     // THÊM DÒNG NÀY
+  client.setInsecure();        // THÊM DÒNG NÀY
+
   HTTPClient http;
-  http.begin(CLOUD_TELEMETRY_URL);
+  http.begin(client, CLOUD_TELEMETRY_URL); // SỬA DÒNG NÀY
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(2000);
+  http.setTimeout(10000);      // SỬA DÒNG NÀY (Tăng timeout lên 10s)
 
   String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
                    "\"signalQuality\":" + String(signalQuality) + "," +

@@ -490,40 +490,89 @@
 
     <!-- SCRIPT FETCH DỮ LIỆU THẬT TỪ API RENDER -->
     <script>
-        // Gọi API Render mỗi 2 giây để cập nhật trạng thái kết nối (Dữ liệu bảng đang để mock tĩnh theo thiết kế)
-        setInterval(async () => {
-            try {
-                const response = await fetch('/api/data');
-                const data = await response.json();
-                
-                const t = data.telemetry;
-                const timeSinceLastUpdate = Date.now() - t.lastUpdate;
+    // Hàm format thời gian
+    function formatTime(isoString) {
+        if (!isoString) return { hm: '--:--', date: '--/--/----' };
+        const d = new Date(isoString);
+        return {
+            hm: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            date: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        };
+    }
 
-                const connIndicator = document.getElementById('conn-indicator');
-                const connText = document.getElementById('conn-text');
-                const connTime = document.getElementById('conn-time');
-                
-                let now = new Date();
-                let timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // Gọi API Render mỗi 2 giây để cập nhật trạng thái kết nối & Bảng dữ liệu
+    setInterval(async () => {
+        try {
+            const response = await fetch('/api/data'); // Đảm bảo API này của backend trả về cả telemetry và mảng logs
+            const data = await response.json();
+            
+            const t = data.telemetry;
+            if(!t) return;
+            
+            const timeSinceLastUpdate = Date.now() - t.lastUpdate;
 
-                if (timeSinceLastUpdate < 40000) { 
-                    connIndicator.className = 'status-indicator online';
-                    connText.innerText = 'Đang Hoạt Động';
-                    connText.style.color = '#22c55e';
-                    connTime.innerText = timeStr;
-                } else {
-                    connIndicator.className = 'status-indicator';
-                    connText.innerText = 'Chưa Kết Nối';
-                    connText.style.color = '#f8fafc';
+            // 1. CẬP NHẬT TRẠNG THÁI KẾT NỐI
+            const connIndicator = document.getElementById('conn-indicator');
+            const connText = document.getElementById('conn-text');
+            const connTime = document.getElementById('conn-time');
+            let now = new Date();
+            let timeStr = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            if (timeSinceLastUpdate < 40000) { 
+                connIndicator.className = 'status-indicator online';
+                connText.innerText = 'Đang Hoạt Động';
+                connText.style.color = '#22c55e';
+                connTime.innerText = timeStr;
+            } else {
+                connIndicator.className = 'status-indicator';
+                connText.innerText = 'Chưa Kết Nối';
+                connText.style.color = '#f8fafc';
+            }
+
+            // 2. CẬP NHẬT CÁC CHỈ SỐ TOP (Tập trung, Thư giãn)
+            document.getElementById('avg-att').innerText = t.attention || 0;
+            document.getElementById('avg-med').innerText = t.meditation || 0;
+
+            // 3. CẬP NHẬT BẢNG LỊCH SỬ GIAO TIẾP
+            if (data.logs && Array.isArray(data.logs)) {
+                // Cập nhật số lượng
+                document.getElementById('total-logs-display').innerText = data.logs.length;
+                document.querySelector('.count-badge').innerText = data.logs.length + ' câu';
+                
+                // Nếu có log mới nhất, cập nhật giờ giao tiếp gần nhất
+                if(data.logs.length > 0) {
+                    document.getElementById('last-time-display').innerText = formatTime(data.logs[0].timestamp).hm;
                 }
 
-                // Nếu bạn muốn bảng dữ liệu và 4 thông số top cập nhật thật, 
-                // hãy thay thế các đoạn document.getElementById(...).innerText = t.attention; vào đây giống bản cũ.
-
-            } catch (error) {
-                console.error("Lỗi kết nối", error);
+                // Vẽ lại bảng HTML
+                const tbody = document.getElementById('logs-body');
+                let html = '';
+                
+                data.logs.forEach(log => {
+                    const timeInfo = formatTime(log.timestamp);
+                    html += `
+                    <tr>
+                        <td>
+                            <div class="time-cell">
+                                <span class="time-hm">${timeInfo.hm}</span>
+                                <span class="time-date">${timeInfo.date}</span>
+                            </div>
+                        </td>
+                        <td class="col-sentence">"${log.sentence}"</td>
+                        <td><span class="tag tag-iot">Giao tiếp</span></td>
+                        <td align="center"><span class="score-att">${log.attention || 0}</span></td>
+                        <td align="center"><span class="score-med">${log.meditation || 0}</span></td>
+                        <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                    </tr>`;
+                });
+                
+                tbody.innerHTML = html;
             }
-        }, 2000);
-    </script>
+
+        } catch (error) {
+            console.error("Lỗi kết nối tới Backend Render", error);
+        }
+    }, 2000);
+</script>
 </body>
 </html>
