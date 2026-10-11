@@ -4,21 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trung Tâm Giám Sát Y Tế (Cloud)</title>
-    <!-- Nhúng thư viện Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Nhúng Font Awesome cho icon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --bg-card: #1e293b;
-            --bg-card-hover: #334155;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --accent-blue: #38bdf8;
-            --accent-green: #22c55e;
-            --accent-red: #ef4444;
-            --accent-yellow: #eab308;
+            --bg-dark: #0f172a; --bg-card: #1e293b; --bg-card-hover: #334155;
+            --text-main: #f8fafc; --text-muted: #94a3b8;
+            --accent-blue: #38bdf8; --accent-green: #22c55e;
+            --accent-red: #ef4444; --accent-yellow: #eab308;
             --border-color: #334155;
         }
 
@@ -34,10 +27,13 @@
         .btn-outline { background-color: transparent; color: var(--text-muted); border: 1px solid var(--border-color); }
         .btn-outline:hover { background-color: var(--bg-card-hover); color: var(--text-main); }
         
-        /* CSS Nút Demo & Pin */
+        /* CSS Nút Demo, Pin & Nháy mắt */
         .btn-demo { background-color: rgba(234, 179, 8, 0.15); color: var(--accent-yellow); border: 1px solid var(--accent-yellow); transition: 0.3s;}
         .btn-demo:hover { background-color: rgba(234, 179, 8, 0.3); }
-        .battery-container { display: flex; align-items: center; gap: 8px; color: var(--accent-green); font-weight: bold; font-size: 14px; margin-left: 5px; padding: 6px 12px; background: var(--bg-dark); border-radius: 20px; border: 1px solid var(--border-color);}
+        .status-box { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; margin-left: 5px; padding: 6px 12px; background: var(--bg-dark); border-radius: 20px; border: 1px solid var(--border-color);}
+        
+        .blink-indicator { color: var(--text-muted); opacity: 0.4; transition: 0.1s all; display: flex; align-items: center; gap: 5px;}
+        .blink-active { color: var(--accent-yellow) !important; opacity: 1 !important; text-shadow: 0 0 10px var(--accent-yellow); transform: scale(1.1);}
 
         .header-title { font-size: 20px; font-weight: 700; color: var(--text-main); }
 
@@ -142,7 +138,8 @@
         .btn-export .icon-right { color: var(--text-muted); }
 
         /* Bảng Lịch Sử */
-        .history-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
+        .history-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); transition: 0.3s; }
+        .history-flash { box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); border-color: var(--accent-blue); }
         .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .history-title { font-size: 18px; font-weight: bold; color: var(--text-main); display: flex; align-items: center; gap: 10px; }
         .count-badge { background: rgba(56, 189, 248, 0.2); color: var(--accent-blue); padding: 2px 8px; border-radius: 12px; font-size: 12px; border: 1px solid var(--accent-blue); }
@@ -197,7 +194,13 @@
             <button class="btn btn-outline"><i class="fas fa-info-circle"></i> Hướng Dẫn Render & API</button>
             <button class="btn btn-outline"><i class="fas fa-sync-alt"></i></button>
             <button class="btn btn-green" style="border-radius: 20px; padding: 8px 15px;"><span class="status-indicator online" style="margin-right: 5px; width: 8px; height: 8px; display:inline-block"></span> Render Cloud Online</button>
-            <div class="battery-container"><i class="fas fa-battery-three-quarters"></i> <span id="bat-val">100%</span></div>
+            
+            <div class="status-box">
+                <div class="blink-indicator" id="blink-icon"><i class="fas fa-eye"></i> Nháy mắt</div>
+            </div>
+            <div class="status-box" style="color: var(--accent-green);">
+                <i class="fas fa-battery-three-quarters"></i> <span id="bat-val">100%</span>
+            </div>
         </div>
     </div>
 
@@ -413,7 +416,7 @@
     </div>
 
     <!-- TABLE LỊCH SỬ -->
-    <div class="history-card">
+    <div class="history-card" id="history-card">
         <div class="history-header">
             <div class="history-title">
                 LỊCH SỬ GIAO TIẾP CỦA BỆNH NHÂN 
@@ -492,6 +495,8 @@
 
         let isDemoMode = false;
         let demoInterval;
+        let lastLogCount = 0;
+        let fakeSentences = ["TÔI CẦN UỐNG NƯỚC", "TÔI MUỐN ĂN CƠM", "BẬT QUẠT", "TÔI ĐAU LƯNG", "TÔI MUỐN NGỦ", "BÁC SĨ ƠI"];
 
         // Hàm bật/tắt Demo
         function toggleDemo() {
@@ -534,6 +539,35 @@
             }
         }
 
+        // LẮNG NGHE PHÍM SPACE ĐỂ GIẢ LẬP NHÁY MẮT TRONG CHẾ ĐỘ DEMO
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && isDemoMode) {
+                e.preventDefault(); // Chống cuộn trang
+                
+                // 1. Chớp sáng con mắt
+                const blinkIcon = document.getElementById('blink-icon');
+                blinkIcon.classList.add('blink-active');
+                setTimeout(() => blinkIcon.classList.remove('blink-active'), 300);
+
+                // 2. Giật biểu đồ sóng não (Mô phỏng nhiễu cơ)
+                const chartData = eegChart.data.datasets[0].data;
+                chartData[49] = 250; // Tạo đỉnh nhọn
+                eegChart.update();
+
+                // 3. Gửi 1 câu giả lập lên API để bảng tự cập nhật
+                const randomSentence = fakeSentences[Math.floor(Math.random() * fakeSentences.length)];
+                fetch('/api/logs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sentence: randomSentence,
+                        attention: Math.floor(Math.random() * 40 + 60),
+                        meditation: Math.floor(Math.random() * 40 + 60)
+                    })
+                });
+            }
+        });
+
         // Hàm format thời gian
         function formatTime(isoString) {
             if (!isoString) return { hm: '--:--', date: '--/--/----' };
@@ -557,10 +591,8 @@
 
         // Cập nhật Giao diện
         function updateUI(t) {
-            // Pin
             document.getElementById('bat-val').innerText = (t.battery || 0) + '%';
             
-            // Trạng thái kết nối
             const timeSinceLastUpdate = Date.now() - t.lastUpdate;
             const connIndicator = document.getElementById('conn-indicator');
             const connText = document.getElementById('conn-text');
@@ -578,11 +610,9 @@
                 connText.style.color = '#f8fafc';
             }
 
-            // Chỉ số cơ bản
             document.getElementById('avg-att').innerText = t.attention || 0;
             document.getElementById('avg-med').innerText = t.meditation || 0;
 
-            // Sóng não
             const overlay = document.getElementById('no-signal-overlay');
             const sigText = document.getElementById('signal-text');
             
@@ -605,17 +635,23 @@
 
         // Fetch API thật từ Backend
         setInterval(async () => {
-            if (isDemoMode) return; // Nếu đang chạy Demo thì không cập nhật từ API
-            
             try {
                 const response = await fetch('/api/data');
                 const data = await response.json();
                 
-                if (data.telemetry) updateUI(data.telemetry);
+                if (data.telemetry && !isDemoMode) updateUI(data.telemetry);
 
                 if (data.logs && Array.isArray(data.logs)) {
                     document.getElementById('total-logs-display').innerText = data.logs.length;
                     document.getElementById('count-badge').innerText = data.logs.length + ' câu';
+
+                    // Hiệu ứng chớp sáng bảng khi có câu mới
+                    if (data.logs.length > lastLogCount && lastLogCount !== 0) {
+                        const card = document.getElementById('history-card');
+                        card.classList.add('history-flash');
+                        setTimeout(() => card.classList.remove('history-flash'), 500);
+                    }
+                    lastLogCount = data.logs.length;
 
                     if(data.logs.length > 0) {
                         document.getElementById('last-time-display').innerText = formatTime(data.logs[0].timestamp).hm;

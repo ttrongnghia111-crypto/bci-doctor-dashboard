@@ -2,64 +2,69 @@
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <HTTPClient.h>
+#include <WiFiClientSecure.h> // Thư viện bắt buộc để gọi HTTPS
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ESPmDNS.h>
-#include <WiFiClientSecure.h>
+
 // =========================================================================
 // HỆ THỐNG BCI ESP32-S3 - BÀN PHÍM TRỢ NĂNG GIAO TIẾP & ĐIỀU KHIỂN THIẾT BỊ
-// ĐỒNG BỘ DỮ LIỆU TỪ XA LÊN WEB SERVER RENDER CHO BÁC SĨ & NGƯỜI THÂN
 // =========================================================================
 
 WiFiMulti wifiMulti;
+WiFiClientSecure secureClient; // Khai báo Toàn cục để không bị tràn RAM (Lỗi Crash)
 
-// 1. Cấu hình Wi-Fi Router (Mạng tại nhà hoặc bệnh viện)
+// 1. Cấu hình Wi-Fi Router
 const char* WIFI_SSID_1 = "Trong Nghia";     
 const char* WIFI_PASS_1 = "109876543"; 
-const char* WIFI_SSID_2 = "Tuyet Nghia";     // Điền tên wifi thứ 2 vào đây
-const char* WIFI_PASS_2 = "@tuyet1003@";      // Điền mật khẩu wifi thứ 2 vào đây
+const char* WIFI_SSID_2 = "Tuyet Nghia";     
+const char* WIFI_PASS_2 = "@tuyet1003@";      
 
-// Wi-Fi Access Point dự phòng của ESP32 (Khi cúp điện hoặc mất Router)
 const char* AP_SSID = "ESP32_BCI_SYSTEM";
 const char* AP_PASS = "12345678";
 
-// 2. ĐỊA CHỈ WEB SERVER CLOUD TRÊN RENDER TIẾP NHẬN BẢN TIN
+// 2. ĐỊA CHỈ WEB SERVER CLOUD TRÊN RENDER
 const char* CLOUD_SERVER_URL = "https://bci-api-server.onrender.com/api/logs"; 
 const char* CLOUD_TELEMETRY_URL = "https://bci-api-server.onrender.com/api/telemetry";
-// 3. Cấu hình chân phần cứng ESP32-S3 & Cảm biến NeuroSky TGAM
+
+// 3. Cấu hình chân phần cứng ESP32-S3
 #define TGAM_RX_PIN 16
 #define TGAM_TX_PIN 17
 #define TGAM_BAUDRATE 57600
 
-#define RELAY1_PIN 18 // Điều khiển Đèn
-#define RELAY2_PIN 19 // Điều khiển Quạt
+#define RELAY1_PIN 18 
+#define RELAY2_PIN 19 
+#define BATTERY_PIN 4 // Chân đọc điện áp Pin (ADC)
 
 WebServer server(80);
 WebSocketsServer webSocket(81);
 HardwareSerial TGAMSerial(2);
 
 // Trạng thái cảm biến NeuroSky TGAM
-volatile int signalQuality = 200; // 0: Rất tốt, 200: Rớt điện cực
-volatile int attention = 0;       // 0 - 100
-volatile int meditation = 0;      // 0 - 100
-volatile int blinkStrength = 0;   // 0 - 255
+volatile int signalQuality = 200; 
+volatile int attention = 0;       
+volatile int meditation = 0;      
+volatile int blinkStrength = 0;   
+
+// Các dải sóng não
+unsigned long delta = 0, theta = 0, lowAlpha = 0, highAlpha = 0, lowBeta = 0, highBeta = 0, lowGamma = 0, midGamma = 0;
+int batteryPercent = 100;
 
 volatile bool relay1State = false;
 volatile bool relay2State = false;
 
-// Trạng thái tiết kiệm năng lượng (Modem Sleep)
 volatile bool isSleeping = false;
 volatile int blinkCountForWake = 0;
 unsigned long lastBlinkTime = 0;
 unsigned long lastActivityTime = 0;
-const unsigned long AUTO_SLEEP_TIMEOUT = 180000; // 3 phút không thao tác tự ngủ
+const unsigned long AUTO_SLEEP_TIMEOUT = 180000; 
 unsigned long lastTelemetrySyncTime = 0;
-const unsigned long TELEMETRY_INTERVAL = 30000;  // 30 giây gửi heartbeat lên Cloud Render
+const unsigned long TELEMETRY_INTERVAL = 30000;  
 
 uint8_t payloadData[256];
 
 // =========================================================================
-// GIAO DIỆN WEB CỤC BỘ DÀNH CHO BỆNH NHÂN (TRỰC QUAN, TỐI ƯU BỘ NHỚ RAM)
+// GIAO DIỆN WEB CỤC BỘ DÀNH CHO BỆNH NHÂN (LƯU TRONG BỘ NHỚ FLASH)
 // =========================================================================
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -1060,14 +1065,12 @@ void syncSentenceToCloud(String sentence) {
   if (strlen(CLOUD_SERVER_URL) == 0) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
-  WiFiClientSecure client;     // THÊM DÒNG NÀY
-  client.setInsecure();        // THÊM DÒNG NÀY (Bỏ qua check chứng chỉ SSL)
-
   HTTPClient http;
-  http.begin(client, CLOUD_SERVER_URL); // SỬA DÒNG NÀY (Truyền client vào)
+  http.begin(secureClient, CLOUD_SERVER_URL); // Dùng chung secureClient để không tràn RAM
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);      // SỬA DÒNG NÀY (Tăng thời gian chờ lên 10 giây)
+  http.setTimeout(10000);
 
+  // Gói tin JSON gửi lên Web Server Bác sĩ trên Render
   String jsonPayload = "{\"sentence\":\"" + sentence + "\"," +
                        "\"attention\":" + String(attention) + "," +
                        "\"meditation\":" + String(meditation) + "," +
@@ -1089,18 +1092,27 @@ void syncTelemetryToCloud() {
   if (strlen(CLOUD_TELEMETRY_URL) == 0) return;
   if (WiFi.status() != WL_CONNECTED) return;
 
-  WiFiClientSecure client;     // THÊM DÒNG NÀY
-  client.setInsecure();        // THÊM DÒNG NÀY
+  // Đọc mức pin (Giả sử đọc ADC 12-bit)
+  int rawBat = analogRead(BATTERY_PIN);
+  batteryPercent = map(rawBat, 0, 4095, 0, 100); 
+  if(batteryPercent > 100) batteryPercent = 100;
+  if(batteryPercent < 0) batteryPercent = 0;
 
   HTTPClient http;
-  http.begin(client, CLOUD_TELEMETRY_URL); // SỬA DÒNG NÀY
+  http.begin(secureClient, CLOUD_TELEMETRY_URL);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);      // SỬA DÒNG NÀY (Tăng timeout lên 10s)
+  http.setTimeout(10000);
 
   String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
                    "\"signalQuality\":" + String(signalQuality) + "," +
+                   "\"battery\":" + String(batteryPercent) + "," +
                    "\"attention\":" + String(attention) + "," +
                    "\"meditation\":" + String(meditation) + "," +
+                   "\"delta\":" + String(delta) + "," +
+                   "\"theta\":" + String(theta) + "," +
+                   "\"lowAlpha\":" + String(lowAlpha) + "," +
+                   "\"lowBeta\":" + String(lowBeta) + "," +
+                   "\"lowGamma\":" + String(lowGamma) + "," +
                    "\"uptime\":" + String(millis() / 1000) + "}";
 
   int httpCode = http.POST(payload);
@@ -1216,6 +1228,20 @@ void parseTGAMPacket(uint8_t* data, int length) {
         webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
       }
     } 
+    else if (code == 0x83) { 
+        // Lấy 8 dải sóng não (24 byte tiếp theo)
+        int vLength = data[i++];
+        if (vLength == 24) {
+            delta = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            theta = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            lowAlpha = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            highAlpha = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            lowBeta = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            highBeta = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            lowGamma = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+            midGamma = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
+        }
+    }
     else {
       if (code >= 0x80) {
         i += data[i] + 1;
@@ -1277,6 +1303,9 @@ void setup() {
   pinMode(RELAY2_PIN, OUTPUT);
   digitalWrite(RELAY1_PIN, LOW);
   digitalWrite(RELAY2_PIN, LOW);
+
+  // Bỏ qua kiểm tra chứng chỉ SSL để tránh lỗi kết nối HTTPS
+  secureClient.setInsecure(); 
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.softAP(AP_SSID, AP_PASS);
