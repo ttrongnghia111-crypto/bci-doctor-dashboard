@@ -7,56 +7,59 @@
 #include <ESPmDNS.h>
 
 // =========================================================================
-// HỆ THỐNG BCI ESP32-S3 - BÀN PHÍM GIAO TIẾP TINH GỌN (LOCAL)
-// ĐỒNG BỘ DỮ LIỆU LÊN MÁY CHỦ BÁC SĨ (CLOUD ANALYTICS SERVER)
+// HỆ THỐNG BCI ESP32-S3 - BÀN PHÍM TRỢ NĂNG GIAO TIẾP & ĐIỀU KHIỂN THIẾT BỊ
+// ĐỒNG BỘ DỮ LIỆU TỪ XA LÊN WEB SERVER RENDER CHO BÁC SĨ & NGƯỜI THÂN
 // =========================================================================
 
 WiFiMulti wifiMulti;
 
-// Cấu hình Wi-Fi mạng nhà bạn:
+// 1. Cấu hình Wi-Fi Router (Mạng tại nhà hoặc bệnh viện)
 const char* WIFI_SSID_1 = "Trong Nghia";     
 const char* WIFI_PASS_1 = "109876543"; 
+const char* WIFI_SSID_2 = "Tuyet Nghia";     // Điền tên wifi thứ 2 vào đây
+const char* WIFI_PASS_2 = "@tuyet1003@";      // Điền mật khẩu wifi thứ 2 vào đây
 
-// Wi-Fi Access Point dự phòng của ESP32 (khi cúp điện hoặc mất Router)
+// Wi-Fi Access Point dự phòng của ESP32 (Khi cúp điện hoặc mất Router)
 const char* AP_SSID = "ESP32_BCI_SYSTEM";
 const char* AP_PASS = "12345678";
 
-// ĐỊA CHỈ API SERVER TIẾP NHẬN BẢN TIN (Điền URL của Server/Vercel/Render):
-// Ví dụ: "http://192.168.1.15:3000/api/logs" hoặc "https://ten-du-an.vercel.app/api/logs"
-const char* CLOUD_SERVER_URL = "http://192.168.1.15:3000/api/logs"; 
-
+// 2. ĐỊA CHỈ WEB SERVER CLOUD TRÊN RENDER TIẾP NHẬN BẢN TIN
+const char* CLOUD_SERVER_URL = "https://bci-api-server.onrender.com/api/logs"; 
+const char* CLOUD_TELEMETRY_URL = "https://bci-api-server.onrender.com/api/telemetry";
+// 3. Cấu hình chân phần cứng ESP32-S3 & Cảm biến NeuroSky TGAM
 #define TGAM_RX_PIN 16
 #define TGAM_TX_PIN 17
 #define TGAM_BAUDRATE 57600
 
-#define RELAY1_PIN 18
-#define RELAY2_PIN 19
+#define RELAY1_PIN 18 // Điều khiển Đèn
+#define RELAY2_PIN 19 // Điều khiển Quạt
 
 WebServer server(80);
 WebSocketsServer webSocket(81);
 HardwareSerial TGAMSerial(2);
 
 // Trạng thái cảm biến NeuroSky TGAM
-volatile int signalQuality = 200;
-volatile int attention = 0;
-volatile int meditation = 0;
-volatile int blinkStrength = 0;
+volatile int signalQuality = 200; // 0: Rất tốt, 200: Rớt điện cực
+volatile int attention = 0;       // 0 - 100
+volatile int meditation = 0;      // 0 - 100
+volatile int blinkStrength = 0;   // 0 - 255
 
 volatile bool relay1State = false;
 volatile bool relay2State = false;
 
-// Trạng thái tiết kiệm pin
+// Trạng thái tiết kiệm năng lượng (Modem Sleep)
 volatile bool isSleeping = false;
 volatile int blinkCountForWake = 0;
 unsigned long lastBlinkTime = 0;
 unsigned long lastActivityTime = 0;
-const unsigned long AUTO_SLEEP_TIMEOUT = 180000; // 3 phút tự ngủ
+const unsigned long AUTO_SLEEP_TIMEOUT = 180000; // 3 phút không thao tác tự ngủ
+unsigned long lastTelemetrySyncTime = 0;
+const unsigned long TELEMETRY_INTERVAL = 30000;  // 30 giây gửi heartbeat lên Cloud Render
 
 uint8_t payloadData[256];
 
 // =========================================================================
-// GIAO DIỆN WEB CỤC BỘ TINH GỌN (CHỈ PHỤC VỤ BỆNH NHÂN GIAO TIẾP & ĐIỀU KHIỂN)
-// ĐÃ LOẠI BỎ TOÀN BỘ ĐỒ THỊ VÀ PHÂN TÍCH NẶNG ĐỂ GIẢI PHÓNG RAM CHO ESP32
+// GIAO DIỆN WEB CỤC BỘ DÀNH CHO BỆNH NHÂN (TRỰC QUAN, TỐI ƯU BỘ NHỚ RAM)
 // =========================================================================
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -64,7 +67,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Giao Diện BCI - Điều Khiển & Giao Tiếp</title>
+    <title>ESP32 BCI - Giao Tiếp & Điều Khiển</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -109,7 +112,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             padding: 70px 20px 40px 20px;
         }
         .page-title {
-            font-size: 32px;
+            font-size: 30px;
             font-weight: 900;
             color: #c9d1d9;
             text-transform: uppercase;
@@ -191,7 +194,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
         .btn-sub:active { transform: scale(0.97); background: #30363d; }
 
-        /* VIEW 2: BÀN PHÍM HỖ TRỢ GIAO TIẾP */
+        /* VIEW 2: BÀN PHÍM QUÉT TRỢ NĂNG */
         #view-keyboard {
             display: none;
             flex-direction: column;
@@ -394,7 +397,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <!-- VIEW 1: MAIN MENU -->
     <div id="view-menu">
-        <h1 class="page-title">BẢNG THEO DÕI TÌNH TRẠNG</h1>
+        <h1 class="page-title">BẢNG THEO DÕI TÌNH TRẠNG BỆNH NHÂN</h1>
 
         <div class="dash-row">
             <div class="dash-card">
@@ -725,6 +728,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             }
         }
 
+        // ==========================================
+        // DUAL-LAYER CONTEXT: 1-GRAM & 2-GRAM
+        // ==========================================
         const dictionary = [
             "TÔI", "BẠN", "MẸ", "CHA", "BÁC SĨ", "Y TÁ", "CON", "CHỒNG", "VỢ", "NHÀ", "BỆNH VIỆN", 
             "CẦN", "MUỐN", "THÍCH", "LÀM", "ĂN", "UỐNG", "ĐI", "NGỦ", "TẮM", "KHÁM", "MỞ", "BẬT", "TẮT", "LẤY", "GIÚP", "NGỒI", "NẰM",
@@ -760,6 +766,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             return clean.replace(/Đ/g, "D").replace(/đ/g, "d");
         }
 
+        // ==========================================
+        // XỬ LÝ GÕ TELEX TIẾNG VIỆT THỜI GIAN THỰC
+        // ==========================================
         function processTelex(text) {
             let words = text.split(' ');
             let lastWord = words[words.length - 1];
@@ -823,7 +832,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('sug4').innerText = matches[3] || '';
         }
 
-        // TỰ ĐỘNG NỐI TIẾP KHI CÓ DẤU CÁCH - KHÔNG XÓA MẤT CHỮ TRƯỚC ĐÓ
         function applySuggestion(word) {
             const outBox = document.getElementById('output-box');
             let text = outBox.textContent;
@@ -1046,7 +1054,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 // =========================================================================
-// HÀM ĐỒNG BỘ CÂU GIAO TIẾP LÊN CLOUD SERVER TỪ XA (BACKGROUND SYNC)
+// HÀM ĐỒNG BỘ CÂU GIAO TIẾP LÊN MÁY CHỦ CLOUD RENDER (BACKGROUND HTTP POST)
 // =========================================================================
 void syncSentenceToCloud(String sentence) {
   if (strlen(CLOUD_SERVER_URL) == 0) return;
@@ -1055,8 +1063,9 @@ void syncSentenceToCloud(String sentence) {
   HTTPClient http;
   http.begin(CLOUD_SERVER_URL);
   http.addHeader("Content-Type", "application/json");
+  http.setTimeout(2500);
 
-  // Gói tin JSON gửi lên Web Server Bác sĩ
+  // Gói tin JSON gửi lên Web Server Bác sĩ trên Render
   String jsonPayload = "{\"sentence\":\"" + sentence + "\"," +
                        "\"attention\":" + String(attention) + "," +
                        "\"meditation\":" + String(meditation) + "," +
@@ -1064,15 +1073,40 @@ void syncSentenceToCloud(String sentence) {
 
   int httpResponseCode = http.POST(jsonPayload);
   if (httpResponseCode > 0) {
-    Serial.printf("[CLOUD SYNC] Đã đồng bộ câu nói lên Server (Mã %d)\n", httpResponseCode);
+    Serial.printf("[CLOUD SYNC] Đã đồng bộ lên Render (HTTP %d): %s\n", httpResponseCode, sentence.c_str());
   } else {
-    Serial.printf("[CLOUD SYNC] Lỗi gửi: %s\n", http.errorToString(httpResponseCode).c_str());
+    Serial.printf("[CLOUD SYNC] Lỗi gửi Render: %s\n", http.errorToString(httpResponseCode).c_str());
   }
   http.end();
 }
 
 // =========================================================================
-// WEBSOCKET & XỬ LÝ LỆNH
+// HÀM GỬI TELEMETRY / HEARTBEAT LÊN CLOUD RENDER
+// =========================================================================
+void syncTelemetryToCloud() {
+  if (strlen(CLOUD_TELEMETRY_URL) == 0) return;
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  http.begin(CLOUD_TELEMETRY_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(2000);
+
+  String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
+                   "\"signalQuality\":" + String(signalQuality) + "," +
+                   "\"attention\":" + String(attention) + "," +
+                   "\"meditation\":" + String(meditation) + "," +
+                   "\"uptime\":" + String(millis() / 1000) + "}";
+
+  int httpCode = http.POST(payload);
+  if (httpCode > 0) {
+    Serial.printf("[TELEMETRY] Đã gửi Heartbeat lên Render (HTTP %d)\n", httpCode);
+  }
+  http.end();
+}
+
+// =========================================================================
+// XỬ LÝ SỰ KIỆN WEBSOCKET TẠI MÁY CỤC BỘ
 // =========================================================================
 void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length) {
   switch (type) {
@@ -1099,14 +1133,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
       if (msg == "S") {
         isSleeping = true;
-        WiFi.setSleep(true);
+        WiFi.setSleep(true); // Modem sleep tiết kiệm pin
         webSocket.broadcastTXT("SLEEPING");
+        syncTelemetryToCloud();
       } 
       else if (msg == "W") {
         isSleeping = false;
         WiFi.setSleep(false);
         blinkCountForWake = 0;
         webSocket.broadcastTXT("WAKEUP");
+        syncTelemetryToCloud();
       } 
       else if (msg == "R1") {
         relay1State = !relay1State;
@@ -1123,7 +1159,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       else if (msg.startsWith("SENTENCE:")) {
         String sentence = msg.substring(9);
         Serial.println("[SENTENCE] Bệnh nhân giao tiếp: " + sentence);
-        // Gửi ngầm lên Web Server Bác sĩ qua HTTP POST
         syncSentenceToCloud(sentence);
       }
       else if (msg == "SOS") {
@@ -1138,7 +1173,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 }
 
 // =========================================================================
-// GIẢI MÃ DỮ LIỆU CẢM BIẾN NEUROSKY TGAM
+// GIẢI MÃ BẢN TIN CẢM BIẾN NEUROSKY TGAM (57600 BAUD)
 // =========================================================================
 void parseTGAMPacket(uint8_t* data, int length) {
   int i = 0;
@@ -1170,6 +1205,7 @@ void parseTGAMPacket(uint8_t* data, int length) {
           WiFi.setSleep(false);
           blinkCountForWake = 0;
           webSocket.broadcastTXT("WAKEUP");
+          syncTelemetryToCloud();
         }
       } else {
         webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
@@ -1241,6 +1277,7 @@ void setup() {
   WiFi.softAP(AP_SSID, AP_PASS);
 
   wifiMulti.addAP(WIFI_SSID_1, WIFI_PASS_1);
+  wifiMulti.addAP(WIFI_SSID_2, WIFI_PASS_2);
 
   Serial.println("\n[SYSTEM] Đang kết nối Router Wi-Fi...");
   int attempts = 0;
@@ -1272,6 +1309,7 @@ void setup() {
   webSocket.onEvent(webSocketEvent);
 
   lastActivityTime = millis();
+  lastTelemetrySyncTime = millis();
 }
 
 // =========================================================================
@@ -1282,18 +1320,19 @@ void loop() {
   server.handleClient();
   processTGAMSerial();
 
-  // Tự động duy trì Wi-Fi Router
+  // Tự động duy trì kết nối Wi-Fi Router
   static unsigned long lastWifiCheck = 0;
   if (millis() - lastWifiCheck > 10000) {
     lastWifiCheck = millis();
     wifiMulti.run();
   }
 
-  // Tự động chuyển sang chế độ ngủ nếu không có thao tác
+  // Tự động chuyển sang chế độ Modem Sleep nếu không có thao tác sau AUTO_SLEEP_TIMEOUT
   if (!isSleeping && (millis() - lastActivityTime > AUTO_SLEEP_TIMEOUT)) {
     isSleeping = true;
     WiFi.setSleep(true);
     webSocket.broadcastTXT("SLEEPING");
+    syncTelemetryToCloud();
   }
 
   // Cập nhật thông số cơ bản cho client mỗi 1 giây
@@ -1307,6 +1346,12 @@ void loop() {
                                   String(meditation);
       webSocket.broadcastTXT(tgamData);
     }
+  }
+
+  // Định kỳ gửi Telemetry Heartbeat lên máy chủ Cloud Render
+  if (millis() - lastTelemetrySyncTime > TELEMETRY_INTERVAL) {
+    lastTelemetrySyncTime = millis();
+    syncTelemetryToCloud();
   }
   
   delay(10); 

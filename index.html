@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trung Tâm Giám Sát Y Tế (Cloud)</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0d1117; color: #c9d1d9; padding: 20px; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #30363d; padding-bottom: 20px; margin-bottom: 20px; }
+        .header-title { display: flex; align-items: center; gap: 15px; }
+        .header-title h1 { color: #fff; font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;}
+        .badge-live { background: #1f3a28; color: #56d364; padding: 6px 12px; border-radius: 20px; font-weight: bold; border: 1px solid #2ea043; font-size: 14px; animation: pulse 2s infinite;}
+        
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+        .patient-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .patient-info h2 { color: #58a6ff; font-size: 22px; margin-bottom: 5px; }
+        .patient-info p { color: #8b949e; font-size: 14px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .stat-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; text-align: center; }
+        .stat-title { font-size: 12px; color: #8b949e; text-transform: uppercase; font-weight: bold; margin-bottom: 10px; }
+        .stat-value { font-size: 36px; font-weight: 900; color: #fff; font-family: monospace; }
+        .good { color: #3fb950; } .warn { color: #d29922; } .bad { color: #f85149; }
+
+        .logs-section { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 20px; }
+        .logs-section h3 { margin-bottom: 15px; color: #fff; font-size: 18px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid #30363d; color: #8b949e; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #21262d; font-size: 15px; font-weight: bold; }
+        .col-time { color: #8b949e; font-weight: normal; font-family: monospace; }
+        .col-sentence { color: #58a6ff; font-size: 18px; }
+        .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #f85149; margin-right: 8px; }
+        .status-dot.active { background: #3fb950; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title">
+            <h1>🌐 CLOUD MEDICAL DASHBOARD</h1>
+            <div class="badge-live">● LIVE SYNC</div>
+        </div>
+        <div>
+            <span id="conn-status" style="color: #8b949e; font-size: 14px;"><span class="status-dot"></span>Đang chờ dữ liệu...</span>
+        </div>
+    </div>
+
+    <div class="patient-card">
+        <div class="patient-info">
+            <h2>Hồ sơ: Bệnh Nhân LIS (Khóa trong)</h2>
+            <p>Phòng ICU 402 - Giường 02 (Khoa Thần Kinh)</p>
+            <p style="margin-top: 10px;">ID Thiết bị: <strong style="color:#fff">ESP32-S3-BCI-01</strong></p>
+        </div>
+        <div style="text-align: right;">
+            <p class="stat-title">TỔNG PHÁT NGÔN</p>
+            <p style="font-size: 32px; font-weight: bold; color: #58a6ff;" id="total-logs">0</p>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-title">TRẠNG THÁI HỆ THỐNG</div>
+            <div class="stat-value" id="ui-sleep" style="font-size: 24px; margin-top: 10px;">ĐANG THỨC</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">TÍN HIỆU ĐIỆN CỰC (SIGNAL)</div>
+            <div class="stat-value bad" id="ui-sig">200</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">MỨC TẬP TRUNG (ATTENTION)</div>
+            <div class="stat-value" id="ui-att">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">MỨC THƯ GIÃN (MEDITATION)</div>
+            <div class="stat-value" id="ui-med">0</div>
+        </div>
+    </div>
+
+    <div class="logs-section">
+        <h3>LỊCH SỬ GIAO TIẾP GẦN NHẤT</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th width="15%">THỜI GIAN</th>
+                    <th width="65%">NỘI DUNG YÊU CẦU</th>
+                    <th width="10%">TẬP TRUNG</th>
+                    <th width="10%">THƯ GIÃN</th>
+                </tr>
+            </thead>
+            <tbody id="logs-body">
+                <tr><td colspan="4" style="text-align:center; color:#8b949e;">Chưa có dữ liệu giao tiếp</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/data');
+                const data = await response.json();
+                
+                const t = data.telemetry;
+                const timeSinceLastUpdate = Date.now() - t.lastUpdate;
+
+                const connStatus = document.getElementById('conn-status');
+                if (timeSinceLastUpdate < 40000) {
+                    connStatus.innerHTML = '<span class="status-dot active"></span>ESP32 Đang Online';
+                } else {
+                    connStatus.innerHTML = '<span class="status-dot"></span>ESP32 Mất kết nối (Offline)';
+                }
+
+                const sigEl = document.getElementById('ui-sig');
+                sigEl.innerText = t.signalQuality;
+                if (t.signalQuality === 0) { sigEl.className = 'stat-value good'; sigEl.innerText = "TỐT (0)"; }
+                else if (t.signalQuality === 200) { sigEl.className = 'stat-value bad'; sigEl.innerText = "RỚT (200)"; }
+                else { sigEl.className = 'stat-value warn'; }
+
+                document.getElementById('ui-att').innerText = t.attention;
+                document.getElementById('ui-med').innerText = t.meditation;
+                
+                const sleepEl = document.getElementById('ui-sleep');
+                if(t.isSleeping) {
+                    sleepEl.innerText = "Zzz ĐANG NGỦ";
+                    sleepEl.style.color = "#8b949e";
+                } else {
+                    sleepEl.innerText = "ĐANG HOẠT ĐỘNG";
+                    sleepEl.style.color = "#56d364";
+                }
+
+                document.getElementById('total-logs').innerText = data.logs.length;
+                const tbody = document.getElementById('logs-body');
+                
+                if (data.logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#8b949e;">Chưa có dữ liệu</td></tr>';
+                } else {
+                    let html = '';
+                    data.logs.forEach(log => {
+                        let isSOS = log.sentence.includes("SOS");
+                        let sentenceColor = isSOS ? "color: #f85149; text-transform: uppercase; font-weight: 900;" : "";
+                        html += `
+                            <tr>
+                                <td class="col-time">${log.time}</td>
+                                <td class="col-sentence" style="${sentenceColor}">${log.sentence}</td>
+                                <td><span style="color:#3fb950">${log.attention}</span></td>
+                                <td><span style="color:#58a6ff">${log.meditation}</span></td>
+                            </tr>
+                        `;
+                    });
+                    tbody.innerHTML = html;
+                }
+            } catch (error) {
+                console.error("Lỗi tải dữ liệu", error);
+            }
+        }, 2000);
+    </script>
+</body>
+</html>
