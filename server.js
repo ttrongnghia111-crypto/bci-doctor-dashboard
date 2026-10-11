@@ -14,6 +14,8 @@ let telemetryData = {
     signalQuality: 200,
     attention: 0,
     meditation: 0,
+    battery: 100, // Thêm Pin
+    delta: 0, theta: 0, lowAlpha: 0, highAlpha: 0, lowBeta: 0, highBeta: 0, lowGamma: 0, midGamma: 0, // Thêm Sóng não
     uptime: 0,
     lastUpdate: Date.now()
 };
@@ -29,10 +31,10 @@ app.post('/api/telemetry', (req, res) => {
 });
 
 app.post('/api/logs', (req, res) => {
-    const { sentence, attention, meditation, signalQuality } = req.body;
+    const { sentence, attention, meditation } = req.body;
     
     const newLog = {
-        timestamp: new Date().toISOString(), // Đã sửa chuẩn để Web đọc được
+        timestamp: new Date().toISOString(), // Chuẩn ISO để Frontend đọc
         sentence: sentence || "Không rõ",
         attention: attention || 0,
         meditation: meditation || 0
@@ -51,6 +53,7 @@ app.get('/api/data', (req, res) => {
 // ==========================================
 // 3. RENDER GIAO DIỆN WEB BÁC SĨ
 // ==========================================
+app.use(express.static(__dirname)); // Phục vụ file tĩnh
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
