@@ -34,7 +34,7 @@ const char* CLOUD_TELEMETRY_URL = "https://bci-api-server.onrender.com/api/telem
 
 #define RELAY1_PIN 18 
 #define RELAY2_PIN 19 
-#define BATTERY_PIN 4 // Chân đọc điện áp Pin (ADC)
+#define BATTERY_PIN 34 // Chân đọc điện áp Pin (ADC)
 
 WebServer server(80);
 WebSocketsServer webSocket(81);
@@ -57,7 +57,7 @@ volatile bool isSleeping = false;
 volatile int blinkCountForWake = 0;
 unsigned long lastBlinkTime = 0;
 unsigned long lastActivityTime = 0;
-const unsigned long AUTO_SLEEP_TIMEOUT = 180000; 
+const unsigned long AUTO_SLEEP_TIMEOUT = 900000; // 15 phút (900000 ms) để tự động chuyển sang chế độ ngủ
 unsigned long lastTelemetrySyncTime = 0;
 const unsigned long TELEMETRY_INTERVAL = 30000;  
 
@@ -493,16 +493,48 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <script>
         const hostIP = window.location.hostname || "esp32-bci.local";
-        let ws = new WebSocket(`ws://${hostIP}:81`);
+        let ws;
         let currentView = 'MENU';
 
-        ws.onopen = () => { 
-            document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#3fb950'>ĐÃ KẾT NỐI WEBSOCKET ESP32</span>"; 
-        };
-        ws.onclose = () => { 
-            document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#f85149'>MẤT KẾT NỐI ESP32 (ĐANG THỬ LẠI...)</span>"; 
-            setTimeout(() => { ws = new WebSocket(`ws://${hostIP}:81`); }, 2500);
-        };
+        function connectWebSocket() {
+            ws = new WebSocket(`ws://${hostIP}:81`);
+
+            ws.onopen = () => { 
+                document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#3fb950'>ĐÃ KẾT NỐI WEBSOCKET ESP32</span>"; 
+            };
+            
+            ws.onclose = () => { 
+                document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#f85149'>MẤT KẾT NỐI ESP32 (ĐANG THỬ LẠI...)</span>"; 
+                // Gọi lại chính hàm này để tạo kết nối mới VÀ gán lại toàn bộ sự kiện
+                setTimeout(connectWebSocket, 2500); 
+            };
+
+            ws.onmessage = (event) => {
+                const data = event.data;
+                if (data.startsWith("BLINK:")) {
+                    handleBlink();
+                } else if (data.startsWith("TGAM:")) {
+                    let parts = data.substring(5).split(',');
+                    if (parts.length >= 3) {
+                        let sig = parseInt(parts[0]);
+                        let att = parseInt(parts[1]);
+                        let med = parseInt(parts[2]);
+                        updateTGAMDisplay(sig, att, med);
+                    }
+                } else if (data.startsWith("RELAY:")) {
+                    let parts = data.substring(6).split(',');
+                    updateRelayUI(1, parts[0] === '1');
+                    updateRelayUI(2, parts[1] === '1');
+                } else if (data === "SLEEPING") {
+                    enterSleepMode();
+                } else if (data === "WAKEUP") {
+                    exitSleepMode();
+                }
+            };
+        }
+
+        // Khởi chạy kết nối lần đầu tiên
+        connectWebSocket();
 
         function updateClock() {
             const now = new Date();
@@ -1045,10 +1077,16 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%';
         };
 
-        window.addEventListener('keydown', (e) => {
+      window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
-                handleBlink();
+                if (isSleeping) {
+                    sendCommand('W');
+                } else {
+                    // THÊM DÒNG NÀY: Gửi lệnh báo cho ESP32 biết là đang test
+                    sendCommand('SIMULATE_BLINK'); 
+                    handleBlink();
+                }
             }
         });
 
@@ -1059,67 +1097,83 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 )rawliteral";
 
 // =========================================================================
-// HÀM ĐỒNG BỘ CÂU GIAO TIẾP LÊN MÁY CHỦ CLOUD RENDER (BACKGROUND HTTP POST)
+// BIẾN GIAO TIẾP ĐA LUỒNG (FREERTOS) - THÊM MỚI
 // =========================================================================
-void syncSentenceToCloud(String sentence) {
-  if (strlen(CLOUD_SERVER_URL) == 0) return;
-  if (WiFi.status() != WL_CONNECTED) return;
+String pendingCloudSentence = "";
+bool pendingTelemetry = false;
 
-  HTTPClient http;
-  http.begin(secureClient, CLOUD_SERVER_URL); // Dùng chung secureClient để không tràn RAM
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
+// =========================================================================
+// TASK FREERTOS: XỬ LÝ GỬI DỮ LIỆU LÊN CLOUD (CHẠY NGẦM Ở CORE 0)
+// =========================================================================
+void cloudSyncTask(void * parameter) {
+  for(;;) {
+    // 1. Gửi câu giao tiếp lên Cloud
+    if (pendingCloudSentence != "") {
+      if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+        http.begin(secureClient, CLOUD_SERVER_URL);
+        http.addHeader("Content-Type", "application/json");
+        http.setTimeout(5000); // Timeout 5 giây
 
-  // Gói tin JSON gửi lên Web Server Bác sĩ trên Render
-  String jsonPayload = "{\"sentence\":\"" + sentence + "\"," +
-                       "\"attention\":" + String(attention) + "," +
-                       "\"meditation\":" + String(meditation) + "," +
-                       "\"signalQuality\":" + String(signalQuality) + "}";
+        String jsonPayload = "{\"sentence\":\"" + pendingCloudSentence + "\",\"attention\":" + String(attention) + ",\"meditation\":" + String(meditation) + ",\"signalQuality\":" + String(signalQuality) + "}";
+        int httpResponseCode = http.POST(jsonPayload);
+        
+        if (httpResponseCode > 0) {
+          Serial.printf("[CLOUD SYNC] Đã đồng bộ lên Render (HTTP %d): %s\n", httpResponseCode, pendingCloudSentence.c_str());
+        } else {
+          Serial.printf("[CLOUD SYNC] Lỗi gửi Render: %s\n", http.errorToString(httpResponseCode).c_str());
+        }
+        http.end();
+      }
+      pendingCloudSentence = ""; // Xóa sau khi gửi xong
+    }
 
-  int httpResponseCode = http.POST(jsonPayload);
-  if (httpResponseCode > 0) {
-    Serial.printf("[CLOUD SYNC] Đã đồng bộ lên Render (HTTP %d): %s\n", httpResponseCode, sentence.c_str());
-  } else {
-    Serial.printf("[CLOUD SYNC] Lỗi gửi Render: %s\n", http.errorToString(httpResponseCode).c_str());
+    // 2. Gửi Telemetry (Heartbeat, Pin, Sóng não) lên Cloud
+    if (pendingTelemetry) {
+      if (WiFi.status() == WL_CONNECTED) {
+        int rawBat = analogRead(BATTERY_PIN);
+        batteryPercent = map(rawBat, 0, 4095, 0, 100); 
+        if(batteryPercent > 100) batteryPercent = 100;
+        if(batteryPercent < 0) batteryPercent = 0;
+
+        HTTPClient http;
+        http.begin(secureClient, CLOUD_TELEMETRY_URL);
+        http.addHeader("Content-Type", "application/json");
+        http.setTimeout(5000); // Timeout 5 giây
+
+        String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
+                         "\"signalQuality\":" + String(signalQuality) + "," +
+                         "\"battery\":" + String(batteryPercent) + "," +
+                         "\"attention\":" + String(attention) + "," +
+                         "\"meditation\":" + String(meditation) + "," +
+                         "\"delta\":" + String(delta) + "," +
+                         "\"theta\":" + String(theta) + "," +
+                         "\"lowAlpha\":" + String(lowAlpha) + "," +
+                         "\"lowBeta\":" + String(lowBeta) + "," +
+                         "\"lowGamma\":" + String(lowGamma) + "," +
+                         "\"uptime\":" + String(millis() / 1000) + "}";
+
+        int httpCode = http.POST(payload);
+        if (httpCode > 0) {
+          Serial.printf("[TELEMETRY] Đã gửi Heartbeat lên Render (HTTP %d)\n", httpCode);
+        }
+        http.end();
+      }
+      pendingTelemetry = false; // Xóa cờ sau khi gửi xong
+    }
+
+    // Nhường CPU cho các tác vụ khác của Core 0 (Rất quan trọng để không bị crash)
+    vTaskDelay(100 / portTICK_PERIOD_MS); 
   }
-  http.end();
 }
 
-// =========================================================================
-// HÀM GỬI TELEMETRY / HEARTBEAT LÊN CLOUD RENDER
-// =========================================================================
+// Hàm gọi từ Core 1 để kích hoạt Task ở Core 0
+void syncSentenceToCloud(String sentence) {
+  pendingCloudSentence = sentence; 
+}
+
 void syncTelemetryToCloud() {
-  if (strlen(CLOUD_TELEMETRY_URL) == 0) return;
-  if (WiFi.status() != WL_CONNECTED) return;
-
-  // Đọc mức pin (Giả sử đọc ADC 12-bit)
-  int rawBat = analogRead(BATTERY_PIN);
-  batteryPercent = map(rawBat, 0, 4095, 0, 100); 
-  if(batteryPercent > 100) batteryPercent = 100;
-  if(batteryPercent < 0) batteryPercent = 0;
-
-  HTTPClient http;
-  http.begin(secureClient, CLOUD_TELEMETRY_URL);
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
-
-  String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
-                   "\"signalQuality\":" + String(signalQuality) + "," +
-                   "\"battery\":" + String(batteryPercent) + "," +
-                   "\"attention\":" + String(attention) + "," +
-                   "\"meditation\":" + String(meditation) + "," +
-                   "\"delta\":" + String(delta) + "," +
-                   "\"theta\":" + String(theta) + "," +
-                   "\"lowAlpha\":" + String(lowAlpha) + "," +
-                   "\"lowBeta\":" + String(lowBeta) + "," +
-                   "\"lowGamma\":" + String(lowGamma) + "," +
-                   "\"uptime\":" + String(millis() / 1000) + "}";
-
-  int httpCode = http.POST(payload);
-  if (httpCode > 0) {
-    Serial.printf("[TELEMETRY] Đã gửi Heartbeat lên Render (HTTP %d)\n", httpCode);
-  }
-  http.end();
+  pendingTelemetry = true; 
 }
 
 // =========================================================================
@@ -1182,6 +1236,25 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         Serial.println("[ALERT] BỆNH NHÂN GỌI CẤP CỨU (SOS)!");
         syncSentenceToCloud("SOS - CẤP CỨU KHẨN CẤP");
       }
+      // ---- BẠN COPY VÀ DÁN ĐOẠN NÀY VÀO ĐÂY ----
+      else if (msg == "SIMULATE_BLINK") {
+        // Giả lập có sóng não tốt và các chỉ số ngẫu nhiên
+        signalQuality = 0;
+        attention = random(60, 100);
+        meditation = random(60, 100);
+        delta = random(100000, 500000);
+        theta = random(50000, 100000);
+        lowAlpha = random(10000, 50000);
+        lowBeta = random(10000, 30000);
+        lowGamma = random(1000, 10000);
+        blinkStrength = random(50, 100);
+        
+        // Báo cho Web Local chớp mắt
+        webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
+        // Bắn dữ liệu giả lập lên Web Global (Render) ngay lập tức
+        syncTelemetryToCloud(); 
+      }
+      // ------------------------------------------
       break;
     }
     default:
@@ -1308,6 +1381,7 @@ void setup() {
   secureClient.setInsecure(); 
 
   WiFi.mode(WIFI_AP_STA);
+  WiFi.setSleep(false);
   WiFi.softAP(AP_SSID, AP_PASS);
 
   wifiMulti.addAP(WIFI_SSID_1, WIFI_PASS_1);
@@ -1341,13 +1415,26 @@ void setup() {
   server.begin();
   webSocket.begin();
   webSocket.onEvent(webSocketEvent);
+  webSocket.enableHeartbeat(15000, 10000, 2);
+
+
+  // KHỞI TẠO TASK FREERTOS CHẠY Ở CORE 0 (Chuyên lo gửi Cloud)
+  xTaskCreatePinnedToCore(
+    cloudSyncTask,   /* Hàm thực thi Task */
+    "CloudTask",     /* Tên Task */
+    8192,            /* Kích thước Stack (RAM) */
+    NULL,            /* Tham số truyền vào */
+    1,               /* Độ ưu tiên */
+    NULL,            /* Handle */
+    0                /* Chạy ở Core 0 (Core 1 để dành cho Web Local) */
+  );
 
   lastActivityTime = millis();
   lastTelemetrySyncTime = millis();
 }
 
 // =========================================================================
-// VÒNG LẶP CHÍNH (MAIN LOOP)
+// VÒNG LẶP CHÍNH (MAIN LOOP) - CHẠY Ở CORE 1
 // =========================================================================
 void loop() {
   webSocket.loop();
@@ -1358,7 +1445,9 @@ void loop() {
   static unsigned long lastWifiCheck = 0;
   if (millis() - lastWifiCheck > 10000) {
     lastWifiCheck = millis();
-    wifiMulti.run();
+    if (WiFi.status() != WL_CONNECTED) { 
+      wifiMulti.run();
+    }
   }
 
   // Tự động chuyển sang chế độ Modem Sleep nếu không có thao tác sau AUTO_SLEEP_TIMEOUT
