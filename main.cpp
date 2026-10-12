@@ -1083,9 +1083,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 if (isSleeping) {
                     sendCommand('W');
                 } else {
-                    // THÊM DÒNG NÀY: Gửi lệnh báo cho ESP32 biết là đang test
+                    // Gửi lệnh báo cho ESP32 biết là đang test
                     sendCommand('SIMULATE_BLINK'); 
-                    handleBlink();
+                    // XÓA DÒNG handleBlink() ở đây đi. 
+                    // Hệ thống sẽ tự động chuyển hàng/ô khi ESP32 trả tín hiệu qua WebSocket.
                 }
             }
         });

@@ -133,6 +133,7 @@
     <div class="top-nav">
         <div class="header-title"></div>
         <div class="nav-actions">
+            <button class="btn btn-outline" id="btn-demo" onclick="toggleDemo()" style="border-color: var(--accent-yellow); color: var(--accent-yellow);"><i class="fas fa-play"></i> Bật Demo (Test)</button>
             <button class="btn btn-green"><i class="fas fa-download"></i> Tải Code ESP32 (.ino)</button>
             <button class="btn btn-outline"><i class="fas fa-info-circle"></i> Hướng Dẫn Render & API</button>
             <button class="btn btn-outline"><i class="fas fa-sync-alt"></i></button>
@@ -333,7 +334,25 @@
             if(hourBlocks[peakIndex] > 0) document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>${peakLabels[peakIndex]}</span>`;
         }
 
-        function updateUI(t) {
+        // THÊM BIẾN VÀ HÀM QUẢN LÝ DEMO
+        let isDemoMode = false;
+        function toggleDemo() {
+            isDemoMode = !isDemoMode;
+            const btn = document.getElementById('btn-demo');
+            if (isDemoMode) {
+                btn.innerHTML = '<i class="fas fa-stop"></i> Đang chạy Demo';
+                btn.style.backgroundColor = 'rgba(234, 179, 8, 0.15)';
+            } else {
+                btn.innerHTML = '<i class="fas fa-play"></i> Bật Demo (Test)';
+                btn.style.backgroundColor = 'transparent';
+                // Reset lại chart khi tắt demo
+                const chartData = eegChart.data.datasets[0].data;
+                chartData.fill(0); 
+                eegChart.update();
+            }
+        }
+
+         function updateUI(t) {
             document.getElementById('bat-val').innerText = (t.battery || 0) + '%';
             const timeSinceLastUpdate = Date.now() - t.lastUpdate;
             const connIndicator = document.getElementById('conn-indicator'), connText = document.getElementById('conn-text'), connTime = document.getElementById('conn-time');
@@ -344,31 +363,64 @@
                 connIndicator.className = 'status-indicator'; connText.innerText = 'Chưa Kết Nối'; connText.style.color = '#f8fafc';
             }
 
-            document.getElementById('avg-att').innerText = t.attention || 0;
-            document.getElementById('avg-med').innerText = t.meditation || 0;
+            // Ghi đè dữ liệu nếu đang bật chế độ Demo
+            let displaySignal = t.signalQuality;
+            let dAtt = t.attention || 0, dMed = t.meditation || 0;
+            let dDelta = t.delta || 0, dTheta = t.theta || 0, dAlpha = t.lowAlpha || 0, dBeta = t.lowBeta || 0, dGamma = t.lowGamma || 0;
+
+            if (isDemoMode) {
+                displaySignal = 0; // Giả lập sóng tốt
+                dAtt = Math.floor(Math.random() * 30) + 60; // 60-90
+                dMed = Math.floor(Math.random() * 40) + 50; // 50-90
+                dDelta = Math.floor(Math.random() * 500000) + 100000;
+                dTheta = Math.floor(Math.random() * 80000) + 20000;
+                dAlpha = Math.floor(Math.random() * 40000) + 10000;
+                dBeta = Math.floor(Math.random() * 25000) + 5000;
+                dGamma = Math.floor(Math.random() * 10000) + 1000;
+            }
+
+            document.getElementById('avg-att').innerText = dAtt;
+            document.getElementById('avg-med').innerText = dMed;
 
             const overlay = document.getElementById('no-signal-overlay'), sigText = document.getElementById('signal-text');
-            if (t.signalQuality === 0) {
-                overlay.style.display = 'none'; sigText.innerText = "Tín hiệu Tốt (SIGNAL = 0)"; sigText.style.color = "var(--accent-green)";
+            if (displaySignal === 0) {
+                overlay.style.display = 'none'; 
+                sigText.innerText = isDemoMode ? "ĐANG MÔ PHỎNG DỮ LIỆU (DEMO MODE)" : "Tín hiệu Tốt (SIGNAL = 0)"; 
+                sigText.style.color = isDemoMode ? "var(--accent-yellow)" : "var(--accent-green)";
             } else {
-                overlay.style.display = 'flex'; sigText.innerText = `Chưa kết nối TGAM (SIGNAL = ${t.signalQuality})`; sigText.style.color = "var(--accent-red)";
+                overlay.style.display = 'flex'; 
+                sigText.innerText = `Chưa kết nối TGAM (SIGNAL = ${displaySignal})`; 
+                sigText.style.color = "var(--accent-red)";
             }
 
-            document.getElementById('val-delta').innerText = (t.delta || 0).toLocaleString();
-            document.getElementById('val-theta').innerText = (t.theta || 0).toLocaleString();
-            document.getElementById('val-alpha').innerText = (t.lowAlpha || 0).toLocaleString();
-            document.getElementById('val-beta').innerText = (t.lowBeta || 0).toLocaleString();
-            document.getElementById('val-gamma').innerText = (t.lowGamma || 0).toLocaleString();
+            document.getElementById('val-delta').innerText = dDelta.toLocaleString();
+            document.getElementById('val-theta').innerText = dTheta.toLocaleString();
+            document.getElementById('val-alpha').innerText = dAlpha.toLocaleString();
+            document.getElementById('val-beta').innerText = dBeta.toLocaleString();
+            document.getElementById('val-gamma').innerText = dGamma.toLocaleString();
 
-            // Cập nhật biểu đồ sóng não (Giả lập dao động nếu có tín hiệu)
+            // Cập nhật biểu đồ sóng não (Realtime hoặc Demo)
             const chartData = eegChart.data.datasets[0].data;
             let eegVal = 0;
-            if (t.signalQuality === 0) {
-                eegVal = Math.sin(Date.now() / 100) * 30 + (t.attention / 2);
-                // Nếu có sóng Delta cao (do nhấn Space giả lập Blink) -> Tạo đỉnh nhọn
-                if (t.delta > 100000) eegVal = 150 + Math.random() * 50;
+            if (displaySignal === 0) {
+                // Công thức tạo dao động sóng EEG cơ bản
+                eegVal = Math.sin(Date.now() / 150) * 20 + Math.cos(Date.now() / 45) * 15 + (dAtt / 2);
+                
+                // Giả lập nhiễu chớp mắt (Blink) lâu lâu xuất hiện nếu đang Demo
+                if (isDemoMode && Math.random() > 0.95) {
+                    eegVal = 120 + Math.random() * 60;
+                } else if (!isDemoMode && dDelta > 100000) {
+                    // Nếu là thiết bị thật, Delta cao bất thường thường là do chớp mắt/nhíu mày
+                    eegVal = 100 + Math.random() * 50;
+                }
+            } else {
+                // Mất kết nối / Chưa cắm mạch -> Đường thẳng
+                eegVal = 0;
             }
-            chartData.push(eegVal); chartData.shift(); eegChart.update();
+            
+            chartData.push(eegVal); 
+            chartData.shift(); 
+            eegChart.update();
         }
 
         setInterval(async () => {
