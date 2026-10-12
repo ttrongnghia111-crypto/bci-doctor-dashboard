@@ -11,8 +11,7 @@ app.use(express.json());
 // 1. KẾT NỐI MONGODB ATLAS
 // ==========================================
 //
-const MONGO_URI = "mongodb+srv://ttrongnghia111_db_user:ijf4PcErVJSQwNCB@cluster0.2fyogcj.mongodb.net/bci_database?retryWrites=true&w=majority&appName=Cluster0";ase?retryWrites=true&w=majority&appName=Cluster0";;
-
+const MONGO_URI = "mongodb+srv://ttrongnghia111_db_user:ijf4PcErVJSQwNCB@cluster0.2fyogcj.mongodb.net/bci_database?retryWrites=true&w=majority&appName=Cluster0";
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ Đã kết nối MongoDB Atlas thành công! Lịch sử sẽ được lưu vĩnh viễn."))
     .catch(err => console.error("❌ Lỗi kết nối MongoDB:", err));
