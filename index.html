@@ -169,6 +169,7 @@
         </div>
     </div>
 
+    <!-- ... (Khối Metrics, EEG, Biểu đồ giữ nguyên) ... -->
     <div class="metrics-grid">
         <div class="metric-card">
             <div class="metric-header"><span class="metric-title">Tập Trung TB (Attention)</span><i class="fas fa-brain metric-icon"></i></div>
@@ -213,7 +214,7 @@
 
     <div class="middle-grid">
         <div class="distribution-card">
-            <div class="card-header"><div class="card-title"><i class="fas fa-chart-bar"></i> Phân Bổ Tần Suất Nhu Cầu</div><div class="time-filter">Tất cả thời gian</div></div>
+            <div class="card-header"><div class="card-title"><i class="fas fa-chart-bar"></i> Phân Bổ Tần Suất Nhu Cầu</div><div class="time-filter">Theo bộ lọc</div></div>
             
             <div class="dist-item"><div class="dist-info"><span>Nước / Uống</span><span class="dist-count" id="txt-water">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-1" id="bar-water" style="width: 0%"></div></div></div>
             <div class="dist-item"><div class="dist-info"><span>Cơm / Ăn</span><span class="dist-count" id="txt-food">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-2" id="bar-food" style="width: 0%"></div></div></div>
@@ -225,7 +226,7 @@
         </div>
 
         <div class="chart-card">
-            <div class="card-header"><div class="card-title"><i class="far fa-clock"></i> Khung Giờ Cần Hỗ Trợ Nhiều Nhất</div><div class="time-filter">24 Giờ</div></div>
+            <div class="card-header"><div class="card-title"><i class="far fa-clock"></i> Khung Giờ Cần Hỗ Trợ Nhiều Nhất</div><div class="time-filter">Theo bộ lọc</div></div>
             <div class="chart-subtitle">Mật độ số lần bệnh nhân thực hiện gọi giao tiếp theo từng giờ trong ngày:</div>
             <div class="chart-wrapper">
                 <div class="bar-col" id="h-0" style="height: 5%"></div>
@@ -248,14 +249,29 @@
         </div>
     </div>
 
+    <!-- KHU VỰC LỊCH SỬ ĐÃ ĐƯỢC CHỈNH SỬA THÊM BỘ LỌC HOẠT ĐỘNG -->
     <div class="history-card" id="history-card">
         <div class="history-header">
             <div class="history-title">LỊCH SỬ GIAO TIẾP CỦA BỆNH NHÂN <span class="count-badge" id="count-badge">0 câu</span></div>
             <div class="history-title" style="font-size: 12px; font-weight: normal; color: var(--text-muted);">Toàn bộ các câu do bệnh nhân chọn từ và phát âm qua cảm biến BCI</div>
             <div class="history-filters">
-                <div class="search-box"><i class="fas fa-search"></i><input type="text" placeholder="Tìm nội dung từ khóa..."></div>
-                <select class="filter-select"><option>Tất cả danh mục</option></select>
-                <select class="filter-select"><option>Tất cả thời gian</option></select>
+                <div class="search-box"><i class="fas fa-search"></i><input type="text" id="search-input" placeholder="Tìm nội dung từ khóa..." onkeyup="applyFilters()"></div>
+                
+                <select class="filter-select" id="category-filter" onchange="applyFilters()">
+                    <option value="all">Tất cả danh mục</option>
+                    <option value="water">Nước / Uống</option>
+                    <option value="food">Cơm / Ăn</option>
+                    <option value="pain">Đau / Khó chịu</option>
+                    <option value="iot">Thiết bị IoT</option>
+                    <option value="rest">Nghỉ ngơi</option>
+                </select>
+
+                <!-- BỘ LỌC THỜI GIAN -->
+                <select class="filter-select" id="time-filter" onchange="applyFilters()">
+                    <option value="all">Tất cả thời gian</option>
+                    <option value="today">Hôm nay</option>
+                    <option value="week">7 ngày qua</option>
+                </select>
             </div>
         </div>
         <table>
@@ -277,6 +293,10 @@
             options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { display: true, grid: {color: '#1e293b'} } }, plugins: { legend: { display: false } } }
         });
 
+        // ==========================================
+        // QUẢN LÝ DỮ LIỆU & BỘ LỌC
+        // ==========================================
+        let allLogs = []; // Chứa toàn bộ dữ liệu fetch từ API
         let lastLogCount = 0;
 
         function formatTime(isoString) {
@@ -285,41 +305,74 @@
             return { hm: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), date: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) };
         }
 
-        function getTagHtml(sentence) {
+        // Nhận diện Tag (Dùng chung cho hiển thị và bộ lọc)
+        function identifyCategory(sentence) {
             let s = sentence.toUpperCase();
-            if(s.includes("NƯỚC") || s.includes("UỐNG") || s.includes("KHÁT")) return '<span class="tag tag-water">Nước / Uống</span>';
-            if(s.includes("ĂN") || s.includes("CƠM") || s.includes("ĐÓI")) return '<span class="tag tag-food">Cơm / Ăn</span>';
-            if(s.includes("ĐAU") || s.includes("MỆT") || s.includes("KHÓ CHỊU")) return '<span class="tag tag-pain">Đau / Khó chịu</span>';
-            if(s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT") || s.includes("ĐÈN")) return '<span class="tag tag-iot">Thiết bị IoT</span>';
-            if(s.includes("NGỦ") || s.includes("NGHỈ")) return '<span class="tag tag-rest">Nghỉ ngơi</span>';
+            if(s.includes("NƯỚC") || s.includes("UỐNG") || s.includes("KHÁT")) return 'water';
+            if(s.includes("ĂN") || s.includes("CƠM") || s.includes("ĐÓI")) return 'food';
+            if(s.includes("ĐAU") || s.includes("MỆT") || s.includes("KHÓ CHỊU")) return 'pain';
+            if(s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT") || s.includes("ĐÈN")) return 'iot';
+            if(s.includes("NGỦ") || s.includes("NGHỈ")) return 'rest';
+            return 'other'; // Giao tiếp thông thường
+        }
+
+        function getTagHtml(cat) {
+            if(cat === 'water') return '<span class="tag tag-water">Nước / Uống</span>';
+            if(cat === 'food') return '<span class="tag tag-food">Cơm / Ăn</span>';
+            if(cat === 'pain') return '<span class="tag tag-pain">Đau / Khó chịu</span>';
+            if(cat === 'iot') return '<span class="tag tag-iot">Thiết bị IoT</span>';
+            if(cat === 'rest') return '<span class="tag tag-rest">Nghỉ ngơi</span>';
             return '<span class="tag tag-iot">Giao tiếp</span>';
         }
 
+        // Chức năng phát giọng nói ngay trên Cloud
+        function speakFromCloud(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Dừng câu trước đó nếu đang đọc
+                const msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'vi-VN'; 
+                msg.rate = 0.9;
+                window.speechSynthesis.speak(msg);
+            } else {
+                alert("Trình duyệt của bạn không hỗ trợ phát giọng nói.");
+            }
+        }
+
         function updateCharts(logs) {
-            if (!logs || logs.length === 0) return;
+            if (!logs || logs.length === 0) {
+                // Reset Charts nếu không có dữ liệu
+                ['water', 'food', 'rest', 'iot', 'other'].forEach(id => {
+                    document.getElementById(`txt-${id}`).innerText = `0 lần (0%)`;
+                    document.getElementById(`bar-${id}`).style.width = `0%`;
+                });
+                for(let i=0; i<6; i++) document.getElementById(`h-${i*4}`).style.height = '5%';
+                document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>Chưa có dữ liệu</span>`;
+                return;
+            }
+
             let total = logs.length;
-            let counts = { water: 0, food: 0, rest: 0, iot: 0, other: 0 };
+            let counts = { water: 0, food: 0, pain: 0, iot: 0, rest: 0, other: 0 };
             let hourBlocks = [0, 0, 0, 0, 0, 0]; // 0-4, 4-8, 8-12, 12-16, 16-20, 20-24
 
             logs.forEach(log => {
-                let s = log.sentence.toUpperCase();
-                if(s.includes("NƯỚC") || s.includes("UỐNG") || s.includes("KHÁT")) counts.water++;
-                else if(s.includes("ĂN") || s.includes("CƠM") || s.includes("ĐÓI")) counts.food++;
-                else if(s.includes("NGỦ") || s.includes("NGHỈ")) counts.rest++;
-                else if(s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT") || s.includes("ĐÈN")) counts.iot++;
-                else counts.other++;
+                let cat = identifyCategory(log.sentence);
+                if(counts[cat] !== undefined) counts[cat]++; else counts.other++;
 
                 let h = new Date(log.timestamp).getHours();
                 hourBlocks[Math.floor(h / 4)]++;
             });
 
-            // Update Distribution Chart
+            // Gộp pain và rest vào "Khác" trong biểu đồ nếu cần, hoặc vẽ riêng (ở đây giữ nguyên cấu trúc cũ)
             const updateDist = (id, count) => {
                 let pct = Math.round((count / total) * 100);
                 document.getElementById(`txt-${id}`).innerText = `${count} lần (${pct}%)`;
                 document.getElementById(`bar-${id}`).style.width = `${pct}%`;
             };
-            updateDist('water', counts.water); updateDist('food', counts.food); updateDist('rest', counts.rest); updateDist('iot', counts.iot); updateDist('other', counts.other);
+            updateDist('water', counts.water); 
+            updateDist('food', counts.food); 
+            updateDist('rest', counts.rest); 
+            updateDist('iot', counts.iot); 
+            updateDist('other', counts.other + counts.pain);
 
             // Update Hourly Chart
             let maxBlock = Math.max(...hourBlocks) || 1;
@@ -334,7 +387,76 @@
             if(hourBlocks[peakIndex] > 0) document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>${peakLabels[peakIndex]}</span>`;
         }
 
-        // THÊM BIẾN VÀ HÀM QUẢN LÝ DEMO
+        // HÀM XỬ LÝ LỌC DỮ LIỆU CHÍNH
+        function applyFilters() {
+            if (!allLogs || allLogs.length === 0) return;
+
+            const timeFilter = document.getElementById('time-filter').value;
+            const catFilter = document.getElementById('category-filter').value;
+            const searchText = document.getElementById('search-input').value.toLowerCase();
+            const now = new Date();
+            
+            // 1. Lọc theo thời gian
+            let filteredLogs = allLogs.filter(log => {
+                const logDate = new Date(log.timestamp);
+                if (timeFilter === 'today') {
+                    return logDate.getDate() === now.getDate() && logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
+                } else if (timeFilter === 'week') {
+                    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+                    return logDate >= sevenDaysAgo;
+                }
+                return true; // 'all'
+            });
+
+            // 2. Lọc theo danh mục
+            if (catFilter !== 'all') {
+                filteredLogs = filteredLogs.filter(log => identifyCategory(log.sentence) === catFilter);
+            }
+
+            // 3. Lọc theo từ khóa tìm kiếm
+            if (searchText !== '') {
+                filteredLogs = filteredLogs.filter(log => log.sentence.toLowerCase().includes(searchText));
+            }
+
+            // --- Cập nhật Giao diện dựa trên Dữ liệu đã lọc ---
+            
+            document.getElementById('total-logs-display').innerText = filteredLogs.length;
+            document.getElementById('count-badge').innerText = filteredLogs.length + ' câu';
+
+            if (filteredLogs.length > 0) {
+                document.getElementById('last-time-display').innerText = formatTime(filteredLogs[0].timestamp).hm;
+            } else {
+                document.getElementById('last-time-display').innerText = "--:--:--";
+            }
+
+            // Cập nhật lại Biểu đồ dựa trên dữ liệu lọc
+            updateCharts(filteredLogs); 
+
+            // Cập nhật Bảng HTML
+            let html = '';
+            if (filteredLogs.length === 0) {
+                html = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 30px;">Không có dữ liệu trong khoảng thời gian này...</td></tr>';
+            } else {
+                filteredLogs.forEach(log => {
+                    const timeInfo = formatTime(log.timestamp);
+                    const cat = identifyCategory(log.sentence);
+                    const tagHtml = getTagHtml(cat);
+                    html += `<tr>
+                        <td><div class="time-cell"><span class="time-hm">${timeInfo.hm}</span><span class="time-date">${timeInfo.date}</span></div></td>
+                        <td class="col-sentence">"${log.sentence}"</td>
+                        <td>${tagHtml}</td>
+                        <td align="center"><span class="score-att">${log.attention || 0}</span></td>
+                        <td align="center"><span class="score-med">${log.meditation || 0}</span></td>
+                        <td align="right"><button class="btn-play" onclick="speakFromCloud('${log.sentence}')"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('logs-body').innerHTML = html;
+        }
+
+        // ==========================================
+        // QUẢN LÝ GIAO DIỆN CHUNG & DEMO (GIỮ NGUYÊN)
+        // ==========================================
         let isDemoMode = false;
         function toggleDemo() {
             isDemoMode = !isDemoMode;
@@ -345,14 +467,13 @@
             } else {
                 btn.innerHTML = '<i class="fas fa-play"></i> Bật Demo (Test)';
                 btn.style.backgroundColor = 'transparent';
-                // Reset lại chart khi tắt demo
                 const chartData = eegChart.data.datasets[0].data;
                 chartData.fill(0); 
                 eegChart.update();
             }
         }
 
-         function updateUI(t) {
+        function updateUI(t) {
             document.getElementById('bat-val').innerText = (t.battery || 0) + '%';
             const timeSinceLastUpdate = Date.now() - t.lastUpdate;
             const connIndicator = document.getElementById('conn-indicator'), connText = document.getElementById('conn-text'), connTime = document.getElementById('conn-time');
@@ -363,15 +484,14 @@
                 connIndicator.className = 'status-indicator'; connText.innerText = 'Chưa Kết Nối'; connText.style.color = '#f8fafc';
             }
 
-            // Ghi đè dữ liệu nếu đang bật chế độ Demo
             let displaySignal = t.signalQuality;
             let dAtt = t.attention || 0, dMed = t.meditation || 0;
             let dDelta = t.delta || 0, dTheta = t.theta || 0, dAlpha = t.lowAlpha || 0, dBeta = t.lowBeta || 0, dGamma = t.lowGamma || 0;
 
             if (isDemoMode) {
-                displaySignal = 0; // Giả lập sóng tốt
-                dAtt = Math.floor(Math.random() * 30) + 60; // 60-90
-                dMed = Math.floor(Math.random() * 40) + 50; // 50-90
+                displaySignal = 0; 
+                dAtt = Math.floor(Math.random() * 30) + 60; 
+                dMed = Math.floor(Math.random() * 40) + 50; 
                 dDelta = Math.floor(Math.random() * 500000) + 100000;
                 dTheta = Math.floor(Math.random() * 80000) + 20000;
                 dAlpha = Math.floor(Math.random() * 40000) + 10000;
@@ -399,22 +519,13 @@
             document.getElementById('val-beta').innerText = dBeta.toLocaleString();
             document.getElementById('val-gamma').innerText = dGamma.toLocaleString();
 
-            // Cập nhật biểu đồ sóng não (Realtime hoặc Demo)
             const chartData = eegChart.data.datasets[0].data;
             let eegVal = 0;
             if (displaySignal === 0) {
-                // Công thức tạo dao động sóng EEG cơ bản
                 eegVal = Math.sin(Date.now() / 150) * 20 + Math.cos(Date.now() / 45) * 15 + (dAtt / 2);
-                
-                // Giả lập nhiễu chớp mắt (Blink) lâu lâu xuất hiện nếu đang Demo
-                if (isDemoMode && Math.random() > 0.95) {
-                    eegVal = 120 + Math.random() * 60;
-                } else if (!isDemoMode && dDelta > 100000) {
-                    // Nếu là thiết bị thật, Delta cao bất thường thường là do chớp mắt/nhíu mày
-                    eegVal = 100 + Math.random() * 50;
-                }
+                if (isDemoMode && Math.random() > 0.95) eegVal = 120 + Math.random() * 60;
+                else if (!isDemoMode && dDelta > 100000) eegVal = 100 + Math.random() * 50;
             } else {
-                // Mất kết nối / Chưa cắm mạch -> Đường thẳng
                 eegVal = 0;
             }
             
@@ -423,6 +534,7 @@
             eegChart.update();
         }
 
+        // FETCH API THƯỜNG XUYÊN
         setInterval(async () => {
             try {
                 const response = await fetch('/api/data');
@@ -431,34 +543,18 @@
                 if (data.telemetry) updateUI(data.telemetry);
 
                 if (data.logs && Array.isArray(data.logs)) {
-                    document.getElementById('total-logs-display').innerText = data.logs.length;
-                    document.getElementById('count-badge').innerText = data.logs.length + ' câu';
+                    // Cập nhật lại mảng dữ liệu gốc
+                    allLogs = data.logs;
 
-                    if (data.logs.length > lastLogCount && lastLogCount !== 0) {
+                    // Hiệu ứng chớp nháy khi có câu mới
+                    if (allLogs.length > lastLogCount && lastLogCount !== 0) {
                         const card = document.getElementById('history-card');
                         card.classList.add('history-flash'); setTimeout(() => card.classList.remove('history-flash'), 500);
                     }
-                    lastLogCount = data.logs.length;
+                    lastLogCount = allLogs.length;
 
-                    if(data.logs.length > 0) {
-                        document.getElementById('last-time-display').innerText = formatTime(data.logs[0].timestamp).hm;
-                        updateCharts(data.logs); // Cập nhật biểu đồ phân bổ & khung giờ
-                        
-                        let html = '';
-                        data.logs.forEach(log => {
-                            const timeInfo = formatTime(log.timestamp);
-                            const tagHtml = getTagHtml(log.sentence);
-                            html += `<tr>
-                                <td><div class="time-cell"><span class="time-hm">${timeInfo.hm}</span><span class="time-date">${timeInfo.date}</span></div></td>
-                                <td class="col-sentence">"${log.sentence}"</td>
-                                <td>${tagHtml}</td>
-                                <td align="center"><span class="score-att">${log.attention || 0}</span></td>
-                                <td align="center"><span class="score-med">${log.meditation || 0}</span></td>
-                                <td align="right"><button class="btn-play"><i class="fas fa-volume-up"></i> Nghe Lại</button></td>
-                            </tr>`;
-                        });
-                        document.getElementById('logs-body').innerHTML = html;
-                    }
+                    // Gọi hàm applyFilters thay vì tự render. Hàm này sẽ lấy allLogs và lọc theo dropdown hiện tại
+                    applyFilters();
                 }
             } catch (err) { console.error("Lỗi kết nối tới Backend Render", err); }
         }, 2000);
