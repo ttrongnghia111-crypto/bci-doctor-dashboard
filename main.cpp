@@ -363,6 +363,40 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             text-align: center;
             z-index: 90;
         }
+
+        /* UI ĐẾM NHÁY MẮT & CẢNH BÁO */
+        #blink-counter {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 20px;
+            font-weight: bold;
+            border: 2px solid #58a6ff;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #da3633;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 22px;
+            font-weight: bold;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            border: 2px solid #fff;
+        }
     </style>
 </head>
 <body>
@@ -370,6 +404,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div id="clock-time">--:--:--</div>
         <div id="clock-date"></div>
     </div>
+
+    <!-- UI ĐẾM NHÁY MẮT & CẢNH BÁO -->
+    <div id="blink-counter">👁️ Nháy mắt: 1</div>
+    <div id="toast-alert" class="toast"></div>
 
     <!-- MÀN HÌNH CHẾ ĐỘ NGỦ -->
     <div id="sleep-overlay" class="overlay">
@@ -439,7 +477,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         <div id="top-controls">
             <button class="top-btn btn-back" onclick="showMenu()">⬅ QUAY LẠI MENU</button>
-            <div class="helper-text">Nháy mắt mạnh (hoặc bấm Space) để CHỌN</div>
+            <div class="helper-text">Nháy 2 lần (hoặc Space 2 lần) để CHỌN | 3-6 lần để CẢNH BÁO</div>
             <button class="top-btn" id="top-btn-speed" onclick="toggleSpeed()">TỐC ĐỘ: VỪA</button>
         </div>
 
@@ -460,23 +498,21 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             </div>
 
             <div class="row">
-                <div class="cell char">G</div><div class="cell char">H</div><div class="cell char">I</div>
-                <div class="cell char">K</div><div class="cell char">L</div><div class="cell char">M</div>
-                <div class="cell char">N</div><div class="cell char">O</div><div class="cell char">Ô</div>
+                <div class="cell char">F</div><div class="cell char">G</div><div class="cell char">H</div>
+                <div class="cell char">I</div><div class="cell char">J</div><div class="cell char">K</div>
+                <div class="cell char">L</div><div class="cell char">M</div><div class="cell char">N</div>
             </div>
 
             <div class="row">
-                <div class="cell char">Ơ</div><div class="cell char">P</div><div class="cell char">Q</div>
-                <div class="cell char">R</div><div class="cell char">S</div><div class="cell char">T</div>
-                <div class="cell char">U</div><div class="cell char">Ư</div><div class="cell char">V</div>
+                <div class="cell char">O</div><div class="cell char">Ô</div><div class="cell char">Ơ</div>
+                <div class="cell char">P</div><div class="cell char">Q</div><div class="cell char">R</div>
+                <div class="cell char">S</div><div class="cell char">T</div><div class="cell char">U</div>
             </div>
 
             <div class="row">
-                <div class="cell char">X</div><div class="cell char">Y</div>
-                <div class="cell sys">DẤU CÁCH</div>
-                <div class="cell sys">XÓA KÝ TỰ</div>
-                <div class="cell sys">XÓA HẾT</div>
-                <div class="cell sys" style="background-color:#1b4728; border-color:#2ea043; color:#7ee787;">ĐỌC CÂU</div>
+                <div class="cell char">Ư</div><div class="cell char">V</div><div class="cell char">W</div>
+                <div class="cell char">X</div><div class="cell char">Y</div><div class="cell char">Z</div>
+                <div class="cell sys">DẤU CÁCH</div><div class="cell sys">XÓA KÝ TỰ</div><div class="cell sys">XÓA HẾT</div>
             </div>
 
             <div class="row">
@@ -485,6 +521,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 <div class="cell iot" id="grid-btn-r2">BẬT QUẠT</div>
                 <div class="cell sys" style="background-color:#48261e; color:#ffa198;">NGỦ</div>
                 <div class="cell sys" style="background-color:#da3633; color:#fff; font-size:24px;">SOS</div>
+                <div class="cell sys" style="background-color:#1b4728; border-color:#2ea043; color:#7ee787;">ĐỌC CÂU</div>
             </div>
         </div>
     </div>
@@ -496,6 +533,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         let ws;
         let currentView = 'MENU';
 
+        // BIẾN QUẢN LÝ ĐẾM NHÁY MẮT
+        let blinkCount = 0;
+        let blinkTimeout = null;
+        const BLINK_WINDOW = 1500; // Thời gian chờ nháy mắt tiếp theo (1.5 giây)
+
         function connectWebSocket() {
             ws = new WebSocket(`ws://${hostIP}:81`);
 
@@ -505,14 +547,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             
             ws.onclose = () => { 
                 document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#f85149'>MẤT KẾT NỐI ESP32 (ĐANG THỬ LẠI...)</span>"; 
-                // Gọi lại chính hàm này để tạo kết nối mới VÀ gán lại toàn bộ sự kiện
                 setTimeout(connectWebSocket, 2500); 
             };
 
             ws.onmessage = (event) => {
                 const data = event.data;
                 if (data.startsWith("BLINK:")) {
-                    handleBlink();
+                    registerBlink(); // Thay vì gọi handleBlink() ngay lập tức
                 } else if (data.startsWith("TGAM:")) {
                     let parts = data.substring(5).split(',');
                     if (parts.length >= 3) {
@@ -533,7 +574,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             };
         }
 
-        // Khởi chạy kết nối lần đầu tiên
         connectWebSocket();
 
         function updateClock() {
@@ -551,29 +591,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 ws.send(cmd);
             }
         }
-
-        ws.onmessage = (event) => {
-            const data = event.data;
-            if (data.startsWith("BLINK:")) {
-                handleBlink();
-            } else if (data.startsWith("TGAM:")) {
-                let parts = data.substring(5).split(',');
-                if (parts.length >= 3) {
-                    let sig = parseInt(parts[0]);
-                    let att = parseInt(parts[1]);
-                    let med = parseInt(parts[2]);
-                    updateTGAMDisplay(sig, att, med);
-                }
-            } else if (data.startsWith("RELAY:")) {
-                let parts = data.substring(6).split(',');
-                updateRelayUI(1, parts[0] === '1');
-                updateRelayUI(2, parts[1] === '1');
-            } else if (data === "SLEEPING") {
-                enterSleepMode();
-            } else if (data === "WAKEUP") {
-                exitSleepMode();
-            }
-        };
 
         function updateTGAMDisplay(sig, att, med) {
             let elSig = document.getElementById('sig-val');
@@ -615,7 +632,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         // ==========================================
-        // QUẢN LÝ GIỌNG ĐỌC FIFO CHỐNG MẤT TỪ
+        // QUẢN LÝ GIỌNG ĐỌC
         // ==========================================
         let voices = [];
         let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 0.85;
@@ -659,17 +676,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             if (speechQueue.length === 0) {
                 isSpeechPlaying = false;
                 activeUtterances = [];
-                if (ttsWatchdog) {
-                    clearTimeout(ttsWatchdog);
-                    ttsWatchdog = null;
-                }
+                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
                 return;
             }
 
             if (!('speechSynthesis' in window)) {
-                speechQueue = [];
-                isSpeechPlaying = false;
-                return;
+                speechQueue = []; isSpeechPlaying = false; return;
             }
 
             isSpeechPlaying = true;
@@ -695,30 +707,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             const completeSpeech = () => {
                 if (finished) return;
                 finished = true;
-                if (ttsWatchdog) {
-                    clearTimeout(ttsWatchdog);
-                    ttsWatchdog = null;
-                }
-                setTimeout(() => {
-                    processNextSpeech();
-                }, 50);
+                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
+                setTimeout(() => { processNextSpeech(); }, 50);
             };
 
             msg.onend = completeSpeech;
             msg.onerror = completeSpeech;
 
             let estimatedDuration = Math.max(1200, item.text.length * 150 + 500);
-            ttsWatchdog = setTimeout(() => {
-                if (!finished) {
-                    completeSpeech();
-                }
-            }, estimatedDuration);
+            ttsWatchdog = setTimeout(() => { if (!finished) completeSpeech(); }, estimatedDuration);
 
-            try {
-                window.speechSynthesis.speak(msg);
-            } catch(e) {
-                completeSpeech();
-            }
+            try { window.speechSynthesis.speak(msg); } catch(e) { completeSpeech(); }
         }
 
         function speakVoice(text, immediate = false) {
@@ -728,24 +727,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             if (immediate) {
                 speechQueue = [];
                 activeUtterances = [];
-                if (ttsWatchdog) {
-                    clearTimeout(ttsWatchdog);
-                    ttsWatchdog = null;
-                }
-                try {
-                    window.speechSynthesis.cancel();
-                } catch(e) {}
+                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
+                try { window.speechSynthesis.cancel(); } catch(e) {}
                 isSpeechPlaying = false;
             }
 
-            if (speechQueue.length >= 8) {
-                speechQueue.shift();
-            }
+            if (speechQueue.length >= 8) speechQueue.shift();
             speechQueue.push({ text: text.trim() });
 
-            if (!isSpeechPlaying) {
-                processNextSpeech();
-            }
+            if (!isSpeechPlaying) processNextSpeech();
         }
 
         const speeds = [1500, 1000, 600];  
@@ -758,7 +748,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             const newLabel = "TỐC ĐỘ: " + speedLabels[speedIdx];
             document.getElementById('top-btn-speed').innerText = newLabel;
             document.getElementById('grid-btn-speed').innerText = newLabel;
-            speakVoice(newLabel);
+            speakVoice(newLabel, true);
             if (!isSleeping && !isSettingsOpen && currentView === 'KEYBOARD') {
                 clearInterval(scanInterval);
                 scanInterval = setInterval(tick, speeds[speedIdx]);
@@ -774,7 +764,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             "MỆT", "ĐAU", "NHỨC", "MỎI", "NGỨA", "HO", "THỞ", "KHÁT", "ĐÓI", "NÓNG", "LẠNH", "KHỎE", "YẾU", "CHÓNG MẶT", "BUỒN NÔN",
             "NƯỚC", "CƠM", "MÌ", "PHỞ", "CHÁO", "SỮA", "THUỐC", "ÁO", "QUẦN", "GIƯỜNG", "ĐÈN", "QUẠT", "TV", "CHĂN", "GỐI",
             "ĐẦU", "BỤNG", "TAY", "CHÂN", "LƯNG", "NGỰC", "MẮT", "CỔ", "MIỆNG",
-            "ĐÚNG", "SAI", "RẤT", "QUÁ", "KHÔNG", "CÓ", "CHƯA", "RỒI", "ĐANG", "SẼ", "XIN LỖI", "CẢM ƠN", "VÂNG", "DẠ", "NHIỀU", "ÍT", "NHANH", "CHẬM"
+            "ĐÚNG", "SAI", "RẤT", "QUÁ", "KHÔNG", "CÓ", "CHƯA", "RỒI", "ĐANG", "SẼ", "XIN LỖI", "CẢM ƠN", "VÂNG", "DẠ", "NHIỀU", "ÍT", "NHANH", "CHẬM",
+            "VỆ SINH", "QUẦN ÁO", "LAU NGƯỜI"
         ];
 
         const bigrams = {
@@ -799,34 +790,52 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         };
 
         function removeAccents(str) { 
-            let clean = str.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
-            return clean.replace(/Đ/g, "D").replace(/đ/g, "d");
+            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Đ/g, "D").replace(/đ/g, "d"); 
         }
 
-        // ==========================================
-        // XỬ LÝ GÕ TELEX TIẾNG VIỆT THỜI GIAN THỰC
-        // ==========================================
         function processTelex(text) {
             let words = text.split(' ');
             let lastWord = words[words.length - 1];
             if (!lastWord) return text;
-            lastWord = lastWord.replace(/A[WA]/gi, m => (m[1]==='W'||m[1]==='w')?'Ă':'Â')
-                               .replace(/E[E]/gi, 'Ê').replace(/O[O]/gi, 'Ô')
-                               .replace(/O[W]/gi, 'Ơ').replace(/U[W]/gi, 'Ư').replace(/D[D]/gi, 'Đ');
+
+            lastWord = lastWord.replace(/AW/gi, 'Ă').replace(/AA/gi, 'Â')
+                               .replace(/EE/gi, 'Ê').replace(/OO/gi, 'Ô')
+                               .replace(/OW/gi, 'Ơ').replace(/UW/gi, 'Ư').replace(/DD/gi, 'Đ');
 
             const tones = {'S':'\u0301', 'F':'\u0300', 'R':'\u0309', 'X':'\u0303', 'J':'\u0323'};
             let lastChar = lastWord.slice(-1).toUpperCase();
+
             if (tones[lastChar]) {
                 let baseWord = lastWord.slice(0, -1);
-                baseWord = baseWord.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                let vowels = 'AĂÂEÊIOÔƠUƯY';
+                baseWord = baseWord.normalize('NFD').replace(/[\u0300-\u0303\u0309\u0323]/g, '');
+
+                let vowels = "AĂÂEÊIOÔƠUƯY";
                 let targetIdx = -1;
-                for (let i = 0; i < baseWord.length; i++) { if (vowels.includes(baseWord[i])) targetIdx = i; }
+                
+                for (let i = baseWord.length - 1; i >= 0; i--) {
+                    if (vowels.includes(baseWord[i].normalize('NFD')[0].toUpperCase())) {
+                        targetIdx = i;
+                        if (i > 0 && vowels.includes(baseWord[i-1].normalize('NFD')[0].toUpperCase())) {
+                            targetIdx = i - 1;
+                            let prevPrev = i > 1 ? baseWord[i-2].toUpperCase() : '';
+                            if ((prevPrev === 'Q' && baseWord[i-1].toUpperCase() === 'U') ||
+                                (prevPrev === 'G' && baseWord[i-1].toUpperCase() === 'I')) {
+                                targetIdx = i;
+                            }
+                        }
+                        break;
+                    }
+                }
+
                 if (targetIdx !== -1) {
-                    baseWord = baseWord.slice(0, targetIdx+1) + tones[lastChar] + baseWord.slice(targetIdx+1);
-                    lastWord = baseWord.normalize('NFC');
-                } else { lastWord = baseWord + lastWord.slice(-1); }
+                    let charToAccent = baseWord[targetIdx];
+                    let accentedChar = (charToAccent.normalize('NFD') + tones[lastChar]).normalize('NFC');
+                    lastWord = baseWord.substring(0, targetIdx) + accentedChar + baseWord.substring(targetIdx + 1);
+                } else {
+                    lastWord = baseWord + lastChar; 
+                }
             }
+
             words[words.length - 1] = lastWord;
             return words.join(' ');
         }
@@ -921,6 +930,20 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                         currentCol = 0;
                     }
                 }
+                
+                if (scanState === 'CELL') {
+                    let cell = rows[currentRow].children[currentCol];
+                    let text = cell.innerText.trim();
+                    
+                    if (text === "DẤU CÁCH") text = "Cách";
+                    else if (text === "XÓA KÝ TỰ") text = "Xóa";
+                    else if (text === "XÓA HẾT") text = "Xóa hết";
+                    else if (text === "ĐỌC CÂU") text = "Đọc câu";
+                    else if (text === "SOS") text = "Cấp cứu";
+                    else if (text.startsWith("TỐC ĐỘ")) text = "Tốc độ";
+                    
+                    if (text) speakVoice(text, true); 
+                }
             }
             renderScan(); 
         }
@@ -939,30 +962,30 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
             if (element.classList.contains('word-suggest')) { 
                 applySuggestion(text); 
-                speakVoice(text); 
+                speakVoice(text, true); 
             }
             else if (element.classList.contains('char')) { 
                 outBox.textContent += text; 
                 outBox.textContent = processTelex(outBox.textContent); 
                 updatePredictiveText(); 
-                speakVoice(text); 
+                speakVoice(text, true); 
             }
             else if (text === "DẤU CÁCH") { 
                 if (!outBox.textContent.endsWith(' ') && outBox.textContent !== '') {
                     outBox.textContent += " "; 
                     updatePredictiveText(); 
                 }
-                speakVoice("Dấu cách"); 
+                speakVoice("Dấu cách", true); 
             }
             else if (text === "XÓA KÝ TỰ") { 
                 outBox.textContent = outBox.textContent.slice(0, -1); 
                 updatePredictiveText(); 
-                speakVoice("Xóa"); 
+                speakVoice("Xóa", true); 
             }
             else if (text === "XÓA HẾT") { 
                 outBox.textContent = ""; 
                 updatePredictiveText(); 
-                speakVoice("Xóa hết"); 
+                speakVoice("Xóa hết", true); 
             }
             else if (text === "ĐỌC CÂU") { 
                 let phrase = outBox.textContent.trim();
@@ -970,7 +993,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     speakVoice(phrase, true);
                     sendCommand("SENTENCE:" + phrase);
                 } else {
-                    speakVoice("Chưa có nội dung");
+                    speakVoice("Chưa có nội dung", true);
                 }
             }
             else if (text.startsWith("TỐC ĐỘ")) { toggleSpeed(); }
@@ -978,8 +1001,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             else if (text.includes("QUẠT")) { toggleRelay(2); }
             else if (text === "NGỦ") { enterSleepMode(); sendCommand('S'); }
             else if (text === "SOS") { 
-                speakVoice("CẤP CỨU! CẦN BÁC SĨ GIÚP ĐỠ GẤP!", true); 
-                sendCommand("SOS"); 
+                sendQuickAlert("SOS");
             }
 
             scanState = 'ROW';
@@ -988,8 +1010,61 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             renderScan();
         }
 
-        function handleBlink() {
+        // ==========================================
+        // LOGIC ĐẾM NHÁY MẮT (MỚI)
+        // ==========================================
+        function registerBlink() {
             if (isSleeping || isSettingsOpen) return;
+
+            blinkCount++;
+            
+            if (blinkCount === 1) {
+                clearInterval(scanInterval);
+            }
+
+            // Hiển thị UI đếm nháy mắt
+            const counterEl = document.getElementById('blink-counter');
+            counterEl.innerText = "👁️ Nháy mắt: " + blinkCount;
+            counterEl.style.display = 'block';
+
+            // Xóa timeout cũ nếu người dùng tiếp tục nháy mắt
+            if (blinkTimeout) clearTimeout(blinkTimeout);
+
+            // Đợi 1.5 giây xem người dùng có nháy tiếp không
+            blinkTimeout = setTimeout(() => {
+                counterEl.style.display = 'none';
+                processBlinks(blinkCount);
+                blinkCount = 0; // Reset bộ đếm
+            }, BLINK_WINDOW);
+        }
+
+        function processBlinks(count) {
+            if (count === 1) {
+                // Bỏ qua (nháy mắt sinh học tự nhiên)
+                console.log("Bỏ qua 1 lần nháy mắt (sinh học)");
+            }
+            else if (count === 2) {
+                // 2 lần: CHỌN (Select)
+                executeNormalSelection();
+            }
+            else if (count === 3) {
+                sendQuickAlert("TÔI CẦN UỐNG NƯỚC");
+            }
+            else if (count === 4) {
+                sendQuickAlert("TÔI CẦN ĐI VỆ SINH");
+            }
+            else if (count === 5) {
+                sendQuickAlert("TÔI ĐANG RẤT ĐAU");
+            }
+            else if (count >= 6) {
+                sendQuickAlert("SOS");
+            }
+                if (currentView === 'KEYBOARD' && !isSleeping && !isSettingsOpen) {
+                startScanning();
+            }
+        }
+
+        function executeNormalSelection() {
             if (currentView === 'MENU') {
                 showKeyboard();
                 return;
@@ -999,10 +1074,33 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 currentCol = 0;
                 loopCount = 0;
                 renderScan();
-            } else if (scanState === 'CELL') {
+                
+                let firstCellText = rows[currentRow].children[0].innerText.trim();
+                if (firstCellText) speakVoice(firstCellText, true);
+            } 
+            else if (scanState === 'CELL') {
                 const targetCell = rows[currentRow].children[currentCol];
                 executeAction(targetCell);
             }
+        }
+
+        function sendQuickAlert(msg) {
+            if (msg === "SOS") {
+                speakVoice("CẤP CỨU! CẦN BÁC SĨ GIÚP ĐỠ GẤP!", true);
+                sendCommand("SOS");
+            } else {
+                speakVoice(msg, true);
+                sendCommand("SENTENCE:" + msg);
+            }
+            showToastAlert(msg);
+        }
+
+        function showToastAlert(msg) {
+            const toast = document.getElementById('toast-alert');
+            toast.innerText = msg === "SOS" ? "🚨 CẤP CỨU KHẨN CẤP 🚨" : "⚠️ " + msg;
+            toast.style.background = msg === "SOS" ? "#da3633" : "#d29922";
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
         document.querySelectorAll('.cell').forEach(cell => {
@@ -1036,13 +1134,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             isSleeping = true;
             document.getElementById('sleep-overlay').style.display = 'flex';
             clearInterval(scanInterval);
-            speakVoice("Hệ thống chuyển sang chế độ ngủ");
+            speakVoice("Hệ thống chuyển sang chế độ ngủ", true);
         }
         function exitSleepMode() {
             isSleeping = false;
             document.getElementById('sleep-overlay').style.display = 'none';
             if (currentView === 'KEYBOARD') startScanning();
-            speakVoice("Hệ thống đã thức dậy");
+            speakVoice("Hệ thống đã thức dậy", true);
         }
 
         function openSettings() {
@@ -1077,7 +1175,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%';
         };
 
-      window.addEventListener('keydown', (e) => {
+        window.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
                 e.preventDefault();
                 if (isSleeping) {
@@ -1085,8 +1183,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 } else {
                     // Gửi lệnh báo cho ESP32 biết là đang test
                     sendCommand('SIMULATE_BLINK'); 
-                    // XÓA DÒNG handleBlink() ở đây đi. 
-                    // Hệ thống sẽ tự động chuyển hàng/ô khi ESP32 trả tín hiệu qua WebSocket.
                 }
             }
         });
@@ -1237,7 +1333,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         Serial.println("[ALERT] BỆNH NHÂN GỌI CẤP CỨU (SOS)!");
         syncSentenceToCloud("SOS - CẤP CỨU KHẨN CẤP");
       }
-      // ---- BẠN COPY VÀ DÁN ĐOẠN NÀY VÀO ĐÂY ----
       else if (msg == "SIMULATE_BLINK") {
         // Giả lập có sóng não tốt và các chỉ số ngẫu nhiên
         signalQuality = 0;
@@ -1255,7 +1350,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         // Bắn dữ liệu giả lập lên Web Global (Render) ngay lập tức
         syncTelemetryToCloud(); 
       }
-      // ------------------------------------------
       break;
     }
     default:

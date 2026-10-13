@@ -77,7 +77,7 @@
         .dist-count { color: var(--accent-blue); }
         .dist-bar-bg { height: 6px; background-color: var(--bg-dark); border-radius: 3px; }
         .dist-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
-        .color-1 { background-color: #38bdf8; } .color-2 { background-color: #22c55e; } .color-3 { background-color: #a855f7; } .color-4 { background-color: #0ea5e9; } .color-5 { background-color: #8b5cf6; }
+        .color-1 { background-color: #38bdf8; } .color-2 { background-color: #22c55e; } .color-3 { background-color: #a855f7; } .color-4 { background-color: #0ea5e9; } .color-5 { background-color: #8b5cf6; } .color-6 { background-color: #f59e0b; } .color-7 { background-color: #64748b; }
         .hint-text { font-size: 12px; color: var(--text-muted); display: flex; gap: 8px; align-items: flex-start; margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--border-color); line-height: 1.5; }
         .hint-text i { color: var(--accent-yellow); margin-top: 2px; }
         .chart-card { background: var(--bg-card); border-radius: 12px; padding: 20px; border: 1px solid var(--border-color); }
@@ -119,6 +119,7 @@
         .tag-pain { background: rgba(168, 85, 247, 0.1); color: #a855f7; border-color: rgba(168, 85, 247, 0.3); }
         .tag-iot { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; border-color: rgba(14, 165, 233, 0.3); }
         .tag-rest { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; border-color: rgba(139, 92, 246, 0.3); }
+        .tag-essential { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.3); }
         .score-att { color: var(--accent-blue); font-weight: bold; font-family: monospace; font-size: 15px;}
         .score-med { color: var(--accent-green); font-weight: bold; font-family: monospace; font-size: 15px;}
         .btn-play { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
@@ -220,7 +221,10 @@
             <div class="dist-item"><div class="dist-info"><span>Cơm / Ăn</span><span class="dist-count" id="txt-food">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-2" id="bar-food" style="width: 0%"></div></div></div>
             <div class="dist-item"><div class="dist-info"><span>Nghỉ ngơi</span><span class="dist-count" id="txt-rest">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-3" id="bar-rest" style="width: 0%"></div></div></div>
             <div class="dist-item"><div class="dist-info"><span>Thiết bị IoT</span><span class="dist-count" id="txt-iot">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-4" id="bar-iot" style="width: 0%"></div></div></div>
-            <div class="dist-item"><div class="dist-info"><span>Khác</span><span class="dist-count" id="txt-other">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-5" id="bar-other" style="width: 0%"></div></div></div>
+            <div class="dist-item"><div class="dist-info"><span>Đau / Khó chịu</span><span class="dist-count" id="txt-pain">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-5" id="bar-pain" style="width: 0%"></div></div></div>
+            <div class="dist-item"><div class="dist-info"><span>Nhu cầu thiết yếu</span><span class="dist-count" id="txt-essential">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-6" id="bar-essential" style="width: 0%"></div></div></div>
+            <div class="dist-item"><div class="dist-info"><span>Khác</span><span class="dist-count" id="txt-other">0 lần (0%)</span></div><div class="dist-bar-bg"><div class="dist-bar-fill color-7" id="bar-other" style="width: 0%"></div></div></div>
+
 
             <div class="hint-text"><i class="fas fa-lightbulb"></i><span>Dữ liệu giúp điều dưỡng chuẩn bị sẵn nước và bữa ăn trước giờ cao điểm của người bệnh.</span></div>
         </div>
@@ -263,6 +267,7 @@
                     <option value="pain">Đau / Khó chịu</option>
                     <option value="iot">Thiết bị IoT</option>
                     <option value="rest">Nghỉ ngơi</option>
+                    <option value="essential">Nhu cầu thiết yếu</option>
                 </select>
 
                 <select class="filter-select" id="time-filter" onchange="applyFilters()">
@@ -308,6 +313,7 @@
             if(s.includes("ĐAU") || s.includes("MỆT") || s.includes("KHÓ CHỊU")) return 'pain';
             if(s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT") || s.includes("ĐÈN")) return 'iot';
             if(s.includes("NGỦ") || s.includes("NGHỈ")) return 'rest';
+            if(s.includes("VỆ SINH") || s.includes("TẮM") || s.includes("QUẦN ÁO") || s.includes("LAU")) return 'essential';
             return 'other'; 
         }
 
@@ -317,6 +323,7 @@
             if(cat === 'pain') return '<span class="tag tag-pain">Đau / Khó chịu</span>';
             if(cat === 'iot') return '<span class="tag tag-iot">Thiết bị IoT</span>';
             if(cat === 'rest') return '<span class="tag tag-rest">Nghỉ ngơi</span>';
+             if(cat === 'essential') return '<span class="tag tag-essential">Nhu cầu thiết yếu</span>';
             return '<span class="tag tag-iot">Giao tiếp</span>';
         }
 
@@ -344,7 +351,7 @@
             }
 
             let total = logs.length;
-            let counts = { water: 0, food: 0, pain: 0, iot: 0, rest: 0, other: 0 };
+            let counts = { water: 0, food: 0, pain: 0, iot: 0, rest: 0, essential: 0, other: 0 };
             let hourBlocks = [0, 0, 0, 0, 0, 0]; 
 
             logs.forEach(log => {
@@ -364,6 +371,7 @@
             updateDist('food', counts.food); 
             updateDist('rest', counts.rest); 
             updateDist('iot', counts.iot); 
+            updateDist('essential', counts.essential);
             updateDist('other', counts.other + counts.pain);
 
             let maxBlock = Math.max(...hourBlocks) || 1;
