@@ -41,6 +41,7 @@
         .conn-title { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: bold; }
         .status-indicator { width: 10px; height: 10px; background-color: var(--accent-red); border-radius: 50%; box-shadow: 0 0 10px var(--accent-red); }
         .status-indicator.online { background-color: var(--accent-green); box-shadow: 0 0 10px var(--accent-green); }
+        .status-indicator.demo { background-color: var(--accent-yellow); box-shadow: 0 0 10px var(--accent-yellow); }
         .conn-status-text { font-size: 24px; font-weight: bold; color: var(--text-main); margin-bottom: 5px; }
         .conn-id { font-size: 12px; color: var(--text-muted); margin-bottom: 15px; }
         .conn-footer { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 15px; }
@@ -169,7 +170,6 @@
         </div>
     </div>
 
-    <!-- ... (Khối Metrics, EEG, Biểu đồ giữ nguyên) ... -->
     <div class="metrics-grid">
         <div class="metric-card">
             <div class="metric-header"><span class="metric-title">Tập Trung TB (Attention)</span><i class="fas fa-brain metric-icon"></i></div>
@@ -249,7 +249,6 @@
         </div>
     </div>
 
-    <!-- KHU VỰC LỊCH SỬ ĐÃ ĐƯỢC CHỈNH SỬA THÊM BỘ LỌC HOẠT ĐỘNG -->
     <div class="history-card" id="history-card">
         <div class="history-header">
             <div class="history-title">LỊCH SỬ GIAO TIẾP CỦA BỆNH NHÂN <span class="count-badge" id="count-badge">0 câu</span></div>
@@ -266,7 +265,6 @@
                     <option value="rest">Nghỉ ngơi</option>
                 </select>
 
-                <!-- BỘ LỌC THỜI GIAN -->
                 <select class="filter-select" id="time-filter" onchange="applyFilters()">
                     <option value="all">Tất cả thời gian</option>
                     <option value="today">Hôm nay</option>
@@ -293,11 +291,9 @@
             options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: { display: false }, y: { display: true, grid: {color: '#1e293b'} } }, plugins: { legend: { display: false } } }
         });
 
-        // ==========================================
-        // QUẢN LÝ DỮ LIỆU & BỘ LỌC
-        // ==========================================
-        let allLogs = []; // Chứa toàn bộ dữ liệu fetch từ API
+        let allLogs = []; 
         let lastLogCount = 0;
+        let isDemoMode = false;
 
         function formatTime(isoString) {
             if (!isoString) return { hm: '--:--', date: '--/--/----' };
@@ -305,7 +301,6 @@
             return { hm: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), date: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) };
         }
 
-        // Nhận diện Tag (Dùng chung cho hiển thị và bộ lọc)
         function identifyCategory(sentence) {
             let s = sentence.toUpperCase();
             if(s.includes("NƯỚC") || s.includes("UỐNG") || s.includes("KHÁT")) return 'water';
@@ -313,7 +308,7 @@
             if(s.includes("ĐAU") || s.includes("MỆT") || s.includes("KHÓ CHỊU")) return 'pain';
             if(s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT") || s.includes("ĐÈN")) return 'iot';
             if(s.includes("NGỦ") || s.includes("NGHỈ")) return 'rest';
-            return 'other'; // Giao tiếp thông thường
+            return 'other'; 
         }
 
         function getTagHtml(cat) {
@@ -325,10 +320,9 @@
             return '<span class="tag tag-iot">Giao tiếp</span>';
         }
 
-        // Chức năng phát giọng nói ngay trên Cloud
         function speakFromCloud(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // Dừng câu trước đó nếu đang đọc
+                window.speechSynthesis.cancel(); 
                 const msg = new SpeechSynthesisUtterance(text);
                 msg.lang = 'vi-VN'; 
                 msg.rate = 0.9;
@@ -340,7 +334,6 @@
 
         function updateCharts(logs) {
             if (!logs || logs.length === 0) {
-                // Reset Charts nếu không có dữ liệu
                 ['water', 'food', 'rest', 'iot', 'other'].forEach(id => {
                     document.getElementById(`txt-${id}`).innerText = `0 lần (0%)`;
                     document.getElementById(`bar-${id}`).style.width = `0%`;
@@ -352,7 +345,7 @@
 
             let total = logs.length;
             let counts = { water: 0, food: 0, pain: 0, iot: 0, rest: 0, other: 0 };
-            let hourBlocks = [0, 0, 0, 0, 0, 0]; // 0-4, 4-8, 8-12, 12-16, 16-20, 20-24
+            let hourBlocks = [0, 0, 0, 0, 0, 0]; 
 
             logs.forEach(log => {
                 let cat = identifyCategory(log.sentence);
@@ -362,7 +355,6 @@
                 hourBlocks[Math.floor(h / 4)]++;
             });
 
-            // Gộp pain và rest vào "Khác" trong biểu đồ nếu cần, hoặc vẽ riêng (ở đây giữ nguyên cấu trúc cũ)
             const updateDist = (id, count) => {
                 let pct = Math.round((count / total) * 100);
                 document.getElementById(`txt-${id}`).innerText = `${count} lần (${pct}%)`;
@@ -374,7 +366,6 @@
             updateDist('iot', counts.iot); 
             updateDist('other', counts.other + counts.pain);
 
-            // Update Hourly Chart
             let maxBlock = Math.max(...hourBlocks) || 1;
             let peakIndex = hourBlocks.indexOf(maxBlock);
             let peakLabels = ["0h-4h", "4h-8h", "8h-12h", "12h-16h", "16h-20h", "20h-24h"];
@@ -387,7 +378,6 @@
             if(hourBlocks[peakIndex] > 0) document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>${peakLabels[peakIndex]}</span>`;
         }
 
-        // HÀM XỬ LÝ LỌC DỮ LIỆU CHÍNH
         function applyFilters() {
             if (!allLogs || allLogs.length === 0) return;
 
@@ -396,7 +386,6 @@
             const searchText = document.getElementById('search-input').value.toLowerCase();
             const now = new Date();
             
-            // 1. Lọc theo thời gian
             let filteredLogs = allLogs.filter(log => {
                 const logDate = new Date(log.timestamp);
                 if (timeFilter === 'today') {
@@ -405,20 +394,16 @@
                     const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
                     return logDate >= sevenDaysAgo;
                 }
-                return true; // 'all'
+                return true; 
             });
 
-            // 2. Lọc theo danh mục
             if (catFilter !== 'all') {
                 filteredLogs = filteredLogs.filter(log => identifyCategory(log.sentence) === catFilter);
             }
 
-            // 3. Lọc theo từ khóa tìm kiếm
             if (searchText !== '') {
                 filteredLogs = filteredLogs.filter(log => log.sentence.toLowerCase().includes(searchText));
             }
-
-            // --- Cập nhật Giao diện dựa trên Dữ liệu đã lọc ---
             
             document.getElementById('total-logs-display').innerText = filteredLogs.length;
             document.getElementById('count-badge').innerText = filteredLogs.length + ' câu';
@@ -429,10 +414,8 @@
                 document.getElementById('last-time-display').innerText = "--:--:--";
             }
 
-            // Cập nhật lại Biểu đồ dựa trên dữ liệu lọc
             updateCharts(filteredLogs); 
 
-            // Cập nhật Bảng HTML
             let html = '';
             if (filteredLogs.length === 0) {
                 html = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 30px;">Không có dữ liệu trong khoảng thời gian này...</td></tr>';
@@ -454,10 +437,6 @@
             document.getElementById('logs-body').innerHTML = html;
         }
 
-        // ==========================================
-        // QUẢN LÝ GIAO DIỆN CHUNG & DEMO (GIỮ NGUYÊN)
-        // ==========================================
-        let isDemoMode = false;
         function toggleDemo() {
             isDemoMode = !isDemoMode;
             const btn = document.getElementById('btn-demo');
@@ -478,12 +457,6 @@
             const timeSinceLastUpdate = Date.now() - t.lastUpdate;
             const connIndicator = document.getElementById('conn-indicator'), connText = document.getElementById('conn-text'), connTime = document.getElementById('conn-time');
             
-            if (timeSinceLastUpdate < 40000) { 
-                connIndicator.className = 'status-indicator online'; connText.innerText = 'Đang Hoạt Động'; connText.style.color = '#22c55e'; connTime.innerText = new Date().toLocaleTimeString('vi-VN');
-            } else {
-                connIndicator.className = 'status-indicator'; connText.innerText = 'Chưa Kết Nối'; connText.style.color = '#f8fafc';
-            }
-
             let displaySignal = t.signalQuality;
             let dAtt = t.attention || 0, dMed = t.meditation || 0;
             let dDelta = t.delta || 0, dTheta = t.theta || 0, dAlpha = t.lowAlpha || 0, dBeta = t.lowBeta || 0, dGamma = t.lowGamma || 0;
@@ -497,6 +470,17 @@
                 dAlpha = Math.floor(Math.random() * 40000) + 10000;
                 dBeta = Math.floor(Math.random() * 25000) + 5000;
                 dGamma = Math.floor(Math.random() * 10000) + 1000;
+                
+                connIndicator.className = 'status-indicator demo'; 
+                connText.innerText = 'Đang Chạy Demo'; 
+                connText.style.color = '#eab308'; 
+                connTime.innerText = new Date().toLocaleTimeString('vi-VN');
+            } else {
+                if (timeSinceLastUpdate < 40000) { 
+                    connIndicator.className = 'status-indicator online'; connText.innerText = 'Đang Hoạt Động'; connText.style.color = '#22c55e'; connTime.innerText = new Date().toLocaleTimeString('vi-VN');
+                } else {
+                    connIndicator.className = 'status-indicator'; connText.innerText = 'Chưa Kết Nối'; connText.style.color = '#f8fafc';
+                }
             }
 
             document.getElementById('avg-att').innerText = dAtt;
@@ -534,7 +518,6 @@
             eegChart.update();
         }
 
-        // FETCH API THƯỜNG XUYÊN
         setInterval(async () => {
             try {
                 const response = await fetch('/api/data');
@@ -543,17 +526,12 @@
                 if (data.telemetry) updateUI(data.telemetry);
 
                 if (data.logs && Array.isArray(data.logs)) {
-                    // Cập nhật lại mảng dữ liệu gốc
                     allLogs = data.logs;
-
-                    // Hiệu ứng chớp nháy khi có câu mới
                     if (allLogs.length > lastLogCount && lastLogCount !== 0) {
                         const card = document.getElementById('history-card');
                         card.classList.add('history-flash'); setTimeout(() => card.classList.remove('history-flash'), 500);
                     }
                     lastLogCount = allLogs.length;
-
-                    // Gọi hàm applyFilters thay vì tự render. Hàm này sẽ lấy allLogs và lọc theo dropdown hiện tại
                     applyFilters();
                 }
             } catch (err) { console.error("Lỗi kết nối tới Backend Render", err); }
