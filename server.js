@@ -1,20 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const mongoose = require('mongoose'); // Thêm thư viện MongoDB
+const mongoose = require('mongoose');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// 1. KẾT NỐI MONGODB ATLAS
+// 1. KẾT NỐI MONGODB ATLAS (CÓ CHỐNG TREO)
 // ==========================================
-//
 const MONGO_URI = "mongodb+srv://ttrongnghia111_db_user:ijf4PcErVJSQwNCB@cluster0.2fyogcj.mongodb.net/bci_database?retryWrites=true&w=majority&appName=Cluster0";
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("✅ Đã kết nối MongoDB Atlas thành công! Lịch sử sẽ được lưu vĩnh viễn."))
-    .catch(err => console.error("❌ Lỗi kết nối MongoDB:", err));
+
+// Thêm serverSelectionTimeoutMS để nếu DB lỗi mạng, nó sẽ báo ngay chứ không treo Server
+mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+    .then(() => console.log("✅ Đã kết nối MongoDB Atlas thành công!"))
+    .catch(err => console.error("❌ Lỗi kết nối MongoDB (Kiểm tra lại IP/Mạng):", err.message));
 
 // ==========================================
 // 2. KHAI BÁO CẤU TRÚC LƯU LỊCH SỬ (SCHEMA)
@@ -25,11 +26,10 @@ const logSchema = new mongoose.Schema({
     attention: Number,
     meditation: Number
 });
-const Log = mongoose.model('Log', logSchema); // Tạo bảng 'logs' trong Database
+const Log = mongoose.model('Log', logSchema);
 
 // ==========================================
 // 3. CƠ SỞ DỮ LIỆU TẠM THỜI CHO SÓNG NÃO (RAM)
-// (Chỉ dùng cho Telemetry realtime để tránh quá tải DB)
 // ==========================================
 let telemetryData = {
     isSleeping: false,
@@ -55,19 +55,22 @@ app.post('/api/telemetry', (req, res) => {
 // Nhận Lịch sử phát ngôn từ ESP32 và LƯU VÀO MONGODB
 app.post('/api/logs', async (req, res) => {
     try {
+        // Nếu DB chưa kết nối được, bỏ qua việc lưu để không bị treo ESP32
+        if (mongoose.connection.readyState !== 1) {
+            return res.status(503).send("Database chưa sẵn sàng");
+        }
+
         const { sentence, attention, meditation } = req.body;
-        
-        // Tạo log mới và lưu vào Database
         const newLog = new Log({
             sentence: sentence || "Không rõ",
             attention: attention || 0,
             meditation: meditation || 0
         });
         
-        await newLog.save(); // Lưu vĩnh viễn
+        await newLog.save();
         res.status(200).send("Log đã được lưu vào MongoDB");
     } catch (error) {
-        console.error("Lỗi khi lưu log:", error);
+        console.error("Lỗi khi lưu log:", error.message);
         res.status(500).send("Lỗi server");
     }
 });
@@ -75,13 +78,19 @@ app.post('/api/logs', async (req, res) => {
 // Gửi dữ liệu cho Web Frontend (Cloud)
 app.get('/api/data', async (req, res) => {
     try {
-        // Lấy lịch sử từ MongoDB (sắp xếp thời gian mới nhất lên đầu, giới hạn lấy 1000 câu để web không bị giật)
-        const communicationLogs = await Log.find().sort({ timestamp: -1 }).limit(1000);
+        let communicationLogs = [];
         
+        // CHỈ LẤY LỊCH SỬ NẾU MONGODB ĐANG HOẠT ĐỘNG
+        if (mongoose.connection.readyState === 1) {
+            communicationLogs = await Log.find().sort({ timestamp: -1 }).limit(1000);
+        }
+        
+        // LUÔN LUÔN TRẢ VỀ SÓNG NÃO (TELEMETRY) DÙ DATABASE CÓ LỖI HAY KHÔNG
         res.json({ telemetry: telemetryData, logs: communicationLogs });
     } catch (error) {
-        console.error("Lỗi lấy dữ liệu:", error);
-        res.status(500).json({ error: "Lỗi server" });
+        console.error("Lỗi lấy dữ liệu DB:", error.message);
+        // Nếu lỗi DB, vẫn trả về sóng não để Web không bị báo "Chưa kết nối"
+        res.json({ telemetry: telemetryData, logs: [] });
     }
 });
 
