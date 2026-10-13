@@ -10,7 +10,7 @@ app.use(express.json());
 // ==========================================
 // 1. KẾT NỐI MONGODB ATLAS (CÓ CHỐNG TREO)
 // ==========================================
-const MONGO_URI = "mongodb+srv://ttrongnghia111_db_user:ijf4PcErVJSQwNCB@cluster0.2fyogcj.mongodb.net/bci_database?retryWrites=true&w=majority&appName=Cluster0";
+const MONGO_URI = "mongodb+srv://ttrongnghia111_db_user:Nghia123456789@cluster0.2fyogcj.mongodb.net/bci_database?retryWrites=true&w=majority&appName=Cluster0";
 
 // Thêm serverSelectionTimeoutMS để nếu DB lỗi mạng, nó sẽ báo ngay chứ không treo Server
 mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 })
