@@ -68,357 +68,359 @@ uint8_t payloadData[256];
 // =========================================================================
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ESP32 BCI - Giao Tiếp & Điều Khiển</title>
+    <title>Hệ Thống Giao Tiếp BCI</title>
     <style>
+        /* ================= BIẾN MÀU SẮC (SÁNG & TỐI) ================= */
+        :root {
+            /* Chế độ Sáng (Mặc định) */
+            --bg-main: #e0f2fe; 
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+            --primary: #0ea5e9;
+            --primary-glow: rgba(14, 165, 233, 0.4);
+            
+            /* Bàn phím */
+            --key-bg: #ffffff;
+            --key-border: #cbd5e1;
+            --key-shadow: rgba(0,0,0,0.08);
+            --key-sys-bg: #f1f5f9;
+            
+            /* Cảnh vật */
+            --grass-top: #4ade80;
+            --grass-bottom: #16a34a;
+            --cloud-opacity: 0.8;
+            --scenery-brightness: 1;
+            
+            /* Trạng thái */
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --scan-color: #f59e0b;
+        }
+
+        [data-theme="dark"] {
+            /* Chế độ Tối */
+            --bg-main: #0f172a; 
+            --bg-card: rgba(30, 41, 59, 0.85);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #38bdf8;
+            --primary-glow: rgba(56, 189, 248, 0.3);
+            
+            /* Bàn phím */
+            --key-bg: #1e293b;
+            --key-border: #334155;
+            --key-shadow: rgba(0,0,0,0.3);
+            --key-sys-bg: #0f172a;
+            
+            /* Cảnh vật ban đêm */
+            --grass-top: #166534;
+            --grass-bottom: #14532d;
+            --cloud-opacity: 0.2;
+            --scenery-brightness: 0.6;
+            
+            /* Trạng thái */
+            --success: #34d399;
+            --danger: #f87171;
+            --warning: #fbbf24;
+            --scan-color: #fbbf24;
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0a0d14;
-            color: #c9d1d9;
+            font-family: 'Segoe UI', Quicksand, Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
             overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; user-select: none; -webkit-user-select: none;
+            transition: background-color 0.5s ease, color 0.5s ease;
         }
 
-        #clock {
-            position: fixed;
-            top: 15px;
-            left: 20px;
-            text-align: left;
-            z-index: 100;
+        /* ================= PHONG CẢNH & THÚ CƯNG ================= */
+        .scenery-layer {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 100vh;
+            pointer-events: none; z-index: -1; overflow: hidden;
+            filter: brightness(var(--scenery-brightness));
+            transition: filter 0.5s ease;
         }
-        #clock-time {
-            font-size: 32px;
-            font-weight: 900;
-            color: #58a6ff;
-            font-family: monospace;
-            line-height: 1;
+        .grass {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 20vh;
+            background: linear-gradient(to bottom, var(--grass-top), var(--grass-bottom));
+            border-top-left-radius: 50% 10vh; border-top-right-radius: 50% 10vh;
+            transition: background 0.5s ease;
         }
-        #clock-date {
-            font-size: 13px;
-            color: #8b949e;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 4px;
+        .cloud {
+            position: absolute; background: white; border-radius: 50px;
+            opacity: var(--cloud-opacity); animation: float 40s linear infinite;
+            transition: opacity 0.5s ease;
+        }
+        .cloud::before, .cloud::after { content: ''; position: absolute; background: white; border-radius: 50%; }
+        .c1 { top: 10%; left: -20%; width: 120px; height: 40px; }
+        .c1::before { width: 50px; height: 50px; top: -25px; left: 15px; }
+        .c1::after { width: 40px; height: 40px; top: -15px; right: 15px; }
+        .c2 { top: 25%; left: -30%; width: 160px; height: 50px; animation-duration: 60s; animation-delay: -10s; transform: scale(0.8);}
+        .c2::before { width: 70px; height: 70px; top: -35px; left: 20px; }
+        .c2::after { width: 60px; height: 60px; top: -25px; right: 25px; }
+        
+        @keyframes float { 0% { transform: translateX(-10vw); } 100% { transform: translateX(110vw); } }
+
+        /* Thú cưng cử động */
+        .mascot { position: absolute; font-size: 65px; z-index: 0; }
+        
+        /* Chó chuyển động 3D (CSS 3D Transform) */
+        .m-dog { 
+            left: 15%; bottom: 12vh; 
+            display: inline-block;
+            transform-origin: center bottom;
+            animation: dog-3d-action 3s infinite ease-in-out;
+            /* Đổ bóng để tạo chiều sâu 3D */
+            filter: drop-shadow(0px 15px 8px rgba(0,0,0,0.3));
+        }
+        @keyframes dog-3d-action {
+            0%, 100% { 
+                transform: perspective(500px) rotateY(0deg) rotateX(0deg) translateY(0) scale(1); 
+            }
+            25% { 
+                /* Nhảy lên, xoay người sang phải, ngửa ra sau một chút */
+                transform: perspective(500px) rotateY(35deg) rotateX(10deg) translateY(-20px) scale(1.1); 
+            }
+            50% { 
+                transform: perspective(500px) rotateY(0deg) rotateX(0deg) translateY(0) scale(1); 
+            }
+            75% { 
+                /* Nhảy lên, xoay người sang trái, ngửa ra sau một chút */
+                transform: perspective(500px) rotateY(-35deg) rotateX(10deg) translateY(-20px) scale(1.1); 
+            }
         }
 
-        /* VIEW 1: MENU ĐIỀU KHIỂN CƠ BẢN */
+        /* Mèo nằm ngủ thở đều */
+        .m-cat { 
+            right: 15%; bottom: 14vh; 
+            animation: cat-breathe 4s infinite ease-in-out;
+            transform-origin: bottom center;
+        }
+        @keyframes cat-breathe {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.05) rotate(2deg); }
+        }
+
+        /* ================= TOP BAR ================= */
+        button, .cell { touch-action: manipulation; cursor: pointer; border: none; outline: none; font-family: inherit; }
+
+        .top-bar {
+            position: fixed; top: 20px; left: 0; width: 100%; padding: 0 30px;
+            display: flex; justify-content: space-between; align-items: flex-start; z-index: 100; pointer-events: none;
+        }
+
+        .widget-pill {
+            background: var(--bg-card); backdrop-filter: blur(10px);
+            border: 2px solid var(--key-border); padding: 10px 20px; border-radius: 30px;
+            box-shadow: 0 8px 25px var(--key-shadow); pointer-events: auto;
+            display: flex; align-items: center; gap: 15px;
+        }
+
+        #clock-time { font-size: 22px; font-weight: 900; color: var(--primary); }
+        #clock-date { font-size: 12px; color: var(--text-muted); font-weight: 700; }
+        
+        .theme-btn {
+            background: transparent; font-size: 24px; cursor: pointer;
+            transition: transform 0.2s; padding: 5px;
+        }
+        .theme-btn:active { transform: scale(0.8); }
+
+        /* ================= VIEW 1: MENU CHÍNH ================= */
         #view-menu {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 100%;
-            padding: 70px 20px 40px 20px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; min-height: 100vh; padding: 20px; max-width: 1000px; z-index: 10;
         }
-        .page-title {
-            font-size: 30px;
-            font-weight: 900;
-            color: #c9d1d9;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 24px;
-            text-align: center;
-        }
+        
+        .page-title { font-size: 36px; font-weight: 900; margin-bottom: 40px; text-align: center; }
 
-        .dash-row {
-            display: flex;
-            gap: 16px;
-            width: 90%;
-            max-width: 800px;
-            margin-bottom: 25px;
-        }
+        .dash-row { display: flex; gap: 24px; width: 100%; margin-bottom: 40px; }
         .dash-card {
-            background: #161b22;
-            border: 2px solid #30363d;
-            border-radius: 14px;
-            padding: 18px 20px;
-            flex: 1;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
-            text-align: center;
+            background: var(--bg-card); backdrop-filter: blur(10px);
+            border: 2px solid var(--key-border); border-radius: 32px;
+            padding: 35px 20px; flex: 1; text-align: center;
+            box-shadow: 0 15px 35px var(--key-shadow); transition: all 0.3s;
         }
-        .dash-title {
-            font-size: 14px;
-            color: #8b949e;
-            font-weight: bold;
-            margin-bottom: 6px;
-            text-transform: uppercase;
-        }
-        .dash-value {
-            font-size: 44px;
-            font-weight: 900;
-            color: #58a6ff;
-            font-family: monospace;
-        }
-        .dash-value.good { color: #3fb950; }
-        .dash-value.bad { color: #f85149; }
-        .dash-value.warn { color: #d29922; }
+        .dash-title { font-size: 16px; color: var(--text-muted); font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
+        .dash-value { font-size: 60px; font-weight: 900; color: var(--primary); line-height: 1; }
+        .dash-value.good { color: var(--success); }
+        .dash-value.bad { color: var(--danger); font-size: 40px; margin-top: 10px;}
 
-        .menu-actions {
-            display: flex;
-            gap: 14px;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 90%;
-            max-width: 800px;
-        }
+        .menu-actions { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 700px; }
         .btn-main {
-            background: #238636;
-            color: #fff;
-            border: none;
-            padding: 18px 36px;
-            font-size: 22px;
-            font-weight: bold;
-            border-radius: 14px;
-            cursor: pointer;
-            box-shadow: 0 6px 14px rgba(0,0,0,0.4);
-            transition: 0.2s;
-            width: 100%;
-            max-width: 500px;
-            margin-bottom: 12px;
+            background: var(--primary); color: #fff; padding: 24px; font-size: 24px; font-weight: 800;
+            border-radius: 32px; box-shadow: 0 10px 25px var(--primary-glow); transition: all 0.2s;
         }
-        .btn-main:active { transform: scale(0.97); background: #2ea043; }
+        .btn-main:active { transform: scale(0.97); }
 
+        .sub-actions-row { display: flex; gap: 20px; width: 100%; }
         .btn-sub {
-            background: #21262d;
-            color: #c9d1d9;
-            border: 2px solid #30363d;
-            padding: 14px 22px;
-            font-size: 17px;
-            font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: 0.2s;
-            flex: 1;
-            min-width: 140px;
+            background: var(--bg-card); border: 2px solid var(--key-border);
+            color: var(--text-main); padding: 20px; font-size: 18px; font-weight: 800;
+            border-radius: 20px; flex: 1; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            box-shadow: 0 8px 20px var(--key-shadow);
         }
-        .btn-sub:active { transform: scale(0.97); background: #30363d; }
+        .btn-sub:active { transform: scale(0.96); background: var(--key-sys-bg); }
+        .btn-sub span { color: var(--primary); font-size: 14px; font-weight: 700; background: var(--key-sys-bg); padding: 4px 12px; border-radius: 12px;}
 
-        /* VIEW 2: BÀN PHÍM QUÉT TRỢ NĂNG */
+        /* ================= VIEW 2: BÀN PHÍM (CẢI TIẾN) ================= */
         #view-keyboard {
-            display: none;
-            flex-direction: column;
-            width: 100%;
-            height: 100vh;
-        }
-        #tgam-status-mini {
-            position: fixed;
-            top: 15px;
-            right: 20px;
-            text-align: right;
-            font-size: 14px;
-            color: #8b949e;
-            line-height: 1.4;
-            z-index: 50;
-        }
-        .tgam-val {
-            font-weight: 900;
-            color: #3fb950;
-            font-size: 17px;
-            font-family: monospace;
+            display: none; flex-direction: column; width: 100%; height: 100vh;
+            max-width: 1300px; margin: 0 auto; padding: 15px; z-index: 10;
         }
 
         #top-controls {
-            width: 94%;
-            margin: 50px auto 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
+            width: 100%; margin: 90px auto 10px auto; display: flex; justify-content: space-between; align-items: center; padding: 0 10px;
         }
         .top-btn {
-            background: #2d3139;
-            color: #a5d6ff;
-            padding: 10px 18px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: 800;
-            cursor: pointer;
-            border: 2px solid #30363d;
-            transition: 0.2s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            background: var(--bg-card); color: var(--text-main); padding: 14px 24px;
+            border-radius: 30px; font-size: 16px; font-weight: 800;
+            border: 2px solid var(--key-border); box-shadow: 0 6px 15px var(--key-shadow);
         }
-        .top-btn:active { background: #58a6ff; color: #0d1117; transform: scale(0.95); }
-        .btn-back { background: #da3633; color: #fff; border-color: #b62324; }
-        .helper-text { color: #8b949e; font-size: 14px; font-weight: bold; }
+        .helper-text { color: var(--text-main); font-size: 16px; font-weight: 800; background: var(--bg-card); padding: 10px 20px; border-radius: 20px; border: 2px solid var(--key-border);}
 
         #output-box {
-            width: 94%;
-            height: 65px;
-            font-size: 32px;
-            margin: 12px auto;
-            padding: 10px 20px;
-            background: #161b22;
-            border-radius: 12px;
-            border: 2px solid #30363d;
-            color: #58a6ff;
-            text-transform: uppercase;
-            font-weight: 800;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-family: monospace;
+            width: calc(100% - 20px); min-height: 85px; margin: 10px auto 15px auto; padding: 15px 30px;
+            background: var(--bg-card); border-radius: 32px;
+            border: 4px solid var(--primary); color: var(--text-main);
+            font-size: 40px; font-weight: 900; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 25px var(--primary-glow); text-align: center; word-break: break-word;
         }
 
-        .grid { display: flex; flex-direction: column; gap: 8px; width: 96%; margin: 0 auto; }
-        .row { display: flex; gap: 8px; justify-content: center; padding: 4px; border-radius: 12px; border: 3px solid transparent; }
+        /* Lưới bàn phím */
+        .grid { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 0 10px; }
+        .row { display: flex; gap: 12px; justify-content: center; padding: 8px; border-radius: 24px; border: 4px solid transparent; transition: all 0.2s ease;}
+        
         .cell {
-            flex: 1;
-            padding: 18px 4px;
-            background: #21262d;
-            border-radius: 8px;
-            font-size: 24px;
-            font-weight: 800;
-            transition: 0.1s;
-            border: 2px solid #30363d;
-            color: #c9d1d9;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: pointer;
+            flex: 1; padding: 22px 5px; background: var(--key-bg); border: 2px solid var(--key-border);
+            border-radius: 20px; font-size: 32px; font-weight: 900; color: var(--text-main);
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 6px 12px var(--key-shadow); transition: all 0.15s ease;
         }
 
-        .cell.suggest { background-color: #1f3a28; border-color: #2ea043; color: #56d364; font-size: 22px; }
-        .cell.sys { background-color: #2d3139; color: #a5d6ff; font-size: 17px; }
-        .cell.iot { background-color: #3d2222; border-color: #8b2828; font-size: 17px; }
+        /* Phân loại phím */
+        .cell.suggest { background-color: rgba(16, 185, 129, 0.15); border-color: var(--success); color: var(--success); font-size: 26px; }
+        .cell.sys { background-color: var(--key-sys-bg); font-size: 20px; color: var(--text-muted); }
+        .cell.iot { background-color: rgba(245, 158, 11, 0.15); border-color: var(--warning); color: var(--warning); font-size: 20px; }
+        .cell.danger { background-color: rgba(239, 68, 68, 0.15); border-color: var(--danger); color: var(--danger); font-size: 26px; }
+        .cell.action { background-color: var(--primary); border-color: var(--primary); color: #fff; font-size: 22px; box-shadow: 0 6px 20px var(--primary-glow);}
 
-        .scanning-row { border-color: #58a6ff; background-color: rgba(88, 166, 255, 0.05); }
+        /* HIỆU ỨNG QUÉT (SCANNING) - CỰC KỲ NỔI BẬT */
+        .scanning-row { 
+            border-color: var(--scan-color); 
+            background-color: rgba(245, 158, 11, 0.1); 
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+        }
         .scanning-cell {
-            background-color: #58a6ff !important;
-            color: #0d1117 !important;
-            transform: scale(1.05);
-            border-color: #fff;
-            box-shadow: 0 0 20px rgba(88, 166, 255, 0.8);
+            background-color: var(--scan-color) !important;
+            color: #fff !important;
+            transform: scale(1.1) translateY(-5px);
+            border-color: var(--scan-color) !important;
+            box-shadow: 0 15px 30px rgba(245, 158, 11, 0.6) !important;
             z-index: 10;
         }
 
+        /* ================= OVERLAYS & ALERTS ================= */
         .overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            display: none;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-main); z-index: 1000; opacity: 0.95;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            display: none; backdrop-filter: blur(10px);
         }
-        .sleep-text { font-size: 38px; font-weight: bold; color: #8b949e; margin-bottom: 20px; text-align: center; }
-        .wake-hint { font-size: 22px; color: #56d364; font-weight: bold; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        .sleep-icon { font-size: 100px; margin-bottom: 20px; animation: cat-breathe 3s infinite;}
+        .sleep-text { font-size: 45px; font-weight: 900; color: var(--text-main); margin-bottom: 20px; text-align: center;}
+        .wake-hint { font-size: 24px; color: var(--success); font-weight: 800; animation: pulse 2s infinite; background: rgba(16,185,129,0.1); padding: 20px 40px; border-radius: 40px; border: 3px solid var(--success);}
+        @keyframes pulse { 0% { opacity: 0.8; transform: scale(0.98);} 50% { opacity: 1; transform: scale(1.02);} 100% { opacity: 0.8; transform: scale(0.98);} }
 
         #settings-panel {
-            background: #161b22;
-            border: 2px solid #30363d;
-            border-radius: 15px;
-            padding: 28px;
-            width: 85%;
-            max-width: 600px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            text-align: left;
+            background: var(--bg-card); border: 4px solid var(--primary); border-radius: 32px;
+            padding: 40px; width: 90%; max-width: 550px; box-shadow: 0 25px 50px rgba(0,0,0,0.3);
         }
-        .set-title {
-            font-size: 24px;
-            color: #58a6ff;
-            font-weight: bold;
-            margin-bottom: 16px;
-            text-align: center;
-            border-bottom: 1px solid #30363d;
-            padding-bottom: 10px;
-        }
-        .set-group { margin-bottom: 18px; }
-        .set-label { font-size: 16px; color: #c9d1d9; font-weight: bold; margin-bottom: 8px; display: block; }
+        .set-title { font-size: 28px; color: var(--text-main); font-weight: 900; margin-bottom: 30px; text-align: center; }
+        .set-group { margin-bottom: 24px; }
+        .set-label { font-size: 18px; color: var(--text-main); font-weight: 800; margin-bottom: 12px; display: block; }
         .set-select, .set-slider {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            background: #0d1117;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            border-radius: 8px;
+            width: 100%; padding: 16px; font-size: 18px; font-weight: 700;
+            background: var(--key-sys-bg); color: var(--text-main);
+            border: 2px solid var(--key-border); border-radius: 16px; outline: none;
         }
-        .set-val { float: right; color: #56d364; }
-        .set-btns { display: flex; justify-content: space-between; margin-top: 24px; gap: 10px; }
-        .btn-test { background: #2ea043; color: #fff; padding: 12px 20px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
-        .btn-close { background: #da3633; color: #fff; padding: 12px 20px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        .set-val { float: right; color: var(--primary); }
+        .set-btns { display: flex; gap: 16px; margin-top: 40px; }
+        .set-btns button { flex: 1; padding: 20px; border-radius: 20px; font-size: 18px; font-weight: 800; color: #fff; transition: 0.2s;}
+        .btn-test { background: var(--key-sys-bg); color: var(--text-main) !important; border: 2px solid var(--key-border);}
+        .btn-test:active { background: var(--key-border);}
+        .btn-close { background: var(--primary); box-shadow: 0 6px 20px var(--primary-glow);}
 
         #status-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 6px 14px;
-            background: #07090e;
-            border-top: 1px solid #18202d;
-            font-size: 12px;
-            color: #8b949e;
-            text-align: center;
-            z-index: 90;
+            position: fixed; bottom: 0; left: 0; width: 100%; padding: 12px; 
+            background: var(--bg-card); font-size: 15px; color: var(--text-main); 
+            text-align: center; z-index: 90; font-weight: 800; box-shadow: 0 -5px 15px var(--key-shadow);
         }
 
-        /* UI ĐẾM NHÁY MẮT & CẢNH BÁO */
         #blink-counter {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            background: rgba(88, 166, 255, 0.15);
-            color: #58a6ff;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 20px;
-            font-weight: bold;
-            border: 2px solid #58a6ff;
-            z-index: 100;
-            display: none;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            position: fixed; top: 90px; right: 30px;
+            background: var(--bg-card); color: var(--primary); border: 3px solid var(--primary);
+            padding: 16px 32px; border-radius: 40px; font-size: 26px; font-weight: 900;
+            z-index: 100; display: none; box-shadow: 0 10px 25px var(--primary-glow);
         }
+        
         .toast {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #da3633;
-            color: white;
-            padding: 15px 30px;
-            border-radius: 10px;
-            font-size: 22px;
-            font-weight: bold;
-            z-index: 9999;
-            display: none;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            text-align: center;
-            border: 2px solid #fff;
+            position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
+            background: var(--danger); color: white; padding: 20px 45px; border-radius: 40px;
+            font-size: 24px; font-weight: 900; z-index: 9999; display: none;
+            box-shadow: 0 15px 40px rgba(239, 68, 68, 0.4); border: 4px solid white;
         }
     </style>
 </head>
 <body>
-    <div id="clock">
-        <div id="clock-time">--:--:--</div>
-        <div id="clock-date"></div>
+    <!-- PHÔNG NỀN THIÊN NHIÊN -->
+    <div class="scenery-layer">
+        <div class="cloud c1"></div>
+        <div class="cloud c2"></div>
+        <div class="grass"></div>
+        <div class="mascot m-cat">🐈</div>
+        <div class="mascot m-dog">🐕</div>
     </div>
 
-    <!-- UI ĐẾM NHÁY MẮT & CẢNH BÁO -->
+    <div class="top-bar">
+        <div class="widget-pill" id="clock">
+            <div>
+                <div id="clock-time">--:--</div>
+                <div id="clock-date">--/--/----</div>
+            </div>
+            <button class="theme-btn" onclick="toggleTheme()" id="theme-icon">🌓</button>
+        </div>
+        <div class="widget-pill" id="tgam-status-mini" style="display: none;">
+            <span style="font-size: 14px; font-weight: 700; color: var(--text-muted)">
+                Sóng não: <span id="sig-mini" style="color:var(--danger); font-weight: 900">200</span> &nbsp;|&nbsp; 
+                Tập trung: <span id="att-mini" style="color:var(--text-main); font-weight: 900">0</span> &nbsp;|&nbsp; 
+                Thư giãn: <span id="med-mini" style="color:var(--text-main); font-weight: 900">0</span>
+            </span>
+        </div>
+    </div>
+
     <div id="blink-counter">👁️ Nháy mắt: 1</div>
     <div id="toast-alert" class="toast"></div>
 
-    <!-- MÀN HÌNH CHẾ ĐỘ NGỦ -->
     <div id="sleep-overlay" class="overlay">
-        <div class="sleep-text" id="sleep-msg">Zzz... Hệ thống đang ngủ.</div>
-        <div class="wake-hint">Nháy mắt 4 lần liên tiếp để đánh thức</div>
+        <div class="sleep-icon">😴</div>
+        <div class="sleep-text" id="sleep-msg">Hệ thống đang nghỉ ngơi</div>
+        <div class="wake-hint">👁️ Nháy mắt 4 lần liên tiếp để thức dậy</div>
     </div>
 
-    <!-- CÀI ĐẶT GIỌNG ĐỌC -->
     <div id="settings-overlay" class="overlay">
         <div id="settings-panel">
-            <div class="set-title">CÀI ĐẶT GIỌNG ĐỌC (TTS)</div>
+            <div class="set-title">Cài Đặt Giọng Đọc</div>
             <div class="set-group">
                 <label class="set-label">Chọn giọng đọc:</label>
                 <select id="voice-select" class="set-select"></select>
@@ -432,7 +434,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 <input type="range" id="vol-slider" class="set-slider" min="0" max="1" step="0.1" value="1.0">
             </div>
             <div class="set-btns">
-                <button class="btn-test" onclick="testVoice()">Thử giọng</button>
+                <button class="btn-test" onclick="testVoice()">Nghe Thử</button>
                 <button class="btn-close" onclick="closeSettings()">Lưu & Đóng</button>
             </div>
         </div>
@@ -440,753 +442,399 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <!-- VIEW 1: MAIN MENU -->
     <div id="view-menu">
-        <h1 class="page-title">BẢNG THEO DÕI TÌNH TRẠNG BỆNH NHÂN</h1>
+        <h1 class="page-title">Bảng Theo Dõi Sức Khỏe 🌻</h1>
 
         <div class="dash-row">
             <div class="dash-card">
-                <div class="dash-title">Tín Hiệu (Signal)</div>
+                <div class="dash-title">Sóng Não (Kết Nối)</div>
                 <div class="dash-value bad" id="sig-val">CHƯA GẮN</div>
             </div>
             <div class="dash-card">
-                <div class="dash-title">Tập Trung (Attention)</div>
+                <div class="dash-title">Độ Tập Trung</div>
                 <div class="dash-value" id="att-val">0</div>
             </div>
             <div class="dash-card">
-                <div class="dash-title">Thư Giãn (Meditation)</div>
-                <div class="dash-value" id="med-val">0</div>
+                <div class="dash-title">Độ Thư Giãn</div>
+                <div class="dash-value" id="med-val" style="color: var(--success)">0</div>
             </div>
         </div>
 
         <div class="menu-actions">
-            <button class="btn-main" onclick="showKeyboard()">⌨️ MỞ BÀN PHÍM GIAO TIẾP</button>
-            <div style="display: flex; gap: 12px; width: 100%; max-width: 500px;">
-                <button class="btn-sub" onclick="openSettings()">⚙️ CÀI ĐẶT GIỌNG</button>
-                <button class="btn-sub" onclick="toggleRelay(1)">💡 ĐÈN: <span id="menu-r1">TẮT</span></button>
-                <button class="btn-sub" onclick="toggleRelay(2)">🌀 QUẠT: <span id="menu-r2">TẮT</span></button>
+            <button class="btn-main" onclick="showKeyboard()">Mở Bàn Phím Giao Tiếp 💬</button>
+            <div class="sub-actions-row">
+                <button class="btn-sub" onclick="openSettings()">🗣 Cài Đặt Giọng</button>
+                <button class="btn-sub" onclick="toggleRelay(1)">💡 Đèn Phòng <span id="menu-r1">Đang Tắt</span></button>
+                <button class="btn-sub" onclick="toggleRelay(2)">🌀 Quạt Máy <span id="menu-r2">Đang Tắt</span></button>
             </div>
         </div>
     </div>
 
     <!-- VIEW 2: KEYBOARD -->
     <div id="view-keyboard">
-        <div id="tgam-status-mini">
-            Tín hiệu: <span id="sig-mini" class="tgam-val" style="color:#f85149">200</span> | 
-            Tập trung: <span id="att-mini" class="tgam-val">0</span> | 
-            Thư giãn: <span id="med-mini" class="tgam-val">0</span>
-        </div>
-
         <div id="top-controls">
-            <button class="top-btn btn-back" onclick="showMenu()">⬅ QUAY LẠI MENU</button>
-            <div class="helper-text">Nháy 2 lần (hoặc Space 2 lần) để CHỌN | 3-6 lần để CẢNH BÁO</div>
-            <button class="top-btn" id="top-btn-speed" onclick="toggleSpeed()">TỐC ĐỘ: VỪA</button>
+            <button class="top-btn" onclick="showMenu()">🏠 Trở Về Menu</button>
+            <div class="helper-text">👁️ Nháy 2 lần: Chọn | Nháy 3-6 lần: Gọi Hỗ Trợ</div>
+            <button class="top-btn" id="top-btn-speed" onclick="toggleSpeed()">Tốc Độ: Vừa ⏱️</button>
         </div>
 
         <div id="output-box"></div>
 
         <div class="grid" id="main-grid">
             <div class="row">
-                <div class="cell suggest word-suggest" id="sug1">TÔI</div>
-                <div class="cell suggest word-suggest" id="sug2">CẦN</div>
-                <div class="cell suggest word-suggest" id="sug3">MỆT</div>
-                <div class="cell suggest word-suggest" id="sug4">ĐAU</div>
+                <button class="cell suggest word-suggest" id="sug1">TÔI</button>
+                <button class="cell suggest word-suggest" id="sug2">CẦN</button>
+                <button class="cell suggest word-suggest" id="sug3">MỆT</button>
+                <button class="cell suggest word-suggest" id="sug4">ĐAU</button>
             </div>
 
             <div class="row">
-                <div class="cell char">A</div><div class="cell char">Ă</div><div class="cell char">Â</div>
-                <div class="cell char">B</div><div class="cell char">C</div><div class="cell char">D</div>
-                <div class="cell char">Đ</div><div class="cell char">E</div><div class="cell char">Ê</div>
+                <button class="cell char">A</button><button class="cell char">Ă</button><button class="cell char">Â</button>
+                <button class="cell char">B</button><button class="cell char">C</button><button class="cell char">D</button>
+                <button class="cell char">Đ</button><button class="cell char">E</button><button class="cell char">Ê</button>
             </div>
 
             <div class="row">
-                <div class="cell char">F</div><div class="cell char">G</div><div class="cell char">H</div>
-                <div class="cell char">I</div><div class="cell char">J</div><div class="cell char">K</div>
-                <div class="cell char">L</div><div class="cell char">M</div><div class="cell char">N</div>
+                <button class="cell char">F</button><button class="cell char">G</button><button class="cell char">H</button>
+                <button class="cell char">I</button><button class="cell char">J</button><button class="cell char">K</button>
+                <button class="cell char">L</button><button class="cell char">M</button><button class="cell char">N</button>
             </div>
 
             <div class="row">
-                <div class="cell char">O</div><div class="cell char">Ô</div><div class="cell char">Ơ</div>
-                <div class="cell char">P</div><div class="cell char">Q</div><div class="cell char">R</div>
-                <div class="cell char">S</div><div class="cell char">T</div><div class="cell char">U</div>
+                <button class="cell char">O</button><button class="cell char">Ô</button><button class="cell char">Ơ</button>
+                <button class="cell char">P</button><button class="cell char">Q</button><button class="cell char">R</button>
+                <button class="cell char">S</button><button class="cell char">T</button><button class="cell char">U</button>
             </div>
 
             <div class="row">
-                <div class="cell char">Ư</div><div class="cell char">V</div><div class="cell char">W</div>
-                <div class="cell char">X</div><div class="cell char">Y</div><div class="cell char">Z</div>
-                <div class="cell sys">DẤU CÁCH</div><div class="cell sys">XÓA KÝ TỰ</div><div class="cell sys">XÓA HẾT</div>
+                <button class="cell char">Ư</button><button class="cell char">V</button><button class="cell char">W</button>
+                <button class="cell char">X</button><button class="cell char">Y</button><button class="cell char">Z</button>
+                <button class="cell sys">CÁCH</button><button class="cell sys">XÓA</button><button class="cell sys">XÓA HẾT</button>
             </div>
 
             <div class="row">
-                <div class="cell sys" id="grid-btn-speed">TỐC ĐỘ: VỪA</div>
-                <div class="cell iot" id="grid-btn-r1">BẬT ĐÈN</div>
-                <div class="cell iot" id="grid-btn-r2">BẬT QUẠT</div>
-                <div class="cell sys" style="background-color:#48261e; color:#ffa198;">NGỦ</div>
-                <div class="cell sys" style="background-color:#da3633; color:#fff; font-size:24px;">SOS</div>
-                <div class="cell sys" style="background-color:#1b4728; border-color:#2ea043; color:#7ee787;">ĐỌC CÂU</div>
+                <button class="cell sys" id="grid-btn-speed">TỐC ĐỘ</button>
+                <button class="cell iot" id="grid-btn-r1">💡 BẬT ĐÈN</button>
+                <button class="cell iot" id="grid-btn-r2">🌀 BẬT QUẠT</button>
+                <button class="cell sys">NGỦ 😴</button>
+                <button class="cell danger">CẤP CỨU 🚨</button>
+                <button class="cell action">ĐỌC CÂU 🔊</button>
             </div>
         </div>
     </div>
 
-    <div id="status-bar">Đang kết nối WebSocket...</div>
+    <div id="status-bar">Đang kết nối hệ thống...</div>
 
     <script>
+        // ================= QUẢN LÝ THEME (SÁNG/TỐI) =================
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('bci-theme', newTheme);
+            document.getElementById('theme-icon').innerText = newTheme === 'dark' ? '☀️' : '🌓';
+        }
+        
+        // Load theme đã lưu
+        const savedTheme = localStorage.getItem('bci-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-icon').innerText = savedTheme === 'dark' ? '☀️' : '🌓';
+
+        // ================= LOGIC HỆ THỐNG =================
         const hostIP = window.location.hostname || "esp32-bci.local";
         let ws;
         let currentView = 'MENU';
 
-        // BIẾN QUẢN LÝ ĐẾM NHÁY MẮT
         let blinkCount = 0;
         let blinkTimeout = null;
-        const BLINK_WINDOW = 1500; // Thời gian chờ nháy mắt tiếp theo (1.5 giây)
+        const BLINK_WINDOW = 1500; 
 
         function connectWebSocket() {
             ws = new WebSocket(`ws://${hostIP}:81`);
-
-            ws.onopen = () => { 
-                document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#3fb950'>ĐÃ KẾT NỐI WEBSOCKET ESP32</span>"; 
-            };
-            
-            ws.onclose = () => { 
-                document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:#f85149'>MẤT KẾT NỐI ESP32 (ĐANG THỬ LẠI...)</span>"; 
-                setTimeout(connectWebSocket, 2500); 
-            };
-
+            ws.onopen = () => { document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:var(--success)'>Đã kết nối thiết bị 🟢</span>"; };
+            ws.onclose = () => { document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:var(--danger)'>Mất kết nối (Đang thử lại...) 🔴</span>"; setTimeout(connectWebSocket, 2500); };
             ws.onmessage = (event) => {
                 const data = event.data;
-                if (data.startsWith("BLINK:")) {
-                    registerBlink(); // Thay vì gọi handleBlink() ngay lập tức
-                } else if (data.startsWith("TGAM:")) {
+                if (data.startsWith("BLINK:")) registerBlink(); 
+                else if (data.startsWith("TGAM:")) {
                     let parts = data.substring(5).split(',');
-                    if (parts.length >= 3) {
-                        let sig = parseInt(parts[0]);
-                        let att = parseInt(parts[1]);
-                        let med = parseInt(parts[2]);
-                        updateTGAMDisplay(sig, att, med);
-                    }
-                } else if (data.startsWith("RELAY:")) {
+                    if (parts.length >= 3) updateTGAMDisplay(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
+                } 
+                else if (data.startsWith("RELAY:")) {
                     let parts = data.substring(6).split(',');
-                    updateRelayUI(1, parts[0] === '1');
-                    updateRelayUI(2, parts[1] === '1');
-                } else if (data === "SLEEPING") {
-                    enterSleepMode();
-                } else if (data === "WAKEUP") {
-                    exitSleepMode();
-                }
+                    updateRelayUI(1, parts[0] === '1'); updateRelayUI(2, parts[1] === '1');
+                } 
+                else if (data === "SLEEPING") enterSleepMode();
+                else if (data === "WAKEUP") exitSleepMode();
             };
         }
-
         connectWebSocket();
 
         function updateClock() {
             const now = new Date();
-            document.getElementById('clock-time').innerText = 
-                now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            document.getElementById('clock-date').innerText = 
-                `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
+            document.getElementById('clock-time').innerText = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false });
+            document.getElementById('clock-date').innerText = `${now.getDate().toString().padStart(2,'0')}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getFullYear()}`;
         }
-        setInterval(updateClock, 1000);
-        updateClock();
+        setInterval(updateClock, 1000); updateClock();
 
-        function sendCommand(cmd) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(cmd);
-            }
-        }
+        function sendCommand(cmd) { if (ws && ws.readyState === WebSocket.OPEN) ws.send(cmd); }
 
         function updateTGAMDisplay(sig, att, med) {
-            let elSig = document.getElementById('sig-val');
-            let elSigMini = document.getElementById('sig-mini');
-
-            if (sig === 0) {
-                elSig.innerText = "TỐT (0)"; elSig.className = "dash-value good";
-                elSigMini.innerText = "TỐT (0)"; elSigMini.style.color = "#3fb950";
-            } else if (sig === 200) {
-                elSig.innerText = "RỚT ĐIỆN CỰC"; elSig.className = "dash-value bad";
-                elSigMini.innerText = "RỚT (200)"; elSigMini.style.color = "#f85149";
-            } else {
-                elSig.innerText = `KÉM (${sig})`; elSig.className = "dash-value warn";
-                elSigMini.innerText = `KÉM (${sig})`; elSigMini.style.color = "#d29922";
-            }
-
-            document.getElementById('att-val').innerText = att;
-            document.getElementById('med-val').innerText = med;
-            document.getElementById('att-mini').innerText = att;
-            document.getElementById('med-mini').innerText = med;
+            let elSig = document.getElementById('sig-val'); let elSigMini = document.getElementById('sig-mini');
+            if (sig === 0) { elSig.innerText = "TỐT"; elSig.className = "dash-value good"; elSigMini.innerText = "TỐT"; elSigMini.style.color = "var(--success)"; } 
+            else if (sig === 200) { elSig.innerText = "RỚT ĐIỆN CỰC"; elSig.className = "dash-value bad"; elSigMini.innerText = "RỚT"; elSigMini.style.color = "var(--danger)"; } 
+            else { elSig.innerText = `KÉM (${sig})`; elSig.className = "dash-value warn"; elSigMini.innerText = `KÉM`; elSigMini.style.color = "var(--warning)"; }
+            document.getElementById('att-val').innerText = att; document.getElementById('med-val').innerText = med;
+            document.getElementById('att-mini').innerText = att; document.getElementById('med-mini').innerText = med;
         }
 
         function showMenu() {
             currentView = 'MENU';
-            document.getElementById('view-keyboard').style.display = 'none';
-            document.getElementById('view-menu').style.display = 'flex';
-            clearInterval(scanInterval); 
-            speakVoice("Quay lại menu chính");
+            document.getElementById('view-keyboard').style.display = 'none'; document.getElementById('view-menu').style.display = 'flex';
+            document.getElementById('tgam-status-mini').style.display = 'none';
+            clearInterval(scanInterval); speakVoice("Quay lại màn hình chính");
         }
 
         function showKeyboard() {
             currentView = 'KEYBOARD';
-            document.getElementById('view-menu').style.display = 'none';
-            document.getElementById('view-keyboard').style.display = 'flex';
-            scanState = 'ROW'; 
-            currentRow = 0; 
-            startScanning(); 
-            speakVoice("Mở bàn phím giao tiếp");
+            document.getElementById('view-menu').style.display = 'none'; document.getElementById('view-keyboard').style.display = 'flex';
+            document.getElementById('tgam-status-mini').style.display = 'flex';
+            scanState = 'ROW'; currentRow = 0; startScanning(); speakVoice("Mở bàn phím chữ");
         }
 
-        // ==========================================
-        // QUẢN LÝ GIỌNG ĐỌC
-        // ==========================================
-        let voices = [];
-        let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 0.85;
-        let ttsVolume = parseFloat(localStorage.getItem('ttsVolume')) || 1.0;
-        let savedVoiceURI = localStorage.getItem('ttsVoiceURI');
-        let isSettingsOpen = false;
+        // ================= GIỌNG ĐỌC TTS =================
+        let voices = []; let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 0.85; let ttsVolume = parseFloat(localStorage.getItem('ttsVolume')) || 1.0;
+        let savedVoiceURI = localStorage.getItem('ttsVoiceURI'); let isSettingsOpen = false;
+        let speechQueue = []; let isSpeechPlaying = false; let ttsWatchdog = null;
 
-        let speechQueue = [];
-        let isSpeechPlaying = false;
-        let activeUtterances = []; 
-        let ttsWatchdog = null;
-
-        document.getElementById('rate-slider').value = ttsRate;
-        document.getElementById('rate-val').innerText = ttsRate;
-        document.getElementById('vol-slider').value = ttsVolume;
-        document.getElementById('vol-val').innerText = Math.round(ttsVolume * 100) + '%';
+        document.getElementById('rate-slider').value = ttsRate; document.getElementById('rate-val').innerText = ttsRate;
+        document.getElementById('vol-slider').value = ttsVolume; document.getElementById('vol-val').innerText = Math.round(ttsVolume * 100) + '%';
 
         function populateVoices() {
             if (!('speechSynthesis' in window)) return;
             voices = window.speechSynthesis.getVoices();
-            const select = document.getElementById('voice-select');
-            select.innerHTML = '';
-
+            const select = document.getElementById('voice-select'); select.innerHTML = '';
             let viVoices = voices.filter(v => v.lang.includes('vi') || v.lang.includes('VN'));
-            let defaultVoices = viVoices.length > 0 ? viVoices : voices;
-
-            defaultVoices.forEach((v) => {
-                const opt = document.createElement('option');
-                opt.value = v.voiceURI;
-                opt.textContent = `${v.name} (${v.lang})`;
+            (viVoices.length > 0 ? viVoices : voices).forEach((v) => {
+                const opt = document.createElement('option'); opt.value = v.voiceURI; opt.textContent = `${v.name} (${v.lang})`;
                 if (savedVoiceURI && v.voiceURI === savedVoiceURI) opt.selected = true;
                 select.appendChild(opt);
             });
         }
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = populateVoices;
-            populateVoices();
-        }
+        if ('speechSynthesis' in window) { window.speechSynthesis.onvoiceschanged = populateVoices; populateVoices(); }
 
         function processNextSpeech() {
-            if (speechQueue.length === 0) {
-                isSpeechPlaying = false;
-                activeUtterances = [];
-                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
-                return;
-            }
-
-            if (!('speechSynthesis' in window)) {
-                speechQueue = []; isSpeechPlaying = false; return;
-            }
-
+            if (speechQueue.length === 0) { isSpeechPlaying = false; if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } return; }
+            if (!('speechSynthesis' in window)) { speechQueue = []; isSpeechPlaying = false; return; }
             isSpeechPlaying = true;
             const item = speechQueue.shift();
             const msg = new SpeechSynthesisUtterance(item.text);
-
-            msg.rate = ttsRate;
-            msg.volume = ttsVolume;
-
+            msg.rate = ttsRate; msg.volume = ttsVolume;
             if (voices.length > 0) {
                 const curURI = document.getElementById('voice-select').value;
-                const v = voices.find(vox => vox.voiceURI === curURI);
+                const v = voices.find(vox => vox.voiceURI === curURI) || voices.find(vox => vox.lang.includes('vi'));
                 if (v) msg.voice = v;
-                else {
-                    const viVoice = voices.find(vox => vox.lang.includes('vi') || vox.lang.includes('VN'));
-                    if (viVoice) msg.voice = viVoice;
-                }
             }
-
-            activeUtterances.push(msg);
-
             let finished = false;
-            const completeSpeech = () => {
-                if (finished) return;
-                finished = true;
-                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
-                setTimeout(() => { processNextSpeech(); }, 50);
-            };
-
-            msg.onend = completeSpeech;
-            msg.onerror = completeSpeech;
-
-            let estimatedDuration = Math.max(1200, item.text.length * 150 + 500);
-            ttsWatchdog = setTimeout(() => { if (!finished) completeSpeech(); }, estimatedDuration);
-
+            const completeSpeech = () => { if (finished) return; finished = true; if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } setTimeout(() => { processNextSpeech(); }, 50); };
+            msg.onend = completeSpeech; msg.onerror = completeSpeech;
+            ttsWatchdog = setTimeout(() => { if (!finished) completeSpeech(); }, Math.max(1200, item.text.length * 150 + 500));
             try { window.speechSynthesis.speak(msg); } catch(e) { completeSpeech(); }
         }
 
         function speakVoice(text, immediate = false) {
-            if (!('speechSynthesis' in window)) return;
-            if (!text || text.trim() === '') return;
-
-            if (immediate) {
-                speechQueue = [];
-                activeUtterances = [];
-                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; }
-                try { window.speechSynthesis.cancel(); } catch(e) {}
-                isSpeechPlaying = false;
-            }
-
+            if (!('speechSynthesis' in window) || !text || text.trim() === '') return;
+            if (immediate) { speechQueue = []; if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } try { window.speechSynthesis.cancel(); } catch(e) {} isSpeechPlaying = false; }
             if (speechQueue.length >= 8) speechQueue.shift();
             speechQueue.push({ text: text.trim() });
-
             if (!isSpeechPlaying) processNextSpeech();
         }
 
-        const speeds = [1500, 1000, 600];  
-        const speedLabels = ["CHẬM", "VỪA", "NHANH"];
-        let speedIdx = 1;  
-        let scanInterval;
-
+        // ================= BÀN PHÍM VÀ SCANNING =================
+        const speeds = [1500, 1000, 600]; const speedLabels = ["CHẬM", "VỪA", "NHANH"]; let speedIdx = 1; let scanInterval;
         function toggleSpeed() {
-            speedIdx = (speedIdx + 1) % 3;
-            const newLabel = "TỐC ĐỘ: " + speedLabels[speedIdx];
-            document.getElementById('top-btn-speed').innerText = newLabel;
-            document.getElementById('grid-btn-speed').innerText = newLabel;
+            speedIdx = (speedIdx + 1) % 3; const newLabel = "TỐC ĐỘ: " + speedLabels[speedIdx];
+            document.getElementById('top-btn-speed').innerText = newLabel + " ⏱️"; document.getElementById('grid-btn-speed').innerText = newLabel;
             speakVoice(newLabel, true);
-            if (!isSleeping && !isSettingsOpen && currentView === 'KEYBOARD') {
-                clearInterval(scanInterval);
-                scanInterval = setInterval(tick, speeds[speedIdx]);
-            }
+            if (!isSleeping && !isSettingsOpen && currentView === 'KEYBOARD') { clearInterval(scanInterval); scanInterval = setInterval(tick, speeds[speedIdx]); }
         }
 
-        // ==========================================
-        // DUAL-LAYER CONTEXT: 1-GRAM & 2-GRAM
-        // ==========================================
-        const dictionary = [
-            "TÔI", "BẠN", "MẸ", "CHA", "BÁC SĨ", "Y TÁ", "CON", "CHỒNG", "VỢ", "NHÀ", "BỆNH VIỆN", 
-            "CẦN", "MUỐN", "THÍCH", "LÀM", "ĂN", "UỐNG", "ĐI", "NGỦ", "TẮM", "KHÁM", "MỞ", "BẬT", "TẮT", "LẤY", "GIÚP", "NGỒI", "NẰM",
-            "MỆT", "ĐAU", "NHỨC", "MỎI", "NGỨA", "HO", "THỞ", "KHÁT", "ĐÓI", "NÓNG", "LẠNH", "KHỎE", "YẾU", "CHÓNG MẶT", "BUỒN NÔN",
-            "NƯỚC", "CƠM", "MÌ", "PHỞ", "CHÁO", "SỮA", "THUỐC", "ÁO", "QUẦN", "GIƯỜNG", "ĐÈN", "QUẠT", "TV", "CHĂN", "GỐI",
-            "ĐẦU", "BỤNG", "TAY", "CHÂN", "LƯNG", "NGỰC", "MẮT", "CỔ", "MIỆNG",
-            "ĐÚNG", "SAI", "RẤT", "QUÁ", "KHÔNG", "CÓ", "CHƯA", "RỒI", "ĐANG", "SẼ", "XIN LỖI", "CẢM ƠN", "VÂNG", "DẠ", "NHIỀU", "ÍT", "NHANH", "CHẬM",
-            "VỆ SINH", "QUẦN ÁO", "LAU NGƯỜI"
-        ];
+        const dictionary = ["TÔI", "BẠN", "MẸ", "CHA", "BÁC SĨ", "Y TÁ", "CON", "CHỒNG", "VỢ", "NHÀ", "BỆNH VIỆN", "CẦN", "MUỐN", "THÍCH", "LÀM", "ĂN", "UỐNG", "ĐI", "NGỦ", "TẮM", "KHÁM", "MỞ", "BẬT", "TẮT", "LẤY", "GIÚP", "NGỒI", "NẰM", "MỆT", "ĐAU", "NHỨC", "MỎI", "NGỨA", "HO", "THỞ", "KHÁT", "ĐÓI", "NÓNG", "LẠNH", "KHỎE", "YẾU", "CHÓNG MẶT", "BUỒN NÔN", "NƯỚC", "CƠM", "MÌ", "PHỞ", "CHÁO", "SỮA", "THUỐC", "ÁO", "QUẦN", "GIƯỜNG", "ĐÈN", "QUẠT", "TV", "CHĂN", "GỐI", "ĐẦU", "BỤNG", "TAY", "CHÂN", "LƯNG", "NGỰC", "MẮT", "CỔ", "MIỆNG", "ĐÚNG", "SAI", "RẤT", "QUÁ", "KHÔNG", "CÓ", "CHƯA", "RỒI", "ĐANG", "SẼ", "XIN LỖI", "CẢM ƠN", "VÂNG", "DẠ", "NHIỀU", "ÍT", "NHANH", "CHẬM", "VỆ SINH", "QUẦN ÁO", "LAU NGƯỜI"];
+        const bigrams = { "TÔI": ["CẦN", "MỆT", "ĐAU", "KHÁT", "ĐÓI", "MUỐN", "LẠNH", "NÓNG"], "CẦN": ["GIÚP", "UỐNG", "ĂN", "NGỦ", "ĐI", "THUỐC", "LẤY", "BÁC SĨ", "VỆ SINH"], "MUỐN": ["UỐNG", "ĂN", "VỆ SINH", "NGỦ", "TẮM", "VỀ", "NGỒI", "NẰM"], "ĐAU": ["ĐẦU", "BỤNG", "LƯNG", "CHÂN", "TAY", "NGỰC", "MẮT", "CỔ"], "UỐNG": ["NƯỚC", "SỮA", "THUỐC"], "ĂN": ["CƠM", "CHÁO", "PHỞ", "MÌ"], "ĐI": ["VỆ SINH", "NGỦ", "VIỆN", "VỀ", "TẮM"], "BẬT": ["ĐÈN", "QUẠT", "TV", "MÁY"], "TẮT": ["ĐÈN", "QUẠT", "TV", "MÁY"], "BÁC SĨ": ["ƠI", "KHÁM", "CHỮA", "GIÚP"], "LẤY": ["NƯỚC", "THUỐC", "CHĂN", "GỐI", "ÁO"], "CẢM": ["ƠN", "LẠNH", "THẤY", "GIÁC"], "XIN": ["LỖI", "NƯỚC", "THÊM", "GIÚP"], "RẤT": ["MỆT", "ĐAU", "ĐÓI", "KHÁT", "NÓNG", "LẠNH"], "KHÔNG": ["ĂN", "UỐNG", "CẦN", "THỞ", "ĐƯỢC", "SAO", "KỊP"], "CÓ": ["ĐAU", "MỆT", "AI", "THỂ"], "MỎI": ["LƯNG", "CHÂN", "TAY", "CỔ", "MẮT"], "KHÓ": ["THỞ", "CHỊU", "NGỦ", "ĂN", "UỐNG"] };
 
-        const bigrams = {
-            "TÔI": ["CẦN", "MỆT", "ĐAU", "KHÁT", "ĐÓI", "MUỐN", "LẠNH", "NÓNG"],
-            "CẦN": ["GIÚP", "UỐNG", "ĂN", "NGỦ", "ĐI", "THUỐC", "LẤY", "BÁC SĨ"],
-            "MUỐN": ["UỐNG", "ĂN", "VỆ SINH", "NGỦ", "TẮM", "VỀ", "NGỒI", "NẰM"],
-            "ĐAU": ["ĐẦU", "BỤNG", "LƯNG", "CHÂN", "TAY", "NGỰC", "MẮT", "CỔ"],
-            "UỐNG": ["NƯỚC", "SỮA", "THUỐC"],
-            "ĂN": ["CƠM", "CHÁO", "PHỞ", "MÌ"],
-            "ĐI": ["VỆ SINH", "NGỦ", "VIỆN", "VỀ", "TẮM"],
-            "BẬT": ["ĐÈN", "QUẠT", "TV", "MÁY"],
-            "TẮT": ["ĐÈN", "QUẠT", "TV", "MÁY"],
-            "BÁC SĨ": ["ƠI", "KHÁM", "CHỮA", "GIÚP"],
-            "LẤY": ["NƯỚC", "THUỐC", "CHĂN", "GỐI", "ÁO"],
-            "CẢM": ["ƠN", "LẠNH", "THẤY", "GIÁC"],
-            "XIN": ["LỖI", "NƯỚC", "THÊM", "GIÚP"],
-            "RẤT": ["MỆT", "ĐAU", "ĐÓI", "KHÁT", "NÓNG", "LẠNH"],
-            "KHÔNG": ["ĂN", "UỐNG", "CẦN", "THỞ", "ĐƯỢC", "SAO", "KỊP"],
-            "CÓ": ["ĐAU", "MỆT", "AI", "THỂ"],
-            "MỎI": ["LƯNG", "CHÂN", "TAY", "CỔ", "MẮT"],
-            "KHÓ": ["THỞ", "CHỊU", "NGỦ", "ĂN", "UỐNG"]
-        };
-
-        function removeAccents(str) { 
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Đ/g, "D").replace(/đ/g, "d"); 
-        }
-
+        function removeAccents(str) { return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/Đ/g, "D").replace(/đ/g, "d"); }
         function processTelex(text) {
-            let words = text.split(' ');
-            let lastWord = words[words.length - 1];
-            if (!lastWord) return text;
-
-            lastWord = lastWord.replace(/AW/gi, 'Ă').replace(/AA/gi, 'Â')
-                               .replace(/EE/gi, 'Ê').replace(/OO/gi, 'Ô')
-                               .replace(/OW/gi, 'Ơ').replace(/UW/gi, 'Ư').replace(/DD/gi, 'Đ');
-
-            const tones = {'S':'\u0301', 'F':'\u0300', 'R':'\u0309', 'X':'\u0303', 'J':'\u0323'};
-            let lastChar = lastWord.slice(-1).toUpperCase();
-
+            let words = text.split(' '); let lastWord = words[words.length - 1]; if (!lastWord) return text;
+            lastWord = lastWord.replace(/AW/gi, 'Ă').replace(/AA/gi, 'Â').replace(/EE/gi, 'Ê').replace(/OO/gi, 'Ô').replace(/OW/gi, 'Ơ').replace(/UW/gi, 'Ư').replace(/DD/gi, 'Đ');
+            const tones = {'S':'\u0301', 'F':'\u0300', 'R':'\u0309', 'X':'\u0303', 'J':'\u0323'}; let lastChar = lastWord.slice(-1).toUpperCase();
             if (tones[lastChar]) {
-                let baseWord = lastWord.slice(0, -1);
-                baseWord = baseWord.normalize('NFD').replace(/[\u0300-\u0303\u0309\u0323]/g, '');
-
-                let vowels = "AĂÂEÊIOÔƠUƯY";
-                let targetIdx = -1;
-                
+                let baseWord = lastWord.slice(0, -1).normalize('NFD').replace(/[\u0300-\u0303\u0309\u0323]/g, '');
+                let vowels = "AĂÂEÊIOÔƠUƯY"; let targetIdx = -1;
                 for (let i = baseWord.length - 1; i >= 0; i--) {
                     if (vowels.includes(baseWord[i].normalize('NFD')[0].toUpperCase())) {
-                        targetIdx = i;
-                        if (i > 0 && vowels.includes(baseWord[i-1].normalize('NFD')[0].toUpperCase())) {
-                            targetIdx = i - 1;
-                            let prevPrev = i > 1 ? baseWord[i-2].toUpperCase() : '';
-                            if ((prevPrev === 'Q' && baseWord[i-1].toUpperCase() === 'U') ||
-                                (prevPrev === 'G' && baseWord[i-1].toUpperCase() === 'I')) {
-                                targetIdx = i;
-                            }
-                        }
-                        break;
+                        targetIdx = i; if (i > 0 && vowels.includes(baseWord[i-1].normalize('NFD')[0].toUpperCase())) {
+                            targetIdx = i - 1; let prevPrev = i > 1 ? baseWord[i-2].toUpperCase() : '';
+                            if ((prevPrev === 'Q' && baseWord[i-1].toUpperCase() === 'U') || (prevPrev === 'G' && baseWord[i-1].toUpperCase() === 'I')) targetIdx = i;
+                        } break;
                     }
                 }
-
-                if (targetIdx !== -1) {
-                    let charToAccent = baseWord[targetIdx];
-                    let accentedChar = (charToAccent.normalize('NFD') + tones[lastChar]).normalize('NFC');
-                    lastWord = baseWord.substring(0, targetIdx) + accentedChar + baseWord.substring(targetIdx + 1);
-                } else {
-                    lastWord = baseWord + lastChar; 
-                }
+                if (targetIdx !== -1) { let accentedChar = (baseWord[targetIdx].normalize('NFD') + tones[lastChar]).normalize('NFC'); lastWord = baseWord.substring(0, targetIdx) + accentedChar + baseWord.substring(targetIdx + 1); }
+                else lastWord = baseWord + lastChar; 
             }
-
-            words[words.length - 1] = lastWord;
-            return words.join(' ');
+            words[words.length - 1] = lastWord; return words.join(' ');
         }
 
         function updatePredictiveText() {
             const outText = document.getElementById('output-box').textContent;
             const words = outText.trim().split(/\s+/);
             const currentPrefix = outText.endsWith(' ') ? '' : (words[words.length - 1] || '').toUpperCase();
-            
-            let lastCompleteWord = '';
-            if (outText.endsWith(' ')) {
-                lastCompleteWord = (words[words.length - 1] || '').toUpperCase();
-            } else if (words.length >= 2) {
-                lastCompleteWord = words[words.length - 2].toUpperCase();
-            }
-
+            let lastCompleteWord = outText.endsWith(' ') ? (words[words.length - 1] || '').toUpperCase() : (words.length >= 2 ? words[words.length - 2].toUpperCase() : '');
             let matches = [];
-
-            if (currentPrefix === '') {
-                if (lastCompleteWord && bigrams[lastCompleteWord]) {
-                    matches = [...bigrams[lastCompleteWord]];
-                } else { matches = ["TÔI", "CẦN", "MỆT", "ĐAU"]; }
-            } else {
+            if (currentPrefix === '') { matches = (lastCompleteWord && bigrams[lastCompleteWord]) ? [...bigrams[lastCompleteWord]] : ["TÔI", "CẦN", "MỆT", "ĐAU"]; } 
+            else {
                 const cleanPrefix = removeAccents(currentPrefix);
-                if (lastCompleteWord && bigrams[lastCompleteWord]) {
-                    const contextMatches = bigrams[lastCompleteWord].filter(w => removeAccents(w).startsWith(cleanPrefix) && w !== currentPrefix);
-                    matches.push(...contextMatches);
-                }
-                const generalMatches = dictionary.filter(w => removeAccents(w).startsWith(cleanPrefix) && w !== currentPrefix);
-                generalMatches.forEach(w => { if (!matches.includes(w)) matches.push(w); });
+                if (lastCompleteWord && bigrams[lastCompleteWord]) { matches.push(...bigrams[lastCompleteWord].filter(w => removeAccents(w).startsWith(cleanPrefix) && w !== currentPrefix)); }
+                dictionary.filter(w => removeAccents(w).startsWith(cleanPrefix) && w !== currentPrefix).forEach(w => { if (!matches.includes(w)) matches.push(w); });
             }
-
-            if (matches.length < 4) {
-                dictionary.forEach(w => { if (!matches.includes(w) && w !== currentPrefix && matches.length < 4) matches.push(w); });
-            }
-
-            document.getElementById('sug1').innerText = matches[0] || '';
-            document.getElementById('sug2').innerText = matches[1] || '';
-            document.getElementById('sug3').innerText = matches[2] || '';
-            document.getElementById('sug4').innerText = matches[3] || '';
+            if (matches.length < 4) dictionary.forEach(w => { if (!matches.includes(w) && w !== currentPrefix && matches.length < 4) matches.push(w); });
+            for(let i=1; i<=4; i++) document.getElementById('sug'+i).innerText = matches[i-1] || '';
         }
 
         function applySuggestion(word) {
-            const outBox = document.getElementById('output-box');
-            let text = outBox.textContent;
-            
-            if (text === '' || text.endsWith(' ')) {
-                outBox.textContent = text + word + ' ';
-            } else {
-                let words = text.trim().split(/\s+/);
-                words.pop();
-                words.push(word);
-                outBox.textContent = words.join(' ') + ' ';
-            }
+            const outBox = document.getElementById('output-box'); let text = outBox.textContent;
+            if (text === '' || text.endsWith(' ')) outBox.textContent = text + word + ' ';
+            else { let words = text.trim().split(/\s+/); words.pop(); words.push(word); outBox.textContent = words.join(' ') + ' '; }
             updatePredictiveText();
         }
 
-        const rows = document.querySelectorAll('.row');
-        let currentRow = 0, currentCol = 0;
-        let scanState = 'ROW'; 
-        let loopCount = 0;     
-        let isSleeping = false;
+        const rows = document.querySelectorAll('.row'); let currentRow = 0, currentCol = 0; let scanState = 'ROW'; let loopCount = 0; let isSleeping = false;
 
         function renderScan() { 
-            rows.forEach(r => { 
-                r.classList.remove('scanning-row'); 
-                Array.from(r.children).forEach(c => c.classList.remove('scanning-cell')); 
-            }); 
-            
-            if (scanState === 'ROW') { 
-                rows[currentRow].classList.add('scanning-row'); 
-            } else { 
-                rows[currentRow].classList.add('scanning-row'); 
-                rows[currentRow].children[currentCol].classList.add('scanning-cell'); 
-            } 
+            rows.forEach(r => { r.classList.remove('scanning-row'); Array.from(r.children).forEach(c => c.classList.remove('scanning-cell')); }); 
+            if (scanState === 'ROW') rows[currentRow].classList.add('scanning-row'); 
+            else { rows[currentRow].classList.add('scanning-row'); rows[currentRow].children[currentCol].classList.add('scanning-cell'); } 
         }
 
         function tick() { 
             if (isSleeping || isSettingsOpen || currentView !== 'KEYBOARD') return; 
-            
-            if (scanState === 'ROW') { 
-                currentRow = (currentRow + 1) % rows.length; 
-            } else if (scanState === 'CELL') {
+            if (scanState === 'ROW') currentRow = (currentRow + 1) % rows.length; 
+            else if (scanState === 'CELL') {
                 currentCol++;
                 if (currentCol >= rows[currentRow].children.length) {
                     loopCount++;
-                    if (loopCount >= 2) {
-                        scanState = 'ROW'; 
-                        currentCol = 0; 
-                        loopCount = 0;
-                    } else {
-                        currentCol = 0;
-                    }
+                    if (loopCount >= 2) { scanState = 'ROW'; currentCol = 0; loopCount = 0; } 
+                    else currentCol = 0;
                 }
-                
                 if (scanState === 'CELL') {
-                    let cell = rows[currentRow].children[currentCol];
-                    let text = cell.innerText.trim();
-                    
-                    if (text === "DẤU CÁCH") text = "Cách";
-                    else if (text === "XÓA KÝ TỰ") text = "Xóa";
-                    else if (text === "XÓA HẾT") text = "Xóa hết";
-                    else if (text === "ĐỌC CÂU") text = "Đọc câu";
-                    else if (text === "SOS") text = "Cấp cứu";
-                    else if (text.startsWith("TỐC ĐỘ")) text = "Tốc độ";
-                    
+                    let text = rows[currentRow].children[currentCol].innerText.trim().replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
+                    if (text === "CÁCH") text = "Cách"; else if (text === "XÓA") text = "Xóa"; else if (text === "XÓA HẾT") text = "Xóa hết"; else if (text === "ĐỌC CÂU") text = "Đọc câu"; else if (text === "CẤP CỨU") text = "Cấp cứu"; else if (text.startsWith("TỐC ĐỘ")) text = "Tốc độ";
                     if (text) speakVoice(text, true); 
                 }
             }
             renderScan(); 
         }
 
-        function startScanning() { 
-            clearInterval(scanInterval); 
-            renderScan(); 
-            scanInterval = setInterval(tick, speeds[speedIdx]); 
-        }
+        function startScanning() { clearInterval(scanInterval); renderScan(); scanInterval = setInterval(tick, speeds[speedIdx]); }
 
         function executeAction(element) {
-            const text = element.innerText.trim();
-            if (text === '') return; 
-
+            const textRaw = element.innerText.trim();
+            const text = textRaw.replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim(); 
+            if (textRaw === '') return; 
             const outBox = document.getElementById('output-box');
 
-            if (element.classList.contains('word-suggest')) { 
-                applySuggestion(text); 
-                speakVoice(text, true); 
-            }
-            else if (element.classList.contains('char')) { 
-                outBox.textContent += text; 
-                outBox.textContent = processTelex(outBox.textContent); 
-                updatePredictiveText(); 
-                speakVoice(text, true); 
-            }
-            else if (text === "DẤU CÁCH") { 
-                if (!outBox.textContent.endsWith(' ') && outBox.textContent !== '') {
-                    outBox.textContent += " "; 
-                    updatePredictiveText(); 
-                }
-                speakVoice("Dấu cách", true); 
-            }
-            else if (text === "XÓA KÝ TỰ") { 
-                outBox.textContent = outBox.textContent.slice(0, -1); 
-                updatePredictiveText(); 
-                speakVoice("Xóa", true); 
-            }
-            else if (text === "XÓA HẾT") { 
-                outBox.textContent = ""; 
-                updatePredictiveText(); 
-                speakVoice("Xóa hết", true); 
-            }
-            else if (text === "ĐỌC CÂU") { 
-                let phrase = outBox.textContent.trim();
-                if (phrase !== "") {
-                    speakVoice(phrase, true);
-                    sendCommand("SENTENCE:" + phrase);
-                } else {
-                    speakVoice("Chưa có nội dung", true);
-                }
-            }
-            else if (text.startsWith("TỐC ĐỘ")) { toggleSpeed(); }
-            else if (text.includes("ĐÈN")) { toggleRelay(1); }
-            else if (text.includes("QUẠT")) { toggleRelay(2); }
+            if (element.classList.contains('word-suggest')) { applySuggestion(text); speakVoice(text, true); }
+            else if (element.classList.contains('char')) { outBox.textContent += text; outBox.textContent = processTelex(outBox.textContent); updatePredictiveText(); speakVoice(text, true); }
+            else if (text === "CÁCH") { if (!outBox.textContent.endsWith(' ') && outBox.textContent !== '') { outBox.textContent += " "; updatePredictiveText(); } speakVoice("Dấu cách", true); }
+            else if (text === "XÓA") { outBox.textContent = outBox.textContent.slice(0, -1); updatePredictiveText(); speakVoice("Xóa", true); }
+            else if (text === "XÓA HẾT") { outBox.textContent = ""; updatePredictiveText(); speakVoice("Xóa hết", true); }
+            else if (text === "ĐỌC CÂU") { let phrase = outBox.textContent.trim(); if (phrase !== "") { speakVoice(phrase, true); sendCommand("SENTENCE:" + phrase); } else speakVoice("Chưa có nội dung", true); }
+            else if (text.startsWith("TỐC ĐỘ")) toggleSpeed();
+            else if (text.includes("ĐÈN")) toggleRelay(1);
+            else if (text.includes("QUẠT")) toggleRelay(2);
             else if (text === "NGỦ") { enterSleepMode(); sendCommand('S'); }
-            else if (text === "SOS") { 
-                sendQuickAlert("SOS");
-            }
+            else if (text === "CẤP CỨU") sendQuickAlert("SOS");
 
-            scanState = 'ROW';
-            currentCol = 0;
-            loopCount = 0;
-            renderScan();
+            scanState = 'ROW'; currentCol = 0; loopCount = 0; renderScan();
         }
 
-        // ==========================================
-        // LOGIC ĐẾM NHÁY MẮT (MỚI)
-        // ==========================================
+        // ================= XỬ LÝ NHÁY MẮT =================
         function registerBlink() {
             if (isSleeping || isSettingsOpen) return;
-
             blinkCount++;
-            
-            if (blinkCount === 1) {
-                clearInterval(scanInterval);
-            }
-
-            // Hiển thị UI đếm nháy mắt
+            if (blinkCount === 1) clearInterval(scanInterval);
             const counterEl = document.getElementById('blink-counter');
-            counterEl.innerText = "👁️ Nháy mắt: " + blinkCount;
-            counterEl.style.display = 'block';
-
-            // Xóa timeout cũ nếu người dùng tiếp tục nháy mắt
+            counterEl.innerText = "👁️ Nháy mắt: " + blinkCount; counterEl.style.display = 'block';
             if (blinkTimeout) clearTimeout(blinkTimeout);
-
-            // Đợi 1.5 giây xem người dùng có nháy tiếp không
-            blinkTimeout = setTimeout(() => {
-                counterEl.style.display = 'none';
-                processBlinks(blinkCount);
-                blinkCount = 0; // Reset bộ đếm
-            }, BLINK_WINDOW);
+            blinkTimeout = setTimeout(() => { counterEl.style.display = 'none'; processBlinks(blinkCount); blinkCount = 0; }, BLINK_WINDOW);
         }
 
         function processBlinks(count) {
-            if (count === 1) {
-                // Bỏ qua (nháy mắt sinh học tự nhiên)
-                console.log("Bỏ qua 1 lần nháy mắt (sinh học)");
-            }
-            else if (count === 2) {
-                // 2 lần: CHỌN (Select)
-                executeNormalSelection();
-            }
-            else if (count === 3) {
-                sendQuickAlert("TÔI CẦN UỐNG NƯỚC");
-            }
-            else if (count === 4) {
-                sendQuickAlert("TÔI CẦN ĐI VỆ SINH");
-            }
-            else if (count === 5) {
-                sendQuickAlert("TÔI ĐANG RẤT ĐAU");
-            }
-            else if (count >= 6) {
-                sendQuickAlert("SOS");
-            }
-                if (currentView === 'KEYBOARD' && !isSleeping && !isSettingsOpen) {
-                startScanning();
-            }
+            if (count === 1) console.log("Bỏ qua 1 lần nháy mắt (sinh học)");
+            else if (count === 2) executeNormalSelection();
+            else if (count === 3) sendQuickAlert("TÔI CẦN UỐNG NƯỚC");
+            else if (count === 4) sendQuickAlert("TÔI CẦN ĐI VỆ SINH");
+            else if (count === 5) sendQuickAlert("TÔI ĐANG RẤT ĐAU");
+            else if (count >= 6) sendQuickAlert("SOS");
+            if (currentView === 'KEYBOARD' && !isSleeping && !isSettingsOpen) startScanning();
         }
 
         function executeNormalSelection() {
-            if (currentView === 'MENU') {
-                showKeyboard();
-                return;
-            }
+            if (currentView === 'MENU') { showKeyboard(); return; }
             if (scanState === 'ROW') {
-                scanState = 'CELL';
-                currentCol = 0;
-                loopCount = 0;
-                renderScan();
-                
-                let firstCellText = rows[currentRow].children[0].innerText.trim();
+                scanState = 'CELL'; currentCol = 0; loopCount = 0; renderScan();
+                let firstCellText = rows[currentRow].children[0].innerText.replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
                 if (firstCellText) speakVoice(firstCellText, true);
             } 
-            else if (scanState === 'CELL') {
-                const targetCell = rows[currentRow].children[currentCol];
-                executeAction(targetCell);
-            }
+            else if (scanState === 'CELL') executeAction(rows[currentRow].children[currentCol]);
         }
 
         function sendQuickAlert(msg) {
-            if (msg === "SOS") {
-                speakVoice("CẤP CỨU! CẦN BÁC SĨ GIÚP ĐỠ GẤP!", true);
-                sendCommand("SOS");
-            } else {
-                speakVoice(msg, true);
-                sendCommand("SENTENCE:" + msg);
-            }
+            if (msg === "SOS") { speakVoice("CẤP CỨU! CẦN BÁC SĨ GIÚP ĐỠ GẤP!", true); sendCommand("SOS"); } 
+            else { speakVoice(msg, true); sendCommand("SENTENCE:" + msg); }
             showToastAlert(msg);
         }
 
         function showToastAlert(msg) {
             const toast = document.getElementById('toast-alert');
             toast.innerText = msg === "SOS" ? "🚨 CẤP CỨU KHẨN CẤP 🚨" : "⚠️ " + msg;
-            toast.style.background = msg === "SOS" ? "#da3633" : "#d29922";
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 4000);
+            toast.style.background = msg === "SOS" ? "var(--danger)" : "var(--warning)";
+            toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
-        document.querySelectorAll('.cell').forEach(cell => {
-            cell.addEventListener('click', (e) => {
-                e.stopPropagation();
-                executeAction(cell);
-            });
+        document.querySelectorAll('.cell, .btn-main, .btn-sub, .top-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(btn.classList.contains('cell')) executeAction(btn); });
         });
 
-        function toggleRelay(num) {
-            sendCommand('R' + num);
-        }
+        function toggleRelay(num) { sendCommand('R' + num); }
         function updateRelayUI(num, state) {
-            let label = state ? "BẬT" : "TẮT";
-            let actionLabel = state ? "TẮT" : "BẬT";
-            let color = state ? "#3fb950" : "#8b949e";
-
-            let mEl = document.getElementById('menu-r' + num);
-            if (mEl) { mEl.innerText = label; mEl.style.color = color; }
-
+            let label = state ? "Đang Bật" : "Đang Tắt"; let actionLabel = state ? "TẮT" : "BẬT"; let color = state ? "var(--success)" : "var(--text-muted)";
+            let mEl = document.getElementById('menu-r' + num); if (mEl) { mEl.innerText = label; mEl.style.color = color; }
             let kEl = document.getElementById('grid-btn-r' + num);
             if (kEl) {
-                let name = num === 1 ? "ĐÈN" : "QUẠT";
-                kEl.innerText = `${actionLabel} ${name}`;
-                kEl.style.backgroundColor = state ? "#1f3a28" : "#3d2222";
-                kEl.style.borderColor = state ? "#2ea043" : "#8b2828";
+                let name = num === 1 ? "ĐÈN" : "QUẠT"; let icon = num === 1 ? "💡" : "🌀";
+                kEl.innerText = `${icon} ${actionLabel} ${name}`;
+                kEl.style.backgroundColor = state ? "rgba(245, 158, 11, 0.15)" : "var(--key-sys-bg)"; 
+                kEl.style.color = state ? "var(--warning)" : "var(--text-muted)";
+                kEl.style.borderColor = state ? "var(--warning)" : "var(--key-border)";
             }
         }
 
-        function enterSleepMode() {
-            isSleeping = true;
-            document.getElementById('sleep-overlay').style.display = 'flex';
-            clearInterval(scanInterval);
-            speakVoice("Hệ thống chuyển sang chế độ ngủ", true);
-        }
-        function exitSleepMode() {
-            isSleeping = false;
-            document.getElementById('sleep-overlay').style.display = 'none';
-            if (currentView === 'KEYBOARD') startScanning();
-            speakVoice("Hệ thống đã thức dậy", true);
-        }
+        function enterSleepMode() { isSleeping = true; document.getElementById('sleep-overlay').style.display = 'flex'; clearInterval(scanInterval); speakVoice("Hệ thống chuyển sang chế độ nghỉ ngơi", true); }
+        function exitSleepMode() { isSleeping = false; document.getElementById('sleep-overlay').style.display = 'none'; if (currentView === 'KEYBOARD') startScanning(); speakVoice("Hệ thống đã thức dậy", true); }
 
-        function openSettings() {
-            isSettingsOpen = true;
-            document.getElementById('settings-overlay').style.display = 'flex';
-            clearInterval(scanInterval);
-        }
+        function openSettings() { isSettingsOpen = true; document.getElementById('settings-overlay').style.display = 'flex'; clearInterval(scanInterval); }
         function closeSettings() {
-            isSettingsOpen = false;
-            ttsRate = parseFloat(document.getElementById('rate-slider').value);
-            ttsVolume = parseFloat(document.getElementById('vol-slider').value);
+            isSettingsOpen = false; ttsRate = parseFloat(document.getElementById('rate-slider').value); ttsVolume = parseFloat(document.getElementById('vol-slider').value);
             savedVoiceURI = document.getElementById('voice-select').value;
-            localStorage.setItem('ttsRate', ttsRate);
-            localStorage.setItem('ttsVolume', ttsVolume);
-            localStorage.setItem('ttsVoiceURI', savedVoiceURI);
-            document.getElementById('settings-overlay').style.display = 'none';
-            if (currentView === 'KEYBOARD' && !isSleeping) startScanning();
+            localStorage.setItem('ttsRate', ttsRate); localStorage.setItem('ttsVolume', ttsVolume); localStorage.setItem('ttsVoiceURI', savedVoiceURI);
+            document.getElementById('settings-overlay').style.display = 'none'; if (currentView === 'KEYBOARD' && !isSleeping) startScanning();
         }
-        function testVoice() {
-            let curRate = parseFloat(document.getElementById('rate-slider').value);
-            let curVol = parseFloat(document.getElementById('vol-slider').value);
-            let oldR = ttsRate, oldV = ttsVolume;
-            ttsRate = curRate; ttsVolume = curVol;
-            speakVoice("Kiểm tra thử nghiệm âm thanh giọng nói tiếng Việt", true);
-            ttsRate = oldR; ttsVolume = oldV;
-        }
+        function testVoice() { let curR = ttsRate, curV = ttsVolume; ttsRate = parseFloat(document.getElementById('rate-slider').value); ttsVolume = parseFloat(document.getElementById('vol-slider').value); speakVoice("Chào bạn, chúc bạn một ngày tốt lành!", true); ttsRate = curR; ttsVolume = curV; }
 
-        document.getElementById('rate-slider').oninput = function() {
-            document.getElementById('rate-val').innerText = this.value;
-        };
-        document.getElementById('vol-slider').oninput = function() {
-            document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%';
-        };
+        document.getElementById('rate-slider').oninput = function() { document.getElementById('rate-val').innerText = this.value; };
+        document.getElementById('vol-slider').oninput = function() { document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%'; };
 
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
-                e.preventDefault();
-                if (isSleeping) {
-                    sendCommand('W');
-                } else {
-                    // Gửi lệnh báo cho ESP32 biết là đang test
-                    sendCommand('SIMULATE_BLINK'); 
-                }
-            }
-        });
-
+        window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); if (isSleeping) sendCommand('W'); else sendCommand('SIMULATE_BLINK'); } });
         updatePredictiveText();
     </script>
 </body>
