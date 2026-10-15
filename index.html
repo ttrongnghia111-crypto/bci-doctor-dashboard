@@ -61,10 +61,7 @@
 
         /* ================= DASHBOARD LAYOUT ================= */
         .dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 18px; }
-        .panel {
-            background: var(--bg-panel); border-radius: 10px; padding: 18px 20px;
-            border: 1px solid var(--border); position: relative;
-        }
+        .panel { background: var(--bg-panel); border-radius: 10px; padding: 18px 20px; border: 1px solid var(--border); position: relative; }
 
         /* Patient Banner */
         .patient-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
@@ -106,18 +103,22 @@
         .progress-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
         .metric-footer { font-size: 11px; font-family: monospace; color: var(--text-dim); display: flex; justify-content: space-between; }
 
-        /* ================= EEG OSCILLOSCOPE ================= */
+        /* ================= EEG SECTION & RADAR ================= */
         .eeg-section { background: var(--bg-panel); border-radius: 10px; padding: 18px 20px; border: 1px solid var(--border); margin-bottom: 18px; }
         .eeg-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
         .section-title { font-size: 13px; font-weight: 700; font-family: monospace; text-transform: uppercase; letter-spacing: 0.5px; color: var(--teal); }
         .signal-indicator { font-family: monospace; font-size: 12px; font-weight: 700; }
         
-        .chart-container-eeg { width: 100%; height: 180px; position: relative; background: #04080e; border-radius: 6px; border: 1px solid var(--border); overflow: hidden; }
+        .eeg-charts-wrapper { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 14px; }
+        
+        .chart-container-eeg { width: 100%; height: 230px; position: relative; background: #04080e; border-radius: 6px; border: 1px solid var(--border); overflow: hidden; }
+        .chart-container-radar { width: 100%; height: 230px; position: relative; background: #04080e; border-radius: 6px; border: 1px solid var(--border); padding: 10px; display: flex; align-items: center; justify-content: center; }
+        
         #no-signal-overlay { position: absolute; inset: 0; background: rgba(6, 11, 19, 0.88); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 4px; }
         .overlay-alert { color: var(--rose); font-family: monospace; font-weight: 700; font-size: 13px; letter-spacing: 0.5px; }
         .overlay-hint { color: var(--text-dim); font-size: 11px; font-family: monospace; }
 
-        .wave-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 14px; }
+        .wave-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
         .wave-box { background: var(--bg-base); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border); }
         .wave-header { display: flex; justify-content: space-between; font-size: 10px; font-family: monospace; color: var(--text-dim); }
         .wave-val { font-size: 16px; font-weight: 700; font-family: monospace; margin-top: 6px; color: var(--text-primary); }
@@ -173,7 +174,6 @@
         .btn-speak { background: var(--bg-base); border: 1px solid var(--border); color: var(--text-secondary); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-family: monospace; }
         .btn-speak:hover { border-color: var(--teal); color: var(--text-primary); }
 
-        /* ================= MODAL QUẢN LÝ NGƯỜI DÙNG ================= */
         .modal-overlay {
             position: fixed; inset: 0; background: rgba(4, 8, 14, 0.85);
             backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center;
@@ -220,16 +220,11 @@
         </div>
 
         <div class="nav-actions">
-            <!-- Nút bật/tắt Demo mô phỏng -->
             <button class="btn btn-demo" id="btn-demo" onclick="toggleDemo()">MÔ PHỎNG (TEST)</button>
-            
-            <!-- Trạng thái kết nối Cloud -->
             <div class="status-pill">
                 <span class="dot dot-green" id="cloud-dot"></span>
                 <span id="cloud-text">CLOUD ONLINE</span>
             </div>
-
-            <!-- Chỉ số INA226 rút gọn -->
             <div class="status-pill">
                 <span>PIN: <strong id="nav-bat" style="color:var(--emerald);">100%</strong></span>
                 <span style="color:var(--border-light)">|</span>
@@ -237,15 +232,12 @@
                 <span style="color:var(--border-light)">|</span>
                 <span id="nav-ina-ma" style="color:var(--amber)">112mA</span>
             </div>
-
-            <!-- Nút hồ sơ bệnh nhân & đổi tên -->
             <button class="btn btn-profile" onclick="openProfileModal()">
                 BN: <span id="nav-patient-name">NGUYỄN VĂN AN</span> [ĐỔI]
             </button>
         </div>
     </header>
 
-    <!-- DASHBOARD ROW: BỆNH NHÂN & PHẦN CỨNG ESP32-S3 -->
     <section class="dashboard-grid">
         <div class="panel patient-card">
             <div class="patient-profile">
@@ -272,7 +264,6 @@
         </div>
     </section>
 
-    <!-- 4 THẺ CHỈ SỐ: ATTENTION, MEDITATION, FATIGUE, NĂNG LƯỢNG INA226 -->
     <section class="metrics-grid">
         <div class="metric-card">
             <div class="metric-header"><span>Tập Trung (Attention)</span><span>0 - 100</span></div>
@@ -295,7 +286,6 @@
             <div class="metric-footer"><span>Năng lượng thần kinh ổn định</span></div>
         </div>
 
-        <!-- MỤC PIN VÀ NĂNG LƯỢNG TIÊU THỤ INA226 -->
         <div class="metric-card">
             <div class="metric-header"><span>Năng Lượng & Pin (INA226)</span><span id="ina-stat-tag" style="color:var(--emerald);">BÌNH THƯỜNG</span></div>
             <div class="metric-val-row">
@@ -310,19 +300,26 @@
         </div>
     </section>
 
-    <!-- BIỂU ĐỒ SÓNG NÃO THỜI GIAN THỰC (OSCILLOSCOPE) -->
+    <!-- BIỂU ĐỒ SÓNG NÃO THỜI GIAN THỰC (OSCILLOSCOPE & RADAR) -->
     <section class="eeg-section">
         <div class="eeg-header">
-            <div class="section-title">BIỂU ĐỒ ĐIỆN NÃO ĐỒ THỜI GIAN THỰC (CLINICAL EEG OSCILLOSCOPE)</div>
+            <div class="section-title">PHÂN TÍCH ĐIỆN NÃO ĐỒ THỜI GIAN THỰC (CLINICAL EEG)</div>
             <div class="signal-indicator" id="signal-text" style="color: var(--rose);">CHƯA KẾT NỐI TGAM (SIGNAL = 200)</div>
         </div>
 
-        <div class="chart-container-eeg">
-            <div id="no-signal-overlay">
-                <div class="overlay-alert">CHƯA NHẬN TÍN HIỆU HOẶC RỚT ĐIỆN CỰC (SIGNAL = 200)</div>
-                <div class="overlay-hint">Vui lòng kiểm tra tiếp xúc điện cực trán (Fp1) và kẹp tai tham chiếu (A1/A2)</div>
+        <!-- CẬP NHẬT MỚI: Bố cục 2 cột (Trái: Dạng sóng Oscilloscope | Phải: Radar Chart Mạng nhện) -->
+        <div class="eeg-charts-wrapper">
+            <div class="chart-container-eeg">
+                <div id="no-signal-overlay">
+                    <div class="overlay-alert">CHƯA NHẬN TÍN HIỆU HOẶC RỚT ĐIỆN CỰC (SIGNAL = 200)</div>
+                    <div class="overlay-hint">Vui lòng kiểm tra tiếp xúc điện cực trán (Fp1) và kẹp tai tham chiếu (A1/A2)</div>
+                </div>
+                <canvas id="eegChart"></canvas>
             </div>
-            <canvas id="eegChart"></canvas>
+            
+            <div class="chart-container-radar">
+                <canvas id="radarChart"></canvas>
+            </div>
         </div>
 
         <div class="wave-grid">
@@ -334,7 +331,7 @@
         </div>
     </section>
 
-    <!-- MIDDLE GRID: PHÂN BỔ NHU CẦU, GIỜ CAO ĐIỂM, XUẤT BÁO CÁO -->
+    <!-- MIDDLE GRID -->
     <section class="middle-grid">
         <div class="panel">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
@@ -376,7 +373,7 @@
         </div>
     </section>
 
-    <!-- BẢNG LỊCH SỬ GIAO TIẾP CỦA BỆNH NHÂN -->
+    <!-- BẢNG LỊCH SỬ GIAO TIẾP -->
     <section class="history-card" id="history-card">
         <div class="history-header">
             <div class="history-title">
@@ -425,37 +422,30 @@
         <div>CHU KỲ: REALTIME • BẢO MẬT: HL7 / FHIR STANDARD</div>
     </footer>
 
-    <!-- MODAL QUẢN LÝ NGƯỜI DÙNG: HỎI TÊN KHI VÀO / CHỌN TÊN ĐÃ LƯU KHI RELOAD -->
+    <!-- MODAL QUẢN LÝ NGƯỜI DÙNG -->
     <div id="user-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
                 <div class="modal-title" id="modal-title">CHỌN TÊN BỆNH NHÂN ĐÃ LƯU ĐỂ VÀO CHECK</div>
                 <button onclick="closeModal()" id="btn-close-modal" style="background:transparent; border:none; color:var(--text-dim); cursor:pointer; font-family:monospace; display:none;">[ĐÓNG]</button>
             </div>
-
-            <!-- View 1: Danh sách hồ sơ đã lưu -->
             <div id="view-select-user">
                 <p style="font-size: 11px; font-family: monospace; color: var(--text-secondary); margin-bottom: 10px;">
                     Chọn một hồ sơ bệnh nhân đã lưu trong trình duyệt để xem dữ liệu, hoặc bấm thêm hồ sơ mới:
                 </p>
                 <div class="user-list" id="saved-user-list"></div>
-
                 <div class="checkbox-row">
                     <input type="checkbox" id="chk-auto-remember">
                     <label for="chk-auto-remember" style="cursor: pointer;">Tự động nhận diện sau này (Ghi nhớ phiên làm việc trên trình duyệt)</label>
                 </div>
-
                 <div class="modal-actions">
                     <button class="btn" onclick="showCreateUserView()">+ THÊM BỆNH NHÂN MỚI</button>
                     <button class="btn-primary" onclick="confirmSelectUser()">XÁC NHẬN VÀO HỆ THỐNG</button>
                 </div>
             </div>
-
-            <!-- View 2: Nhập thông tin bệnh nhân mới -->
             <div id="view-create-user" style="display: none;">
                 <label style="font-size: 11px; font-family: monospace; color: var(--text-secondary);">HỌ VÀ TÊN BỆNH NHÂN *</label>
                 <input type="text" id="input-new-name" class="form-input" placeholder="Ví dụ: Nguyễn Văn An">
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     <div>
                         <label style="font-size: 11px; font-family: monospace; color: var(--text-secondary);">TUỔI</label>
@@ -466,18 +456,14 @@
                         <input type="text" id="input-new-code" class="form-input" value="BN-8401">
                     </div>
                 </div>
-
                 <label style="font-size: 11px; font-family: monospace; color: var(--text-secondary);">PHÒNG / GIƯỜNG</label>
                 <input type="text" id="input-new-room" class="form-input" value="ICU 402 - Giường 02">
-
                 <label style="font-size: 11px; font-family: monospace; color: var(--text-secondary);">CHẨN ĐOÁN LÂM SÀNG</label>
                 <input type="text" id="input-new-diag" class="form-input" value="Hội chứng Khóa trong (LIS) / Hồi phục tổn thương não">
-
                 <div class="checkbox-row">
                     <input type="checkbox" id="chk-auto-remember-new" checked>
                     <label for="chk-auto-remember-new" style="cursor: pointer;">Tự động nhận diện hồ sơ này ở các phiên sau</label>
                 </div>
-
                 <div class="modal-actions">
                     <button class="btn" id="btn-cancel-create" onclick="cancelCreateUser()">QUAY LẠI</button>
                     <button class="btn-primary" onclick="saveNewPatient()">LƯU VÀ BẮT ĐẦU THEO DÕI</button>
@@ -496,15 +482,12 @@
         let selectedPatientIdInModal = '';
 
         function initUserSystem() {
-            // Nếu chưa từng có bệnh nhân nào -> hỏi tên ngay
             if (savedProfiles.length === 0) {
                 showCreateUserView();
                 document.getElementById('btn-cancel-create').style.display = 'none';
                 document.getElementById('user-modal').style.display = 'flex';
                 return;
             }
-
-            // Nếu đã bật tự động nhận diện và có ID hợp lệ -> vào thẳng
             if (isAutoRemember && currentPatientId) {
                 currentPatient = savedProfiles.find(p => p.id === currentPatientId);
                 if (currentPatient) {
@@ -512,24 +495,19 @@
                     return;
                 }
             }
-
-            // Nếu reload lại trang mà chưa bật auto remember hoặc muốn chọn lại -> mở bảng chọn tên đã lưu để vào check
             openProfileModal();
         }
 
         function openProfileModal() {
             const listEl = document.getElementById('saved-user-list');
             listEl.innerHTML = '';
-
             savedProfiles.forEach((p, idx) => {
                 const row = document.createElement('div');
                 const isSelected = p.id === (currentPatient?.id || savedProfiles[0]?.id);
                 if (isSelected) selectedPatientIdInModal = p.id;
-
                 row.className = 'user-row';
                 row.id = 'user-row-' + p.id;
                 if (isSelected) row.style.borderColor = 'var(--teal)';
-
                 row.innerHTML = `
                     <div>
                         <div style="font-weight:700; color:var(--text-primary); font-size:13px;">${p.name} <span class="badge-id">${p.code}</span></div>
@@ -537,27 +515,18 @@
                     </div>
                     <span style="font-size:11px; color:var(--teal); font-weight:700;">CHỌN</span>
                 `;
-
                 row.onclick = () => {
                     selectedPatientIdInModal = p.id;
                     document.querySelectorAll('.user-row').forEach(el => el.style.borderColor = 'var(--border)');
                     row.style.borderColor = 'var(--teal)';
                 };
-
                 listEl.appendChild(row);
             });
-
             document.getElementById('modal-title').innerText = "CHỌN TÊN BỆNH NHÂN ĐÃ LƯU ĐỂ VÀO CHECK";
             document.getElementById('view-select-user').style.display = 'block';
             document.getElementById('view-create-user').style.display = 'none';
             document.getElementById('chk-auto-remember').checked = isAutoRemember;
-
-            if (currentPatient) {
-                document.getElementById('btn-close-modal').style.display = 'block';
-            } else {
-                document.getElementById('btn-close-modal').style.display = 'none';
-            }
-
+            document.getElementById('btn-close-modal').style.display = currentPatient ? 'block' : 'none';
             document.getElementById('user-modal').style.display = 'flex';
         }
 
@@ -569,46 +538,30 @@
             document.getElementById('input-new-name').focus();
         }
 
-        function cancelCreateUser() {
-            if (savedProfiles.length > 0) {
-                openProfileModal();
-            }
-        }
+        function cancelCreateUser() { if (savedProfiles.length > 0) openProfileModal(); }
 
         function saveNewPatient() {
             const name = document.getElementById('input-new-name').value.trim();
-            if (!name) {
-                alert('Vui lòng nhập họ và tên bệnh nhân.');
-                return;
-            }
-
+            if (!name) { alert('Vui lòng nhập họ và tên bệnh nhân.'); return; }
             const newPatient = {
-                id: 'pat-' + Date.now(),
-                name: name,
+                id: 'pat-' + Date.now(), name: name,
                 code: document.getElementById('input-new-code').value.trim() || 'BN-1001',
                 age: document.getElementById('input-new-age').value || 60,
                 room: document.getElementById('input-new-room').value.trim() || 'ICU - Giường 01',
                 diag: document.getElementById('input-new-diag').value.trim() || 'Hội chứng Khóa trong (LIS)'
             };
-
             savedProfiles.push(newPatient);
             localStorage.setItem('bci_cloud_profiles', JSON.stringify(savedProfiles));
-
-            const remember = document.getElementById('chk-auto-remember-new').checked;
-            activatePatient(newPatient, remember);
+            activatePatient(newPatient, document.getElementById('chk-auto-remember-new').checked);
         }
 
         function confirmSelectUser() {
             const p = savedProfiles.find(item => item.id === selectedPatientIdInModal) || savedProfiles[0];
-            if (p) {
-                const remember = document.getElementById('chk-auto-remember').checked;
-                activatePatient(p, remember);
-            }
+            if (p) activatePatient(p, document.getElementById('chk-auto-remember').checked);
         }
 
         function activatePatient(p, remember) {
-            currentPatient = p;
-            isAutoRemember = remember;
+            currentPatient = p; isAutoRemember = remember;
             localStorage.setItem('bci_cloud_active_id', p.id);
             localStorage.setItem('bci_cloud_auto_remember', remember ? 'true' : 'false');
             applyCurrentPatientToUI(p);
@@ -616,11 +569,7 @@
             applyFilters();
         }
 
-        function closeModal() {
-            if (currentPatient) {
-                document.getElementById('user-modal').style.display = 'none';
-            }
-        }
+        function closeModal() { if (currentPatient) document.getElementById('user-modal').style.display = 'none'; }
 
         function applyCurrentPatientToUI(p) {
             document.getElementById('patient-display-name').innerText = p.name;
@@ -628,39 +577,77 @@
             document.getElementById('patient-code').innerText = p.code;
             document.getElementById('patient-location').innerText = p.room;
             document.getElementById('patient-diag').innerText = p.diag;
-
-            const initials = p.name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase();
-            document.getElementById('patient-initials').innerText = initials || 'BN';
+            document.getElementById('patient-initials').innerText = p.name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() || 'BN';
         }
 
-        // ================= CHART & REALTIME OSCILLOSCOPE =================
-        const ctx = document.getElementById('eegChart').getContext('2d');
-        const eegChart = new Chart(ctx, {
+        // ================= CHART.JS & REALTIME OSCILLOSCOPE =================
+        const ctxEeg = document.getElementById('eegChart').getContext('2d');
+        const eegChart = new Chart(ctxEeg, {
             type: 'line',
             data: {
                 labels: Array(60).fill(''),
                 datasets: [{
-                    label: 'EEG Wave',
-                    data: Array(60).fill(0),
-                    borderColor: '#38bdf8',
-                    borderWidth: 1.8,
-                    pointRadius: 0,
-                    tension: 0.25
+                    label: 'EEG Wave', data: Array(60).fill(0),
+                    borderColor: '#38bdf8', borderWidth: 1.8, pointRadius: 0, tension: 0.25
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                scales: {
+                    x: { display: false },
+                    y: { display: true, grid: { color: '#0f1a2d', borderColor: '#1a2a44' }, ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        // --- KHỞI TẠO BIỂU ĐỒ RADAR (MẠNG NHỆN) ---
+        const ctxRadar = document.getElementById('radarChart').getContext('2d');
+        const radarChart = new Chart(ctxRadar, {
+            type: 'radar',
+            data: {
+                labels: ['Delta (Ngủ sâu)', 'Theta (Ngủ nông)', 'Alpha (Thư giãn)', 'Beta (Căng thẳng)', 'Gamma (Nhận thức)'],
+                datasets: [{
+                    label: 'Tỉ lệ Phân bổ (%)',
+                    data: [0, 0, 0, 0, 0],
+                    backgroundColor: 'rgba(56, 189, 248, 0.25)', // Màu nền xanh ngọc trong suốt
+                    borderColor: '#38bdf8', 
+                    pointBackgroundColor: '#34d399', 
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#34d399',
+                    borderWidth: 2,
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: false,
+                animation: { duration: 400 }, // Tạo hiệu ứng co giãn mượt mà
                 scales: {
-                    x: { display: false },
-                    y: {
-                        display: true,
-                        grid: { color: '#0f1a2d', borderColor: '#1a2a44' },
-                        ticks: { color: '#64748b', font: { family: 'monospace', size: 10 } }
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' }, // Line của mạng nhện
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },       // Lưới lục giác
+                        pointLabels: {
+                            color: '#94a3b8',
+                            font: { family: 'monospace', size: 10, weight: 'bold' }
+                        },
+                        ticks: {
+                            display: false, // Ẩn các con số trên trục màng nhện để UI sạch hơn
+                            min: 0, 
+                            max: 100 // Scale luôn chuẩn theo hệ % (0-100%)
+                        }
                     }
                 },
-                plugins: { legend: { display: false } }
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.raw.toFixed(1) + '%'; // Hiển thị % khi hover chuột
+                            }
+                        }
+                    }
+                }
             }
         });
 
@@ -702,8 +689,7 @@
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const msg = new SpeechSynthesisUtterance(text);
-                msg.lang = 'vi-VN';
-                msg.rate = 0.9;
+                msg.lang = 'vi-VN'; msg.rate = 0.9;
                 window.speechSynthesis.speak(msg);
             }
         }
@@ -714,10 +700,8 @@
             let hourBlocks = [0, 0, 0, 0, 0, 0];
 
             logs.forEach(log => {
-                let cat = identifyCategory(log.sentence);
-                if (counts[cat] !== undefined) counts[cat]++; else counts.other++;
-                let h = new Date(log.timestamp).getHours();
-                hourBlocks[Math.floor(h / 4)]++;
+                if (counts[identifyCategory(log.sentence)] !== undefined) counts[identifyCategory(log.sentence)]++; else counts.other++;
+                hourBlocks[Math.floor(new Date(log.timestamp).getHours() / 4)]++;
             });
 
             const updateDist = (id, count) => {
@@ -725,30 +709,17 @@
                 document.getElementById(`txt-${id}`).innerText = `${count} lần (${pct}%)`;
                 document.getElementById(`bar-${id}`).style.width = `${pct}%`;
             };
+            ['water','food','rest','iot','pain','essential'].forEach(c => updateDist(c, counts[c]));
 
-            updateDist('water', counts.water);
-            updateDist('food', counts.food);
-            updateDist('rest', counts.rest);
-            updateDist('iot', counts.iot);
-            updateDist('pain', counts.pain);
-            updateDist('essential', counts.essential);
-
-            let maxBlock = Math.max(...hourBlocks) || 1;
-            let peakIndex = hourBlocks.indexOf(maxBlock);
+            let maxBlock = Math.max(...hourBlocks) || 1, peakIndex = hourBlocks.indexOf(maxBlock);
             let peakLabels = ["0h-4h", "4h-8h", "8h-12h", "12h-16h", "16h-20h", "20h-24h"];
 
             for (let i = 0; i < 6; i++) {
                 let hEl = document.getElementById(`h-${i * 4}`);
                 hEl.style.height = Math.max(5, (hourBlocks[i] / maxBlock) * 100) + '%';
-                if (i === peakIndex && hourBlocks[i] > 0) hEl.classList.add('active');
-                else hEl.classList.remove('active');
+                i === peakIndex && hourBlocks[i] > 0 ? hEl.classList.add('active') : hEl.classList.remove('active');
             }
-
-            if (hourBlocks[peakIndex] > 0) {
-                document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>${peakLabels[peakIndex]}</span>`;
-            } else {
-                document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>Chưa có dữ liệu</span>`;
-            }
+            document.getElementById('peak-text').innerHTML = `Khung giờ cao điểm: <span>${hourBlocks[peakIndex] > 0 ? peakLabels[peakIndex] : 'Chưa có dữ liệu'}</span>`;
         }
 
         function applyFilters() {
@@ -759,74 +730,49 @@
 
             let filtered = allLogs.filter(log => {
                 const logDate = new Date(log.timestamp);
-                if (timeFilter === 'today') {
-                    return logDate.getDate() === now.getDate() && logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
-                } else if (timeFilter === 'week') {
-                    return now.getTime() - logDate.getTime() < 7 * 24 * 60 * 60 * 1000;
-                }
+                if (timeFilter === 'today') return logDate.toDateString() === now.toDateString();
+                if (timeFilter === 'week') return now.getTime() - logDate.getTime() < 7 * 24 * 3600000;
                 return true;
             });
 
-            if (catFilter !== 'all') {
-                filtered = filtered.filter(log => identifyCategory(log.sentence) === catFilter);
-            }
-            if (searchText) {
-                filtered = filtered.filter(log => log.sentence.toLowerCase().includes(searchText));
-            }
+            if (catFilter !== 'all') filtered = filtered.filter(log => identifyCategory(log.sentence) === catFilter);
+            if (searchText) filtered = filtered.filter(log => log.sentence.toLowerCase().includes(searchText));
 
             document.getElementById('total-logs-display').innerText = filtered.length;
             document.getElementById('count-badge').innerText = filtered.length + ' câu';
-
-            if (filtered.length > 0) {
-                document.getElementById('last-time-display').innerText = formatTime(filtered[0].timestamp).hm;
-            } else {
-                document.getElementById('last-time-display').innerText = "--:--:--";
-            }
-
+            document.getElementById('last-time-display').innerText = filtered.length > 0 ? formatTime(filtered[0].timestamp).hm : "--:--:--";
             updateCharts(filtered);
 
-            let html = '';
-            if (filtered.length === 0) {
-                html = '<tr><td colspan="6" style="text-align:center; color: var(--text-dim); padding: 30px;">Không có bản ghi giao tiếp nào trong bộ lọc này...</td></tr>';
-            } else {
-                filtered.forEach(log => {
-                    const timeInfo = formatTime(log.timestamp);
-                    const cat = identifyCategory(log.sentence);
-                    const tagHtml = getTagHtml(cat);
-                    html += `<tr>
-                        <td><div class="time-hm">${timeInfo.hm}</div><div class="time-date">${timeInfo.date}</div></td>
-                        <td class="col-sentence">"${log.sentence}"</td>
-                        <td>${tagHtml}</td>
-                        <td align="center"><span style="color:var(--teal); font-weight:700;">${log.attention || 0}</span></td>
-                        <td align="center"><span style="color:var(--emerald); font-weight:700;">${log.meditation || 0}</span></td>
-                        <td align="right"><button class="btn-speak" onclick="speakFromCloud('${log.sentence}')">PHÁT ÂM</button></td>
-                    </tr>`;
-                });
-            }
-            document.getElementById('logs-body').innerHTML = html;
+            document.getElementById('logs-body').innerHTML = filtered.length === 0 
+                ? '<tr><td colspan="6" style="text-align:center; color: var(--text-dim); padding: 30px;">Không có bản ghi giao tiếp nào trong bộ lọc này...</td></tr>'
+                : filtered.map(log => `<tr>
+                    <td><div class="time-hm">${formatTime(log.timestamp).hm}</div><div class="time-date">${formatTime(log.timestamp).date}</div></td>
+                    <td class="col-sentence">"${log.sentence}"</td>
+                    <td>${getTagHtml(identifyCategory(log.sentence))}</td>
+                    <td align="center"><span style="color:var(--teal); font-weight:700;">${log.attention || 0}</span></td>
+                    <td align="center"><span style="color:var(--emerald); font-weight:700;">${log.meditation || 0}</span></td>
+                    <td align="right"><button class="btn-speak" onclick="speakFromCloud('${log.sentence}')">PHÁT ÂM</button></td>
+                </tr>`).join('');
         }
 
         function toggleDemo() {
             isDemoMode = !isDemoMode;
             const btn = document.getElementById('btn-demo');
             if (isDemoMode) {
-                btn.classList.add('active');
-                btn.innerText = 'ĐANG CHẠY MÔ PHỎNG';
+                btn.classList.add('active'); btn.innerText = 'ĐANG CHẠY MÔ PHỎNG';
             } else {
-                btn.classList.remove('active');
-                btn.innerText = 'MÔ PHỎNG (TEST)';
-                eegChart.data.datasets[0].data.fill(0);
-                eegChart.update();
+                btn.classList.remove('active'); btn.innerText = 'MÔ PHỎNG (TEST)';
+                eegChart.data.datasets[0].data.fill(0); eegChart.update();
+                radarChart.data.datasets[0].data.fill(0); radarChart.update();
             }
         }
 
-        // ================= CẬP NHẬT TELEMETRY & INA226 =================
+        // ================= CẬP NHẬT TELEMETRY =================
         function updateUI(t) {
             let displaySignal = t.signalQuality;
             let dAtt = t.attention || 0, dMed = t.meditation || 0;
             let dDelta = t.delta || 0, dTheta = t.theta || 0, dAlpha = t.lowAlpha || 0, dBeta = t.lowBeta || 0, dGamma = t.lowGamma || 0;
 
-            // Thông số năng lượng INA226
             let batPct = t.battery !== undefined ? t.battery : 88;
             let vBus = t.voltage !== undefined ? parseFloat(t.voltage) : 3.92;
             let iBus = t.current !== undefined ? parseFloat(t.current) : 114.2;
@@ -836,11 +782,13 @@
                 displaySignal = 0;
                 dAtt = Math.floor(Math.random() * 25) + 65;
                 dMed = Math.floor(Math.random() * 30) + 55;
-                dDelta = Math.floor(Math.random() * 400000) + 120000;
-                dTheta = Math.floor(Math.random() * 60000) + 30000;
-                dAlpha = Math.floor(Math.random() * 30000) + 15000;
-                dBeta = Math.floor(Math.random() * 20000) + 10000;
-                dGamma = Math.floor(Math.random() * 8000) + 2000;
+
+                // Tạo random dữ liệu mô phỏng, thay đổi ngẫu nhiên từng dải để Radar Chart thay đổi hình dáng
+                dDelta = Math.floor(Math.random() * 150000) + 50000; 
+                dTheta = Math.floor(Math.random() * 80000) + 20000;
+                dAlpha = Math.floor(Math.random() * 60000) + 10000;
+                dBeta = Math.floor(Math.random() * 70000) + 15000;
+                dGamma = Math.floor(Math.random() * 40000) + 5000;
 
                 vBus = +(3.82 + Math.random() * 0.15).toFixed(2);
                 iBus = +(105.0 + Math.random() * 25.0).toFixed(1);
@@ -857,39 +805,27 @@
                 document.getElementById('conn-time').innerText = new Date().toLocaleTimeString('vi-VN');
             }
 
-            // Cập nhật hiển thị Pin & INA226 ở Header
+            // Ghi dữ liệu text lên các khung hiển thị
             document.getElementById('nav-bat').innerText = batPct + '%';
             document.getElementById('nav-ina-v').innerText = vBus.toFixed(2) + 'V';
             document.getElementById('nav-ina-ma').innerText = iBus.toFixed(0) + 'mA';
-
-            // Cập nhật Card INA226 chi tiết
             document.getElementById('ina-bat-val').innerText = batPct + '%';
             document.getElementById('ina-pwr-val').innerText = pBus.toFixed(0) + ' mW';
             document.getElementById('bar-ina-bat').style.width = batPct + '%';
             document.getElementById('ina-volt').innerText = vBus.toFixed(2) + 'V';
             document.getElementById('ina-curr').innerText = iBus.toFixed(1) + 'mA';
             document.getElementById('ina-est-hours').innerText = Math.round((batPct / 100) * 16) + 'h';
+            
+            let isSleep = t.isSleeping || iBus < 40;
+            document.getElementById('ina-stat-tag').innerText = isSleep ? 'MODEM SLEEP' : 'BÌNH THƯỜNG';
+            document.getElementById('ina-stat-tag').style.color = isSleep ? 'var(--teal)' : 'var(--emerald)';
 
-            if (t.isSleeping || iBus < 40) {
-                document.getElementById('ina-stat-tag').innerText = 'MODEM SLEEP';
-                document.getElementById('ina-stat-tag').style.color = 'var(--teal)';
-            } else {
-                document.getElementById('ina-stat-tag').innerText = 'BÌNH THƯỜNG';
-                document.getElementById('ina-stat-tag').style.color = 'var(--emerald)';
-            }
+            document.getElementById('avg-att').innerText = dAtt; document.getElementById('bar-att').style.width = dAtt + '%';
+            document.getElementById('avg-med').innerText = dMed; document.getElementById('bar-med').style.width = dMed + '%';
 
-            // Chỉ số Attention & Meditation
-            document.getElementById('avg-att').innerText = dAtt;
-            document.getElementById('bar-att').style.width = dAtt + '%';
-            document.getElementById('avg-med').innerText = dMed;
-            document.getElementById('bar-med').style.width = dMed + '%';
-
-            // Mệt mỏi nhận thức (Theta/Beta ratio)
             let fatigueVal = Math.min(95, Math.max(10, Math.round(((dTheta + dAlpha) / ((dBeta || 1) * 4)) * 30)));
-            document.getElementById('fatigue').innerText = fatigueVal + '%';
-            document.getElementById('bar-fatigue').style.width = fatigueVal + '%';
+            document.getElementById('fatigue').innerText = fatigueVal + '%'; document.getElementById('bar-fatigue').style.width = fatigueVal + '%';
 
-            // Trạng thái sóng não
             const overlay = document.getElementById('no-signal-overlay');
             const sigText = document.getElementById('signal-text');
             if (displaySignal === 0) {
@@ -908,46 +844,47 @@
             document.getElementById('val-beta').innerText = dBeta.toLocaleString();
             document.getElementById('val-gamma').innerText = dGamma.toLocaleString();
 
-            // Vẽ dạng sóng dao động ký
+            // Vẽ dạng sóng (Oscilloscope)
             const chartData = eegChart.data.datasets[0].data;
-            let eegVal = 0;
-            if (displaySignal === 0) {
-                eegVal = Math.sin(Date.now() / 140) * 18 + Math.cos(Date.now() / 50) * 12 + (dAtt / 3);
-                if (isDemoMode && Math.random() > 0.94) eegVal += (Math.random() - 0.5) * 80;
-            }
-            chartData.push(eegVal);
-            chartData.shift();
+            let eegVal = displaySignal === 0 ? (Math.sin(Date.now() / 140) * 18 + Math.cos(Date.now() / 50) * 12 + (dAtt / 3)) : 0;
+            if (displaySignal === 0 && isDemoMode && Math.random() > 0.94) eegVal += (Math.random() - 0.5) * 80;
+            chartData.push(eegVal); chartData.shift();
             eegChart.update();
+
+            // --- CẬP NHẬT BIỂU ĐỒ RADAR TÍNH THEO % (RELATIVE POWER) ---
+            if (displaySignal === 0) {
+                const totalWave = dDelta + dTheta + dAlpha + dBeta + dGamma || 1; // Ngăn chia cho 0
+                const percentData = [
+                    (dDelta / totalWave) * 100,
+                    (dTheta / totalWave) * 100,
+                    (dAlpha / totalWave) * 100,
+                    (dBeta / totalWave) * 100,
+                    (dGamma / totalWave) * 100
+                ];
+                radarChart.data.datasets[0].data = percentData;
+            } else {
+                // Nếu rớt kết nối thì xóa trắng biểu đồ nhện
+                radarChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+            }
+            radarChart.update();
         }
 
-        // ================= XUẤT CSV & JSON =================
+        // ================= XUẤT DỮ LIỆU =================
         function exportCSV() {
             if (allLogs.length === 0) { alert("Chưa có dữ liệu để xuất."); return; }
             let csv = "Mã BN,Tên BN,Thời Gian,Phát Ngôn,Phân Loại,Tập Trung,Thư Giãn\n";
-            allLogs.forEach(l => {
-                csv += `"${currentPatient?.code || ''}","${currentPatient?.name || ''}","${l.timestamp}","${l.sentence}","${identifyCategory(l.sentence)}",${l.attention || 0},${l.meditation || 0}\n`;
-            });
-            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+            allLogs.forEach(l => csv += `"${currentPatient?.code || ''}","${currentPatient?.name || ''}","${l.timestamp}","${l.sentence}","${identifyCategory(l.sentence)}",${l.attention || 0},${l.meditation || 0}\n`);
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `BCI_Medical_Report_${currentPatient?.code || 'EXPORT'}.csv`;
-            a.click();
+            a.href = URL.createObjectURL(new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' }));
+            a.download = `BCI_Medical_Report_${currentPatient?.code || 'EXPORT'}.csv`; a.click();
         }
-
         function exportJSON() {
-            const exportData = {
-                patient: currentPatient,
-                exportTime: new Date().toISOString(),
-                logs: allLogs
-            };
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `BCI_Telemetry_Dataset_${currentPatient?.code || 'EXPORT'}.json`;
-            a.click();
+            a.href = URL.createObjectURL(new Blob([JSON.stringify({ patient: currentPatient, exportTime: new Date().toISOString(), logs: allLogs }, null, 2)], { type: 'application/json' }));
+            a.download = `BCI_Telemetry_Dataset_${currentPatient?.code || 'EXPORT'}.json`; a.click();
         }
 
-        // ================= CHU KỲ POLLING ĐỒNG BỘ BACKEND =================
+        // POLLING LOOP
         setInterval(async () => {
             try {
                 const response = await fetch('/api/data');
@@ -958,21 +895,16 @@
                         allLogs = data.logs;
                         if (allLogs.length > lastLogCount && lastLogCount !== 0) {
                             const card = document.getElementById('history-card');
-                            card.classList.add('history-flash');
-                            setTimeout(() => card.classList.remove('history-flash'), 500);
+                            card.classList.add('history-flash'); setTimeout(() => card.classList.remove('history-flash'), 500);
                         }
-                        lastLogCount = allLogs.length;
-                        applyFilters();
+                        lastLogCount = allLogs.length; applyFilters();
                     }
                 }
             } catch (err) {
-                if (isDemoMode) {
-                    updateUI({ signalQuality: 0, lastUpdate: Date.now() });
-                }
+                if (isDemoMode) updateUI({ signalQuality: 0, lastUpdate: Date.now() });
             }
         }, 2000);
 
-        // Khởi động hệ thống
         initUserSystem();
     </script>
 </body>

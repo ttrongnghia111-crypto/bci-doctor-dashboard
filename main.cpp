@@ -1,18 +1,20 @@
 #include <Arduino.h>
+#include <Wire.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <HTTPClient.h>
-#include <WiFiClientSecure.h> // Thư viện bắt buộc để gọi HTTPS
+#include <WiFiClientSecure.h>
 #include <WebServer.h>
 #include <WebSocketsServer.h>
 #include <ESPmDNS.h>
 
 // =========================================================================
 // HỆ THỐNG BCI ESP32-S3 - BÀN PHÍM TRỢ NĂNG GIAO TIẾP & ĐIỀU KHIỂN THIẾT BỊ
+// KIẾN TRÚC DUAL-LAYER CONTEXT, BỘ GÕ TELEX, MODEM SLEEP & INA226 SENSOR
 // =========================================================================
 
 WiFiMulti wifiMulti;
-WiFiClientSecure secureClient; // Khai báo Toàn cục để không bị tràn RAM (Lỗi Crash)
+WiFiClientSecure secureClient; 
 
 // 1. Cấu hình Wi-Fi Router
 const char* WIFI_SSID_1 = "Trong Nghia";     
@@ -27,18 +29,27 @@ const char* AP_PASS = "12345678";
 const char* CLOUD_SERVER_URL = "https://bci-api-server.onrender.com/api/logs"; 
 const char* CLOUD_TELEMETRY_URL = "https://bci-api-server.onrender.com/api/telemetry";
 
-// 3. Cấu hình chân phần cứng ESP32-S3
-#define TGAM_RX_PIN 16
+// 3. CẤU HÌNH CHÂN PHẦN CỨNG TƯƠNG THÍCH HOÀN TOÀN ESP32-S3
+// UART1: RX/TX cho module cảm biến sóng não NeuroSky TGAM (57600 baud)
+#define TGAM_RX_PIN 18
 #define TGAM_TX_PIN 17
 #define TGAM_BAUDRATE 57600
 
-#define RELAY1_PIN 18 
-#define RELAY2_PIN 19 
-#define BATTERY_PIN 34 // Chân đọc điện áp Pin (ADC)
+// I2C: Dành cho cảm biến năng lượng INA226 (ESP32-S3 Default Pins)
+#define I2C_SDA_PIN 8
+#define I2C_SCL_PIN 9
+#define INA226_I2C_ADDR 0x40
+
+// GPIO Output Relay (Tránh tuyệt đối GPIO 19 & 20 là chân USB D-/D+ của ESP32-S3)
+#define RELAY1_PIN 4 
+#define RELAY2_PIN 5 
+
+// ADC1 Chân đo điện áp pin (GPIO 1 là ADC1_CH0, không bị Wi-Fi khóa như ADC2)
+#define BATTERY_PIN 1 
 
 WebServer server(80);
 WebSocketsServer webSocket(81);
-HardwareSerial TGAMSerial(2);
+HardwareSerial TGAMSerial(1); // Sử dụng UART1 của ESP32-S3
 
 // Trạng thái cảm biến NeuroSky TGAM
 volatile int signalQuality = 200; 
@@ -48,6 +59,13 @@ volatile int blinkStrength = 0;
 
 // Các dải sóng não
 unsigned long delta = 0, theta = 0, lowAlpha = 0, highAlpha = 0, lowBeta = 0, highBeta = 0, lowGamma = 0, midGamma = 0;
+
+// Cảm biến năng lượng INA226
+bool hasINA226 = false;
+float inaBusVoltage = 3.90f;
+float inaCurrent_mA = 110.0f;
+float inaPower_mW = 429.0f;
+float inaShunt_mV = 11.0f;
 int batteryPercent = 100;
 
 volatile bool relay1State = false;
@@ -57,14 +75,85 @@ volatile bool isSleeping = false;
 volatile int blinkCountForWake = 0;
 unsigned long lastBlinkTime = 0;
 unsigned long lastActivityTime = 0;
-const unsigned long AUTO_SLEEP_TIMEOUT = 900000; // 15 phút (900000 ms) để tự động chuyển sang chế độ ngủ
+const unsigned long AUTO_SLEEP_TIMEOUT = 900000; 
 unsigned long lastTelemetrySyncTime = 0;
-const unsigned long TELEMETRY_INTERVAL = 30000;  
+const unsigned long TELEMETRY_INTERVAL = 25000;  
 
 uint8_t payloadData[256];
 
 // =========================================================================
-// GIAO DIỆN WEB CỤC BỘ DÀNH CHO BỆNH NHÂN (LƯU TRONG BỘ NHỚ FLASH)
+// KHỞI TẠO & ĐỌC CẢM BIẾN NĂNG LƯỢNG INA226 (CHỐNG TREO BUS I2C)
+// =========================================================================
+void initINA226() {
+  pinMode(I2C_SDA_PIN, INPUT_PULLUP);
+  pinMode(I2C_SCL_PIN, INPUT_PULLUP);
+  Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN, 100000);
+  Wire.setTimeOut(25); 
+  delay(10);
+  
+  Wire.beginTransmission(INA226_I2C_ADDR);
+  if (Wire.endTransmission() == 0) {
+    hasINA226 = true;
+    Serial.println("[INA226] Nhận diện thành công cảm biến INA226 tại 0x40 trên ESP32-S3!");
+    Wire.beginTransmission(INA226_I2C_ADDR);
+    Wire.write(0x00);
+    Wire.write(0x45);
+    Wire.write(0x27);
+    Wire.endTransmission();
+
+    Wire.beginTransmission(INA226_I2C_ADDR);
+    Wire.write(0x05);
+    Wire.write(0x0A);
+    Wire.write(0x00);
+    Wire.endTransmission();
+  } else {
+    hasINA226 = false;
+    Serial.println("[INA226] Không có cảm biến INA226, tự động đọc ADC dự phòng qua GPIO 1.");
+  }
+}
+
+void readINA226() {
+  if (hasINA226) {
+    Wire.beginTransmission(INA226_I2C_ADDR);
+    Wire.write(0x02);
+    if (Wire.endTransmission() == 0) {
+      Wire.requestFrom((uint8_t)INA226_I2C_ADDR, (uint8_t)2);
+      if (Wire.available() >= 2) {
+        int16_t rawBus = (Wire.read() << 8) | Wire.read();
+        inaBusVoltage = rawBus * 0.00125f;
+      }
+    }
+
+    Wire.beginTransmission(INA226_I2C_ADDR);
+    Wire.write(0x01);
+    if (Wire.endTransmission() == 0) {
+      Wire.requestFrom((uint8_t)INA226_I2C_ADDR, (uint8_t)2);
+      if (Wire.available() >= 2) {
+        int16_t rawShunt = (Wire.read() << 8) | Wire.read();
+        inaShunt_mV = rawShunt * 0.0025f;
+        inaCurrent_mA = inaShunt_mV * 10.0f;
+        if (inaCurrent_mA < 0) inaCurrent_mA = 0;
+      }
+    }
+
+    inaPower_mW = inaBusVoltage * inaCurrent_mA;
+
+    if (inaBusVoltage >= 4.20f) batteryPercent = 100;
+    else if (inaBusVoltage <= 3.30f) batteryPercent = 0;
+    else batteryPercent = (int)(((inaBusVoltage - 3.30f) / 0.90f) * 100.0f);
+  } else {
+    int rawBat = analogRead(BATTERY_PIN);
+    batteryPercent = map(rawBat, 0, 4095, 0, 100); 
+    if(batteryPercent > 100) batteryPercent = 100;
+    if(batteryPercent < 0) batteryPercent = 0;
+    inaBusVoltage = (rawBat / 4095.0f) * 3.3f * 2.0f;
+    inaCurrent_mA = isSleeping ? 25.0f : 110.0f;
+    inaPower_mW = inaBusVoltage * inaCurrent_mA;
+  }
+}
+
+// =========================================================================
+// GIAO DIỆN WEB CỤC BỘ DÀNH CHO BỆNH NHÂN
 // =========================================================================
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -72,31 +161,23 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Giao Tiếp BCI</title>
+    <title>Hệ Thống Giao Tiếp BCI ESP32-S3</title>
     <style>
-        /* ================= BIẾN MÀU SẮC (SÁNG & TỐI) ================= */
         :root {
-            /* Chế độ Sáng (Mặc định) */
             --bg-main: #e0f2fe; 
             --bg-card: rgba(255, 255, 255, 0.85);
             --text-main: #0f172a;
             --text-muted: #475569;
             --primary: #0ea5e9;
             --primary-glow: rgba(14, 165, 233, 0.4);
-            
-            /* Bàn phím */
             --key-bg: #ffffff;
             --key-border: #cbd5e1;
             --key-shadow: rgba(0,0,0,0.08);
             --key-sys-bg: #f1f5f9;
-            
-            /* Cảnh vật */
             --grass-top: #4ade80;
             --grass-bottom: #16a34a;
             --cloud-opacity: 0.8;
             --scenery-brightness: 1;
-            
-            /* Trạng thái */
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -104,27 +185,20 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         [data-theme="dark"] {
-            /* Chế độ Tối */
             --bg-main: #0f172a; 
             --bg-card: rgba(30, 41, 59, 0.85);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
             --primary: #38bdf8;
             --primary-glow: rgba(56, 189, 248, 0.3);
-            
-            /* Bàn phím */
             --key-bg: #1e293b;
             --key-border: #334155;
             --key-shadow: rgba(0,0,0,0.3);
             --key-sys-bg: #0f172a;
-            
-            /* Cảnh vật ban đêm */
             --grass-top: #166534;
             --grass-bottom: #14532d;
             --cloud-opacity: 0.2;
             --scenery-brightness: 0.6;
-            
-            /* Trạng thái */
             --success: #34d399;
             --danger: #f87171;
             --warning: #fbbf24;
@@ -143,7 +217,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             transition: background-color 0.5s ease, color 0.5s ease;
         }
 
-        /* ================= PHONG CẢNH & THÚ CƯNG ================= */
         .scenery-layer {
             position: fixed; bottom: 0; left: 0; width: 100%; height: 100vh;
             pointer-events: none; z-index: -1; overflow: hidden;
@@ -171,171 +244,151 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         
         @keyframes float { 0% { transform: translateX(-10vw); } 100% { transform: translateX(110vw); } }
 
-        /* Thú cưng cử động */
         .mascot { position: absolute; font-size: 65px; z-index: 0; }
-        
-        /* Chó chuyển động 3D (CSS 3D Transform) */
         .m-dog { 
-            left: 15%; bottom: 12vh; 
-            display: inline-block;
-            transform-origin: center bottom;
-            animation: dog-3d-action 3s infinite ease-in-out;
-            /* Đổ bóng để tạo chiều sâu 3D */
-            filter: drop-shadow(0px 15px 8px rgba(0,0,0,0.3));
+            left: 15%; bottom: 12vh; display: inline-block; transform-origin: center bottom;
+            animation: dog-3d-action 3s infinite ease-in-out; filter: drop-shadow(0px 15px 8px rgba(0,0,0,0.3));
         }
         @keyframes dog-3d-action {
-            0%, 100% { 
-                transform: perspective(500px) rotateY(0deg) rotateX(0deg) translateY(0) scale(1); 
-            }
-            25% { 
-                /* Nhảy lên, xoay người sang phải, ngửa ra sau một chút */
-                transform: perspective(500px) rotateY(35deg) rotateX(10deg) translateY(-20px) scale(1.1); 
-            }
-            50% { 
-                transform: perspective(500px) rotateY(0deg) rotateX(0deg) translateY(0) scale(1); 
-            }
-            75% { 
-                /* Nhảy lên, xoay người sang trái, ngửa ra sau một chút */
-                transform: perspective(500px) rotateY(-35deg) rotateX(10deg) translateY(-20px) scale(1.1); 
-            }
+            0%, 100% { transform: perspective(500px) rotateY(0deg) rotateX(0deg) translateY(0) scale(1); }
+            25% { transform: perspective(500px) rotateY(35deg) rotateX(10deg) translateY(-20px) scale(1.1); }
+            50% { transform: perspective(500px) rotateY(0deg) rotateX(0deg) translateY(0) scale(1); }
+            75% { transform: perspective(500px) rotateY(-35deg) rotateX(10deg) translateY(-20px) scale(1.1); }
         }
+        .m-cat { right: 15%; bottom: 14vh; animation: cat-breathe 4s infinite ease-in-out; transform-origin: bottom center; }
+        @keyframes cat-breathe { 0%, 100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.05) rotate(2deg); } }
 
-        /* Mèo nằm ngủ thở đều */
-        .m-cat { 
-            right: 15%; bottom: 14vh; 
-            animation: cat-breathe 4s infinite ease-in-out;
-            transform-origin: bottom center;
-        }
-        @keyframes cat-breathe {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.05) rotate(2deg); }
-        }
-
-        /* ================= TOP BAR ================= */
         button, .cell { touch-action: manipulation; cursor: pointer; border: none; outline: none; font-family: inherit; }
 
         .top-bar {
             position: fixed; top: 20px; left: 0; width: 100%; padding: 0 30px;
             display: flex; justify-content: space-between; align-items: flex-start; z-index: 100; pointer-events: none;
         }
-
         .widget-pill {
             background: var(--bg-card); backdrop-filter: blur(10px);
             border: 2px solid var(--key-border); padding: 10px 20px; border-radius: 30px;
-            box-shadow: 0 8px 25px var(--key-shadow); pointer-events: auto;
-            display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 8px 25px var(--key-shadow); pointer-events: auto; display: flex; align-items: center; gap: 15px;
         }
-
         #clock-time { font-size: 22px; font-weight: 900; color: var(--primary); }
         #clock-date { font-size: 12px; color: var(--text-muted); font-weight: 700; }
-        
-        .theme-btn {
-            background: transparent; font-size: 24px; cursor: pointer;
-            transition: transform 0.2s; padding: 5px;
-        }
+        .theme-btn { background: transparent; font-size: 24px; cursor: pointer; transition: transform 0.2s; padding: 5px; }
         .theme-btn:active { transform: scale(0.8); }
 
-        /* ================= VIEW 1: MENU CHÍNH ================= */
         #view-menu {
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             width: 100%; min-height: 100vh; padding: 20px; max-width: 1000px; z-index: 10;
         }
-        
         .page-title { font-size: 36px; font-weight: 900; margin-bottom: 40px; text-align: center; }
-
-        .dash-row { display: flex; gap: 24px; width: 100%; margin-bottom: 40px; }
+        .dash-row { display: flex; gap: 24px; width: 100%; margin-bottom: 30px; }
         .dash-card {
-            background: var(--bg-card); backdrop-filter: blur(10px);
-            border: 2px solid var(--key-border); border-radius: 32px;
-            padding: 35px 20px; flex: 1; text-align: center;
-            box-shadow: 0 15px 35px var(--key-shadow); transition: all 0.3s;
+            background: var(--bg-card); backdrop-filter: blur(10px); border: 2px solid var(--key-border); border-radius: 32px;
+            padding: 30px 20px; flex: 1; text-align: center; box-shadow: 0 15px 35px var(--key-shadow); transition: all 0.3s;
         }
-        .dash-title { font-size: 16px; color: var(--text-muted); font-weight: 800; margin-bottom: 15px; text-transform: uppercase; }
-        .dash-value { font-size: 60px; font-weight: 900; color: var(--primary); line-height: 1; }
+        .dash-title { font-size: 15px; color: var(--text-muted); font-weight: 800; margin-bottom: 12px; text-transform: uppercase; }
+        .dash-value { font-size: 52px; font-weight: 900; color: var(--primary); line-height: 1; }
         .dash-value.good { color: var(--success); }
-        .dash-value.bad { color: var(--danger); font-size: 40px; margin-top: 10px;}
+        .dash-value.bad { color: var(--danger); font-size: 36px; margin-top: 8px;}
 
-        .menu-actions { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 700px; }
+        .menu-actions { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 700px; }
         .btn-main {
-            background: var(--primary); color: #fff; padding: 24px; font-size: 24px; font-weight: 800;
-            border-radius: 32px; box-shadow: 0 10px 25px var(--primary-glow); transition: all 0.2s;
+            background: var(--primary); color: #fff; padding: 22px; font-size: 22px; font-weight: 800;
+            border-radius: 28px; box-shadow: 0 10px 25px var(--primary-glow); transition: all 0.2s;
         }
         .btn-main:active { transform: scale(0.97); }
-
-        .sub-actions-row { display: flex; gap: 20px; width: 100%; }
+        .btn-reader-menu {
+            background: linear-gradient(135deg, #059669, #10b981); color: #fff; padding: 22px; font-size: 22px; font-weight: 800;
+            border-radius: 28px; box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4); transition: all 0.2s;
+        }
+        .btn-reader-menu:active { transform: scale(0.97); }
+        .sub-actions-row { display: flex; gap: 16px; width: 100%; }
         .btn-sub {
-            background: var(--bg-card); border: 2px solid var(--key-border);
-            color: var(--text-main); padding: 20px; font-size: 18px; font-weight: 800;
-            border-radius: 20px; flex: 1; transition: all 0.2s;
-            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            background: var(--bg-card); border: 2px solid var(--key-border); color: var(--text-main); padding: 18px; font-size: 16px; font-weight: 800;
+            border-radius: 20px; flex: 1; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 8px;
             box-shadow: 0 8px 20px var(--key-shadow);
         }
         .btn-sub:active { transform: scale(0.96); background: var(--key-sys-bg); }
         .btn-sub span { color: var(--primary); font-size: 14px; font-weight: 700; background: var(--key-sys-bg); padding: 4px 12px; border-radius: 12px;}
 
-        /* ================= VIEW 2: BÀN PHÍM (CẢI TIẾN) ================= */
         #view-keyboard {
             display: none; flex-direction: column; width: 100%; height: 100vh;
             max-width: 1300px; margin: 0 auto; padding: 15px; z-index: 10;
         }
-
-        #top-controls {
-            width: 100%; margin: 90px auto 10px auto; display: flex; justify-content: space-between; align-items: center; padding: 0 10px;
-        }
+        #top-controls { width: 100%; margin: 90px auto 10px auto; display: flex; justify-content: space-between; align-items: center; padding: 0 10px; }
         .top-btn {
-            background: var(--bg-card); color: var(--text-main); padding: 14px 24px;
-            border-radius: 30px; font-size: 16px; font-weight: 800;
+            background: var(--bg-card); color: var(--text-main); padding: 14px 24px; border-radius: 30px; font-size: 16px; font-weight: 800;
             border: 2px solid var(--key-border); box-shadow: 0 6px 15px var(--key-shadow);
         }
-        .helper-text { color: var(--text-main); font-size: 16px; font-weight: 800; background: var(--bg-card); padding: 10px 20px; border-radius: 20px; border: 2px solid var(--key-border);}
-
+        .helper-text { color: var(--text-main); font-size: 15px; font-weight: 800; background: var(--bg-card); padding: 10px 20px; border-radius: 20px; border: 2px solid var(--key-border);}
         #output-box {
             width: calc(100% - 20px); min-height: 85px; margin: 10px auto 15px auto; padding: 15px 30px;
-            background: var(--bg-card); border-radius: 32px;
-            border: 4px solid var(--primary); color: var(--text-main);
+            background: var(--bg-card); border-radius: 32px; border: 4px solid var(--primary); color: var(--text-main);
             font-size: 40px; font-weight: 900; display: flex; align-items: center; justify-content: center;
             box-shadow: 0 10px 25px var(--primary-glow); text-align: center; word-break: break-word;
         }
-
-        /* Lưới bàn phím */
         .grid { display: flex; flex-direction: column; gap: 12px; width: 100%; padding: 0 10px; }
-        .row { display: flex; gap: 12px; justify-content: center; padding: 8px; border-radius: 24px; border: 4px solid transparent; transition: all 0.2s ease;}
-        
+        .row { display: flex; gap: 12px; justify-content: center; }
         .cell {
             flex: 1; padding: 22px 5px; background: var(--key-bg); border: 2px solid var(--key-border);
             border-radius: 20px; font-size: 32px; font-weight: 900; color: var(--text-main);
-            display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 6px 12px var(--key-shadow); transition: all 0.15s ease;
+            display: flex; justify-content: center; align-items: center; box-shadow: 0 6px 12px var(--key-shadow); transition: all 0.15s ease;
         }
-
-        /* Phân loại phím */
         .cell.suggest { background-color: rgba(16, 185, 129, 0.15); border-color: var(--success); color: var(--success); font-size: 26px; }
         .cell.sys { background-color: var(--key-sys-bg); font-size: 20px; color: var(--text-muted); }
         .cell.iot { background-color: rgba(245, 158, 11, 0.15); border-color: var(--warning); color: var(--warning); font-size: 20px; }
         .cell.danger { background-color: rgba(239, 68, 68, 0.15); border-color: var(--danger); color: var(--danger); font-size: 26px; }
         .cell.action { background-color: var(--primary); border-color: var(--primary); color: #fff; font-size: 22px; box-shadow: 0 6px 20px var(--primary-glow);}
 
-        /* HIỆU ỨNG QUÉT (SCANNING) - CỰC KỲ NỔI BẬT */
+        #view-reader {
+            display: none; flex-direction: column; width: 100%; min-height: 100vh;
+            max-width: 1000px; margin: 0 auto; padding: 95px 20px 40px 20px; z-index: 10;
+        }
+        .reader-nav {
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
+            gap: 12px; margin-bottom: 24px; background: var(--bg-card); padding: 16px 24px;
+            border-radius: 24px; border: 2px solid var(--key-border); box-shadow: 0 8px 25px var(--key-shadow);
+        }
+        .reader-nav h2 { font-size: 22px; font-weight: 900; color: var(--text-main); }
+        .reader-nav p { font-size: 13px; color: var(--primary); font-weight: 700; margin-top: 4px; }
+        .reader-controls { display: flex; gap: 10px; align-items: center; }
+        .btn-reader-action {
+            padding: 10px 18px; background: var(--key-sys-bg); border: 2px solid var(--key-border);
+            color: var(--text-main); border-radius: 16px; font-size: 14px; font-weight: 800; transition: 0.2s;
+        }
+        .btn-reader-action.active { background: #059669; border-color: var(--success); color: #fff; }
+        .reader-viewport {
+            background: var(--bg-card); border: 2px solid var(--key-border); border-radius: 28px;
+            padding: 40px 45px; line-height: 2.2; font-size: 28px; font-weight: 600;
+            box-shadow: 0 15px 35px var(--key-shadow); position: relative; margin-bottom: 25px;
+        }
+        .reader-viewport p { margin-bottom: 26px; text-align: justify; }
+        .reader-guide-box {
+            background: var(--bg-card); border: 2px solid var(--primary); border-radius: 24px; padding: 18px 25px; font-size: 15px; font-weight: 800;
+            text-align: center; color: var(--text-main); line-height: 1.8; box-shadow: 0 8px 25px var(--primary-glow);
+        }
+
+        .scan-group {
+            border: 4px solid transparent;
+            border-radius: 24px;
+            transition: all 0.2s ease;
+            padding: 6px;
+        }
         .scanning-row { 
-            border-color: var(--scan-color); 
-            background-color: rgba(245, 158, 11, 0.1); 
-            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2);
+            border-color: var(--scan-color) !important; 
+            background-color: rgba(245, 158, 11, 0.1) !important; 
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.2) !important;
         }
         .scanning-cell {
             background-color: var(--scan-color) !important;
             color: #fff !important;
-            transform: scale(1.1) translateY(-5px);
+            transform: scale(1.05) translateY(-3px) !important;
             border-color: var(--scan-color) !important;
             box-shadow: 0 15px 30px rgba(245, 158, 11, 0.6) !important;
             z-index: 10;
         }
 
-        /* ================= OVERLAYS & ALERTS ================= */
         .overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-main); z-index: 1000; opacity: 0.95;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            display: none; backdrop-filter: blur(10px);
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-main); z-index: 1000; opacity: 0.95;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; display: none; backdrop-filter: blur(10px);
         }
         .sleep-icon { font-size: 100px; margin-bottom: 20px; animation: cat-breathe 3s infinite;}
         .sleep-text { font-size: 45px; font-weight: 900; color: var(--text-main); margin-bottom: 20px; text-align: center;}
@@ -349,41 +402,28 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         .set-title { font-size: 28px; color: var(--text-main); font-weight: 900; margin-bottom: 30px; text-align: center; }
         .set-group { margin-bottom: 24px; }
         .set-label { font-size: 18px; color: var(--text-main); font-weight: 800; margin-bottom: 12px; display: block; }
-        .set-select, .set-slider {
-            width: 100%; padding: 16px; font-size: 18px; font-weight: 700;
-            background: var(--key-sys-bg); color: var(--text-main);
-            border: 2px solid var(--key-border); border-radius: 16px; outline: none;
-        }
+        .set-select, .set-slider { width: 100%; padding: 16px; font-size: 18px; font-weight: 700; background: var(--key-sys-bg); color: var(--text-main); border: 2px solid var(--key-border); border-radius: 16px; outline: none; }
         .set-val { float: right; color: var(--primary); }
         .set-btns { display: flex; gap: 16px; margin-top: 40px; }
         .set-btns button { flex: 1; padding: 20px; border-radius: 20px; font-size: 18px; font-weight: 800; color: #fff; transition: 0.2s;}
         .btn-test { background: var(--key-sys-bg); color: var(--text-main) !important; border: 2px solid var(--key-border);}
-        .btn-test:active { background: var(--key-border);}
         .btn-close { background: var(--primary); box-shadow: 0 6px 20px var(--primary-glow);}
 
         #status-bar {
-            position: fixed; bottom: 0; left: 0; width: 100%; padding: 12px; 
-            background: var(--bg-card); font-size: 15px; color: var(--text-main); 
+            position: fixed; bottom: 0; left: 0; width: 100%; padding: 12px; background: var(--bg-card); font-size: 15px; color: var(--text-main); 
             text-align: center; z-index: 90; font-weight: 800; box-shadow: 0 -5px 15px var(--key-shadow);
         }
-
         #blink-counter {
-            position: fixed; top: 90px; right: 30px;
-            background: var(--bg-card); color: var(--primary); border: 3px solid var(--primary);
-            padding: 16px 32px; border-radius: 40px; font-size: 26px; font-weight: 900;
-            z-index: 100; display: none; box-shadow: 0 10px 25px var(--primary-glow);
+            position: fixed; top: 90px; right: 30px; background: var(--bg-card); color: var(--primary); border: 3px solid var(--primary);
+            padding: 16px 32px; border-radius: 40px; font-size: 26px; font-weight: 900; z-index: 100; display: none; box-shadow: 0 10px 25px var(--primary-glow);
         }
-        
         .toast {
-            position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
-            background: var(--danger); color: white; padding: 20px 45px; border-radius: 40px;
-            font-size: 24px; font-weight: 900; z-index: 9999; display: none;
-            box-shadow: 0 15px 40px rgba(239, 68, 68, 0.4); border: 4px solid white;
+            position: fixed; top: 40px; left: 50%; transform: translateX(-50%); background: var(--danger); color: white; padding: 20px 45px; border-radius: 40px;
+            font-size: 24px; font-weight: 900; z-index: 9999; display: none; box-shadow: 0 15px 40px rgba(239, 68, 68, 0.4); border: 4px solid white;
         }
     </style>
 </head>
 <body>
-    <!-- PHÔNG NỀN THIÊN NHIÊN -->
     <div class="scenery-layer">
         <div class="cloud c1"></div>
         <div class="cloud c2"></div>
@@ -404,18 +444,18 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             <span style="font-size: 14px; font-weight: 700; color: var(--text-muted)">
                 Sóng não: <span id="sig-mini" style="color:var(--danger); font-weight: 900">200</span> &nbsp;|&nbsp; 
                 Tập trung: <span id="att-mini" style="color:var(--text-main); font-weight: 900">0</span> &nbsp;|&nbsp; 
-                Thư giãn: <span id="med-mini" style="color:var(--text-main); font-weight: 900">0</span>
+                Pin: <span id="bat-mini" style="color:var(--success); font-weight: 900">100%</span>
             </span>
         </div>
     </div>
 
-    <div id="blink-counter">👁️ Nháy mắt: 1</div>
+    <div id="blink-counter"> Nháy mắt: 1</div>
     <div id="toast-alert" class="toast"></div>
 
     <div id="sleep-overlay" class="overlay">
-        <div class="sleep-icon">😴</div>
-        <div class="sleep-text" id="sleep-msg">Hệ thống đang nghỉ ngơi</div>
-        <div class="wake-hint">👁️ Nháy mắt 4 lần liên tiếp để thức dậy</div>
+        <div class="sleep-icon"></div>
+        <div class="sleep-text" id="sleep-msg">Hệ thống ESP32-S3 đang nghỉ ngơi</div>
+        <div class="wake-hint"> Nháy mắt 4 lần liên tiếp để thức dậy</div>
     </div>
 
     <div id="settings-overlay" class="overlay">
@@ -442,7 +482,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
     <!-- VIEW 1: MAIN MENU -->
     <div id="view-menu">
-        <h1 class="page-title">Bảng Theo Dõi Sức Khỏe 🌻</h1>
+        <h1 class="page-title">Bảng Theo Dõi Sức Khỏe </h1>
 
         <div class="dash-row">
             <div class="dash-card">
@@ -454,78 +494,197 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 <div class="dash-value" id="att-val">0</div>
             </div>
             <div class="dash-card">
-                <div class="dash-title">Độ Thư Giãn</div>
-                <div class="dash-value" id="med-val" style="color: var(--success)">0</div>
+                <div class="dash-title">Năng Lượng Pin (INA226)</div>
+                <div class="dash-value" id="bat-val" style="color: var(--success)">100%</div>
             </div>
         </div>
 
         <div class="menu-actions">
-            <button class="btn-main" onclick="showKeyboard()">Mở Bàn Phím Giao Tiếp 💬</button>
-            <div class="sub-actions-row">
-                <button class="btn-sub" onclick="openSettings()">🗣 Cài Đặt Giọng</button>
-                <button class="btn-sub" onclick="toggleRelay(1)">💡 Đèn Phòng <span id="menu-r1">Đang Tắt</span></button>
-                <button class="btn-sub" onclick="toggleRelay(2)">🌀 Quạt Máy <span id="menu-r2">Đang Tắt</span></button>
+            <div class="sub-actions-row scan-group">
+                <button class="btn-main scan-item" style="flex: 1; padding: 22px 10px; font-size: 20px;" onclick="showQuick()"> Giao Tiếp Nhanh</button>
+                <button class="btn-main scan-item" style="flex: 1; padding: 22px 10px; font-size: 20px; background: var(--warning);" onclick="showKeyboard()"> Gõ Bàn Phím</button>
+            </div>
+            <div class="scan-group" style="width: 100%; display: flex;">
+                <button class="btn-reader-menu scan-item" style="width: 100%" onclick="showReader()">Đọc Sách & Báo Giải Trí </button>
+            </div>
+            <div class="sub-actions-row scan-group">
+                <button class="btn-sub scan-item" onclick="openSettings()"> Cài Đặt Giọng</button>
+                <button class="btn-sub scan-item" onclick="toggleRelay(1)"> Đèn Phòng <span id="menu-r1">Đang Tắt</span></button>
+                <button class="btn-sub scan-item" onclick="toggleRelay(2)"> Quạt Máy <span id="menu-r2">Đang Tắt</span></button>
             </div>
         </div>
     </div>
 
     <!-- VIEW 2: KEYBOARD -->
     <div id="view-keyboard">
-        <div id="top-controls">
-            <button class="top-btn" onclick="showMenu()">🏠 Trở Về Menu</button>
-            <div class="helper-text">👁️ Nháy 2 lần: Chọn | Nháy 3-6 lần: Gọi Hỗ Trợ</div>
-            <button class="top-btn" id="top-btn-speed" onclick="toggleSpeed()">Tốc Độ: Vừa ⏱️</button>
+        <div id="top-controls" class="scan-group">
+            <button class="top-btn scan-item" onclick="showMenu()"> Trở Về Menu</button>
+            <div class="helper-text"> Nháy 2 lần: Chọn | Nháy 3-5 lần: Gọi Nhanh | Nháy 6 lần: SOS</div>
+            <button class="top-btn scan-item" id="top-btn-speed" onclick="toggleSpeed()">Tốc Độ: Vừa </button>
         </div>
 
         <div id="output-box"></div>
 
         <div class="grid" id="main-grid">
-            <div class="row">
-                <button class="cell suggest word-suggest" id="sug1">TÔI</button>
-                <button class="cell suggest word-suggest" id="sug2">CẦN</button>
-                <button class="cell suggest word-suggest" id="sug3">MỆT</button>
-                <button class="cell suggest word-suggest" id="sug4">ĐAU</button>
+            <div class="row scan-group">
+                <button class="cell suggest word-suggest scan-item" id="sug1">TÔI</button>
+                <button class="cell suggest word-suggest scan-item" id="sug2">CẦN</button>
+                <button class="cell suggest word-suggest scan-item" id="sug3">MỆT</button>
+                <button class="cell suggest word-suggest scan-item" id="sug4">ĐAU</button>
             </div>
+            <!-- HÀNG 1: Các chữ dùng cực nhiều + NÚT XÓA và DẤU CÁCH đưa lên ngay đầu -->
+            <div class="row scan-group">
+                <button class="cell char scan-item">A</button><button class="cell char scan-item">N</button><button class="cell char scan-item">H</button>
+                <button class="cell char scan-item">T</button><button class="cell char scan-item">C</button><button class="cell char scan-item">M</button>
+                <button class="cell char scan-item">G</button><button class="cell sys scan-item">CÁCH</button><button class="cell sys scan-item">XÓA</button>
+            </div>
+            <!-- HÀNG 2: Nguyên âm & Phụ âm thông dụng -->
+            <div class="row scan-group">
+                <button class="cell char scan-item">E</button><button class="cell char scan-item">I</button><button class="cell char scan-item">O</button>
+                <button class="cell char scan-item">U</button><button class="cell char scan-item">Y</button><button class="cell char scan-item">B</button>
+                <button class="cell char scan-item">D</button><button class="cell char scan-item">Đ</button><button class="cell char scan-item">K</button>
+            </div>
+            <!-- HÀNG 3: Nguyên âm có dấu & Phụ âm ít dùng hơn -->
+            <div class="row scan-group">
+                <button class="cell char scan-item">Â</button><button class="cell char scan-item">Ă</button><button class="cell char scan-item">Ê</button>
+                <button class="cell char scan-item">Ô</button><button class="cell char scan-item">Ơ</button><button class="cell char scan-item">Ư</button>
+                <button class="cell char scan-item">L</button><button class="cell char scan-item">P</button><button class="cell char scan-item">Q</button>
+            </div>
+            <!-- HÀNG 4: Ít dùng nhất & Ngoại lai -->
+            <div class="row scan-group">
+                <button class="cell char scan-item">R</button><button class="cell char scan-item">S</button><button class="cell char scan-item">V</button>
+                <button class="cell char scan-item">X</button><button class="cell char scan-item">F</button><button class="cell char scan-item">J</button>
+                <button class="cell char scan-item">W</button><button class="cell char scan-item">Z</button><button class="cell sys scan-item">XÓA HẾT</button>
+            </div>
+            <!-- HÀNG 5: Chức năng -->
+            <div class="row scan-group">
+                <button class="cell sys scan-item" id="grid-btn-speed">TỐC ĐỘ</button>
+                <button class="cell iot scan-item" id="grid-btn-r1"> BẬT ĐÈN</button>
+                <button class="cell iot scan-item" id="grid-btn-r2"> BẬT QUẠT</button>
+                <button class="cell sys scan-item" onclick="showReader()"> ĐỌC BÁO</button>
+                <button class="cell danger scan-item">CẤP CỨU </button>
+                <button class="cell action scan-item">ĐỌC CÂU </button>
+            </div>
+        </div>
+    </div> 
 
-            <div class="row">
-                <button class="cell char">A</button><button class="cell char">Ă</button><button class="cell char">Â</button>
-                <button class="cell char">B</button><button class="cell char">C</button><button class="cell char">D</button>
-                <button class="cell char">Đ</button><button class="cell char">E</button><button class="cell char">Ê</button>
-            </div>
-
-            <div class="row">
-                <button class="cell char">F</button><button class="cell char">G</button><button class="cell char">H</button>
-                <button class="cell char">I</button><button class="cell char">J</button><button class="cell char">K</button>
-                <button class="cell char">L</button><button class="cell char">M</button><button class="cell char">N</button>
-            </div>
-
-            <div class="row">
-                <button class="cell char">O</button><button class="cell char">Ô</button><button class="cell char">Ơ</button>
-                <button class="cell char">P</button><button class="cell char">Q</button><button class="cell char">R</button>
-                <button class="cell char">S</button><button class="cell char">T</button><button class="cell char">U</button>
-            </div>
-
-            <div class="row">
-                <button class="cell char">Ư</button><button class="cell char">V</button><button class="cell char">W</button>
-                <button class="cell char">X</button><button class="cell char">Y</button><button class="cell char">Z</button>
-                <button class="cell sys">CÁCH</button><button class="cell sys">XÓA</button><button class="cell sys">XÓA HẾT</button>
-            </div>
-
-            <div class="row">
-                <button class="cell sys" id="grid-btn-speed">TỐC ĐỘ</button>
-                <button class="cell iot" id="grid-btn-r1">💡 BẬT ĐÈN</button>
-                <button class="cell iot" id="grid-btn-r2">🌀 BẬT QUẠT</button>
-                <button class="cell sys">NGỦ 😴</button>
-                <button class="cell danger">CẤP CỨU 🚨</button>
-                <button class="cell action">ĐỌC CÂU 🔊</button>
-            </div>
+<!-- VIEW 4: GIAO TIẾP NHANH BẰNG NHÁY MẮT (CHỈ 6 Ô) -->
+    
+    <div id="view-quick" style="display: none; flex-direction: column; width: 100%; height: 100vh; max-width: 1300px; margin: 0 auto; padding: 15px; z-index: 10;">
+        <div id="top-controls" class="scan-group" style="margin-top: 90px; margin-bottom: 20px;">
+            <button class="top-btn scan-item" onclick="showMenu()"> Trở Về Menu</button>
+            <button class="top-btn scan-item" id="btn-quick-back" onclick="renderQuickGrid('main')" style="display: none; background: var(--warning); color: white;"> Chọn Lại Chủ Đề</button>
+            <div class="helper-text" style="font-size: 22px;"> Nháy 2 lần để chọn</div>
+        </div>
+        <div class="grid" id="quick-grid" style="gap: 20px;">
+            
         </div>
     </div>
 
-    <div id="status-bar">Đang kết nối hệ thống...</div>
+    <!-- VIEW 4: TRÌNH ĐỌC SÁCH & BÁO BẰNG NHÁY MẮT -->
+    <div id="view-reader">
+        <div class="reader-nav">
+            <div>
+                <h2 id="story-title">Hạt Giống Tâm Hồn</h2>
+                <p>CHẾ ĐỘ GIẢI TRÍ • QUÉT CHỌN HOÀN TOÀN BẰNG NHÁY MẮT</p>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+                <div class="reader-controls scan-group">
+                    <button class="btn-reader-action scan-item" onclick="scrollReader(-1)">CUỘN LÊN </button>
+                    <button class="btn-reader-action scan-item" onclick="scrollReader(1)">CUỘN XUỐNG </button>
+                    <button class="btn-reader-action scan-item" id="btn-auto-scroll" onclick="toggleAutoScroll()">TỰ CUỘN ⏸</button>
+                </div>
+                <div class="reader-controls scan-group">
+                    <button class="btn-reader-action scan-item" onclick="cycleStory()">ĐỔI BÀI </button>
+                    <button class="btn-reader-action scan-item" onclick="readArticleTTS()">ĐỌC TO </button>
+                    <button class="btn-reader-action scan-item" onclick="showMenu()">MENU </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="reader-viewport" id="reader-content"></div>
+
+        <div class="reader-guide-box">
+             <strong>NHÁY 2 LẦN (HOẶC SPACE)</strong>: Chọn mục đang quét &nbsp;|&nbsp; 
+             <strong>NHÁY >=6 LẦN</strong>: Cấp Cứu SOS
+        </div>
+    </div>
+
+    <div id="status-bar">Đang kết nối hệ thống ESP32-S3...</div>
 
     <script>
-        // ================= QUẢN LÝ THEME (SÁNG/TỐI) =================
+        const storyLibrary = [
+            {
+                title: "Hạt Giống Tâm Hồn: Tia Nắng Buổi Sáng",
+                content: `
+                <p>Mỗi sớm mai thức dậy là một món quà tuyệt vời của cuộc sống. Ánh nắng ban mai len lỏi qua ô cửa sổ, mang theo sự ấm áp và niềm hy vọng mới mẻ cho ngày hôm nay.</p>
+                <p>Dù phía trước có những khó khăn hay thử thách, chỉ cần trái tim chúng ta luôn hướng về phía ánh sáng, sự bình an và sức mạnh nội tại sẽ luôn đồng hành cùng bạn.</p>
+                <p>Hãy hít thở thật sâu, cảm nhận từng nhịp đập dịu êm của cơ thể và mỉm cười đón nhận ngày mới đầy bình yên bạn nhé.</p>
+                `
+            },
+            {
+                title: "Bản Tin Y Học: Sức Mạnh Não Bộ & Sóng Alpha",
+                content: `
+                <p>Các nghiên cứu thần kinh học hiện đại đã chứng minh: Khi tâm trí bệnh nhân thư giãn và tiếp nhận những thông điệp tích cực, biên độ sóng Alpha và Theta sẽ tăng mạnh mẽ.</p>
+                <p>Sự gia tăng sóng Alpha giúp làm dịu hệ thống thần kinh giao cảm, kích hoạt cơ chế tự phục hồi của các tế bào não và tăng cường năng lượng nhận thức.</p>
+                <p>Công nghệ trợ năng giao tiếp không lời chính là chiếc cầu nối kỳ diệu giúp người bệnh phục hồi sự tự chủ và niềm vui trong cuộc sống mỗi ngày.</p>
+                `
+            },
+            {
+                title: "Mẩu Chuyện Cười Lạc Quan Buổi Sáng",
+                content: `
+                <p>Bác sĩ ân cần hỏi bệnh nhân: "Dạo này anh thấy tinh thần của mình thế nào rồi?". Bệnh nhân cười tươi đáp: "Thưa bác sĩ, tôi thấy mình lạc quan tới mức mỗi lần nghe tiếng chuông báo thức reo, tôi cứ ngỡ cả thế giới đang vỗ tay hoan hô mình bắt đầu ngày mới!".</p>
+                <p>Tiếng cười chính là liều thuốc bổ tự nhiên quý giá nhất mà tạo hóa ban tặng cho con người. Hãy luôn giữ nụ cười và tinh thần lạc quan bạn nhé!</p>
+                `
+            }
+        ];
+        let currentStoryIndex = 0;
+        let isAutoScrolling = false;
+        let autoScrollTimer = null;
+
+        function loadStory(idx) {
+            currentStoryIndex = idx % storyLibrary.length;
+            const item = storyLibrary[currentStoryIndex];
+            document.getElementById('story-title').innerText = item.title;
+            document.getElementById('reader-content').innerHTML = item.content;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cycleStory() {
+            loadStory(currentStoryIndex + 1);
+            speakVoice("Đã chuyển sang bài đọc mới", true);
+        }
+
+        function scrollReader(dir) {
+            window.scrollBy({ top: dir * window.innerHeight * 0.6, behavior: 'smooth' });
+            speakVoice(dir > 0 ? "Cuộn xuống" : "Cuộn lên", true);
+        }
+
+        function toggleAutoScroll() {
+            isAutoScrolling = !isAutoScrolling;
+            const btn = document.getElementById('btn-auto-scroll');
+            if (isAutoScrolling) {
+                btn.classList.add('active');
+                btn.innerText = "TỰ CUỘN ";
+                speakVoice("Bắt đầu tự động cuộn trang", true);
+                if (autoScrollTimer) clearInterval(autoScrollTimer);
+                autoScrollTimer = setInterval(() => {
+                    window.scrollBy({ top: 3, behavior: 'smooth' });
+                }, 45);
+            } else {
+                btn.classList.remove('active');
+                btn.innerText = "TỰ CUỘN ";
+                speakVoice("Đã dừng tự động cuộn trang", true);
+                clearInterval(autoScrollTimer);
+                autoScrollTimer = null;
+            }
+        }
+
+        function readArticleTTS() {
+            const rawText = document.getElementById('reader-content').innerText;
+            speakVoice(rawText, true);
+        }
+
         function toggleTheme() {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
@@ -534,25 +693,22 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             localStorage.setItem('bci-theme', newTheme);
             document.getElementById('theme-icon').innerText = newTheme === 'dark' ? '☀️' : '🌓';
         }
-        
-        // Load theme đã lưu
         const savedTheme = localStorage.getItem('bci-theme') || 'light';
         document.documentElement.setAttribute('data-theme', savedTheme);
         document.getElementById('theme-icon').innerText = savedTheme === 'dark' ? '☀️' : '🌓';
 
-        // ================= LOGIC HỆ THỐNG =================
         const hostIP = window.location.hostname || "esp32-bci.local";
         let ws;
         let currentView = 'MENU';
-
         let blinkCount = 0;
         let blinkTimeout = null;
-        const BLINK_WINDOW = 1500; 
+        const BLINK_WINDOW = 1400; 
+        let isSleeping = false;
 
         function connectWebSocket() {
             ws = new WebSocket(`ws://${hostIP}:81`);
-            ws.onopen = () => { document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:var(--success)'>Đã kết nối thiết bị 🟢</span>"; };
-            ws.onclose = () => { document.getElementById('status-bar').innerHTML = "Trạng thái: <span style='color:var(--danger)'>Mất kết nối (Đang thử lại...) 🔴</span>"; setTimeout(connectWebSocket, 2500); };
+            ws.onopen = () => { document.getElementById('status-bar').innerHTML = "Trạng thái ESP32-S3: <span style='color:var(--success)'>Đã kết nối thiết bị 🟢</span>"; };
+            ws.onclose = () => { document.getElementById('status-bar').innerHTML = "Trạng thái ESP32-S3: <span style='color:var(--danger)'>Mất kết nối (Đang thử lại...) 🔴</span>"; setTimeout(connectWebSocket, 2500); };
             ws.onmessage = (event) => {
                 const data = event.data;
                 if (data.startsWith("BLINK:")) registerBlink(); 
@@ -560,6 +716,14 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     let parts = data.substring(5).split(',');
                     if (parts.length >= 3) updateTGAMDisplay(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
                 } 
+                else if (data.startsWith("INA:")) {
+                    let parts = data.substring(4).split(',');
+                    if (parts.length >= 4) {
+                        document.getElementById('bat-val').innerText = parts[3] + '%';
+                        const elMini = document.getElementById('bat-mini');
+                        if (elMini) elMini.innerText = parts[3] + '%';
+                    }
+                }
                 else if (data.startsWith("RELAY:")) {
                     let parts = data.substring(6).split(',');
                     updateRelayUI(1, parts[0] === '1'); updateRelayUI(2, parts[1] === '1');
@@ -581,31 +745,142 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         function updateTGAMDisplay(sig, att, med) {
             let elSig = document.getElementById('sig-val'); let elSigMini = document.getElementById('sig-mini');
-            if (sig === 0) { elSig.innerText = "TỐT"; elSig.className = "dash-value good"; elSigMini.innerText = "TỐT"; elSigMini.style.color = "var(--success)"; } 
-            else if (sig === 200) { elSig.innerText = "RỚT ĐIỆN CỰC"; elSig.className = "dash-value bad"; elSigMini.innerText = "RỚT"; elSigMini.style.color = "var(--danger)"; } 
-            else { elSig.innerText = `KÉM (${sig})`; elSig.className = "dash-value warn"; elSigMini.innerText = `KÉM`; elSigMini.style.color = "var(--warning)"; }
-            document.getElementById('att-val').innerText = att; document.getElementById('med-val').innerText = med;
-            document.getElementById('att-mini').innerText = att; document.getElementById('med-mini').innerText = med;
+            if (sig === 0) { elSig.innerText = "TỐT"; elSig.className = "dash-value good"; if(elSigMini) { elSigMini.innerText = "TỐT"; elSigMini.style.color = "var(--success)"; } } 
+            else if (sig === 200) { elSig.innerText = "RỚT ĐIỆN CỰC"; elSig.className = "dash-value bad"; if(elSigMini) { elSigMini.innerText = "RỚT"; elSigMini.style.color = "var(--danger)"; } } 
+            else { elSig.innerText = `KÉM (${sig})`; elSig.className = "dash-value warn"; if(elSigMini) { elSigMini.innerText = `KÉM`; elSigMini.style.color = "var(--warning)"; } }
+            document.getElementById('att-val').innerText = att;
+            if(document.getElementById('att-mini')) document.getElementById('att-mini').innerText = att;
         }
 
         function showMenu() {
             currentView = 'MENU';
-            document.getElementById('view-keyboard').style.display = 'none'; document.getElementById('view-menu').style.display = 'flex';
+            document.getElementById('view-keyboard').style.display = 'none'; 
+            document.getElementById('view-reader').style.display = 'none'; 
+            document.getElementById('view-quick').style.display = 'none';
+            document.getElementById('view-menu').style.display = 'flex';
             document.getElementById('tgam-status-mini').style.display = 'none';
-            clearInterval(scanInterval); speakVoice("Quay lại màn hình chính");
+            if (isAutoScrolling) toggleAutoScroll();
+            buildScanTree();
+            startScanning();
+            speakVoice("Quay lại màn hình chính");
         }
 
         function showKeyboard() {
             currentView = 'KEYBOARD';
-            document.getElementById('view-menu').style.display = 'none'; document.getElementById('view-keyboard').style.display = 'flex';
+            document.getElementById('view-menu').style.display = 'none'; 
+            document.getElementById('view-reader').style.display = 'none'; 
+            document.getElementById('view-quick').style.display = 'none';
+            document.getElementById('view-keyboard').style.display = 'flex';
             document.getElementById('tgam-status-mini').style.display = 'flex';
-            scanState = 'ROW'; currentRow = 0; startScanning(); speakVoice("Mở bàn phím chữ");
+            if (isAutoScrolling) toggleAutoScroll();
+            buildScanTree();
+            startScanning();
+            speakVoice("Mở bàn phím chữ");
         }
 
-        // ================= GIỌNG ĐỌC TTS =================
-        let voices = []; let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 0.85; let ttsVolume = parseFloat(localStorage.getItem('ttsVolume')) || 1.0;
-        let savedVoiceURI = localStorage.getItem('ttsVoiceURI'); let isSettingsOpen = false;
-        let speechQueue = []; let isSpeechPlaying = false; let ttsWatchdog = null;
+        function showReader() {
+            currentView = 'READER';
+            document.getElementById('view-menu').style.display = 'none'; 
+            document.getElementById('view-keyboard').style.display = 'none'; 
+            document.getElementById('view-quick').style.display = 'none';
+            document.getElementById('view-reader').style.display = 'flex';
+            document.getElementById('tgam-status-mini').style.display = 'flex';
+            loadStory(currentStoryIndex);
+            buildScanTree();
+            startScanning();
+            speakVoice("Mở trình đọc sách báo", true);
+        }
+            const quickData = {
+            main: [
+                { label: "🍽️ ĂN UỐNG", target: "food", bg: "#3b82f6" },
+                { label: "🤒 BÁO ĐAU", target: "pain", bg: "#ef4444" },
+                { label: "🛏️ SINH HOẠT", target: "life", bg: "#10b981" },
+                { label: "🆘 GỌI NGƯỜI", target: "help", bg: "#f59e0b" }
+            ],
+            food: [
+                { label: "💧 TÔI KHÁT NƯỚC", bg: "#0ea5e9" }, { label: "🥛 TÔI MUỐN UỐNG SỮA", bg: "#0ea5e9" },
+                { label: "🍚 TÔI MUỐN ĂN CƠM", bg: "#059669" }, { label: "🥣 TÔI MUỐN ĂN CHÁO", bg: "#059669" }
+            ],
+            pain: [
+                { label: "🤕 ĐAU ĐẦU / CHÓNG MẶT", bg: "#b91c1c" }, { label: "🫁 ĐAU NGỰC / KHÓ THỞ", bg: "#b91c1c" },
+                { label: "🤢 ĐAU BỤNG / BUỒN NÔN", bg: "#dc2626" }, { label: "🦵 ĐAU NHỨC TAY CHÂN", bg: "#dc2626" }
+            ],
+            life: [
+                { label: "🚽 CẦN ĐI VỆ SINH", bg: "#059669" }, { label: "👕 MUỐN THAY QUẦN ÁO", bg: "#059669" },
+                { label: "🛏️ ĐỠ TÔI NẰM XUỐNG", bg: "#16a34a" }, { label: "🪑 ĐỠ TÔI NGỒI DẬY", bg: "#16a34a" }
+            ],
+            help: [
+                { label: "👨‍⚕️ GỌI BÁC SĨ KHÁM", bg: "#d97706" }, { label: "👩‍⚕️ GỌI Y TÁ", bg: "#d97706" },
+                { label: "👨‍👩‍👧 GỌI NGƯỜI NHÀ", bg: "#ea580c" }, { label: "🥵 TÔI THẤY NÓNG / LẠNH", bg: "#ea580c" }
+            ]
+        };
+
+        function renderQuickGrid(type) {
+            const grid = document.getElementById('quick-grid');
+            const backBtn = document.getElementById('btn-quick-back');
+            grid.innerHTML = '';
+            
+            if (type === 'main') {
+                backBtn.style.display = 'none';
+                let html = '';
+                for(let i=0; i<quickData.main.length; i+=2) {
+                    html += `<div class="row scan-group" style="gap: 20px;">
+                        <button class="cell action quick-cat scan-item" data-target="${quickData.main[i].target}" style="background: ${quickData.main[i].bg}; font-size: 40px; padding: 60px 10px; font-weight: 900;">${quickData.main[i].label}</button>
+                        <button class="cell action quick-cat scan-item" data-target="${quickData.main[i+1].target}" style="background: ${quickData.main[i+1].bg}; font-size: 40px; padding: 60px 10px; font-weight: 900;">${quickData.main[i+1].label}</button>
+                    </div>`;
+                }
+                grid.innerHTML = html;
+            } else {
+                backBtn.style.display = 'block'; // Hiện nút quay lại
+                let items = quickData[type];
+                let html = '';
+                for(let i=0; i<items.length; i+=2) {
+                    html += `<div class="row scan-group" style="gap: 20px;">
+                        <button class="cell action quick-phrase scan-item" style="background: ${items[i].bg}; font-size: 32px; padding: 50px 10px; font-weight: 900;">${items[i].label}</button>
+                        <button class="cell action quick-phrase scan-item" style="background: ${items[i+1].bg}; font-size: 32px; padding: 50px 10px; font-weight: 900;">${items[i+1].label}</button>
+                    </div>`;
+                }
+                grid.innerHTML = html;
+            }
+            
+            // Gắn sự kiện click cho các nút mới tạo bằng JS
+            grid.querySelectorAll('.scan-item').forEach(btn => {
+                btn.addEventListener('click', (e) => { 
+                    e.preventDefault(); e.stopPropagation(); 
+                    executeAction(btn); 
+                    if (document.activeElement) document.activeElement.blur(); 
+                });
+            });
+
+            // Cập nhật lại khung quét
+            buildScanTree();
+            startScanning();
+        }
+
+        function showQuick() {
+            currentView = 'QUICK';
+            document.getElementById('view-menu').style.display = 'none'; 
+            document.getElementById('view-keyboard').style.display = 'none'; 
+            document.getElementById('view-reader').style.display = 'none'; 
+            document.getElementById('view-quick').style.display = 'flex';
+            document.getElementById('tgam-status-mini').style.display = 'flex';
+            if (isAutoScrolling) toggleAutoScroll();
+            
+            // Luôn mở trang danh mục gốc của Giao tiếp nhanh
+            renderQuickGrid('main');
+            speakVoice("Mở bảng giao tiếp nhanh");
+        }
+
+        let voices = []; 
+        let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 0.85; 
+        let ttsVolume = parseFloat(localStorage.getItem('ttsVolume')) || 1.0;
+        let savedVoiceURI = localStorage.getItem('ttsVoiceURI'); 
+        let isSettingsOpen = false;
+        
+        let speechQueue = []; 
+        let isSpeechPlaying = false; 
+        let ttsWatchdog = null;
+        let currentSpeechId = 0; // Thêm biến quản lý ID để chống kẹt giọng đọc
 
         document.getElementById('rate-slider').value = ttsRate; document.getElementById('rate-val').innerText = ttsRate;
         document.getElementById('vol-slider').value = ttsVolume; document.getElementById('vol-val').innerText = Math.round(ttsVolume * 100) + '%';
@@ -626,37 +901,247 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function processNextSpeech() {
             if (speechQueue.length === 0) { isSpeechPlaying = false; if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } return; }
             if (!('speechSynthesis' in window)) { speechQueue = []; isSpeechPlaying = false; return; }
+            
             isSpeechPlaying = true;
             const item = speechQueue.shift();
             const msg = new SpeechSynthesisUtterance(item.text);
             msg.rate = ttsRate; msg.volume = ttsVolume;
+            
             if (voices.length > 0) {
                 const curURI = document.getElementById('voice-select').value;
                 const v = voices.find(vox => vox.voiceURI === curURI) || voices.find(vox => vox.lang.includes('vi'));
                 if (v) msg.voice = v;
             }
+            
+            const mySpeechId = ++currentSpeechId;
             let finished = false;
-            const completeSpeech = () => { if (finished) return; finished = true; if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } setTimeout(() => { processNextSpeech(); }, 50); };
+            
+            const completeSpeech = () => { 
+                if (finished) return; 
+                finished = true; 
+                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } 
+                // Chỉ gọi câu tiếp theo nếu ID không bị thay đổi (tức là không bị cancel ngang do quét nhanh)
+                if (currentSpeechId === mySpeechId) {
+                    setTimeout(() => { processNextSpeech(); }, 20); 
+                }
+            };
+            
             msg.onend = completeSpeech; msg.onerror = completeSpeech;
-            ttsWatchdog = setTimeout(() => { if (!finished) completeSpeech(); }, Math.max(1200, item.text.length * 150 + 500));
+            ttsWatchdog = setTimeout(() => { if (!finished) completeSpeech(); }, Math.max(1000, item.text.length * 150 + 500));
+            
             try { window.speechSynthesis.speak(msg); } catch(e) { completeSpeech(); }
         }
 
         function speakVoice(text, immediate = false) {
             if (!('speechSynthesis' in window) || !text || text.trim() === '') return;
-            if (immediate) { speechQueue = []; if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } try { window.speechSynthesis.cancel(); } catch(e) {} isSpeechPlaying = false; }
+            
+            if (immediate) { 
+                currentSpeechId++; // Vô hiệu hóa callback của câu đang đọc dở
+                speechQueue = []; 
+                if (ttsWatchdog) { clearTimeout(ttsWatchdog); ttsWatchdog = null; } 
+                try { window.speechSynthesis.cancel(); } catch(e) {} 
+                isSpeechPlaying = false; 
+            }
+            
             if (speechQueue.length >= 8) speechQueue.shift();
             speechQueue.push({ text: text.trim() });
-            if (!isSpeechPlaying) processNextSpeech();
+            
+            if (!isSpeechPlaying) {
+                if (immediate) {
+                    // Đợi 30ms để trình duyệt kịp hủy câu cũ trước khi đọc câu mới (Chống kẹt delay)
+                    setTimeout(() => { processNextSpeech(); }, 30);
+                } else {
+                    processNextSpeech();
+                }
+            }
         }
 
-        // ================= BÀN PHÍM VÀ SCANNING =================
         const speeds = [1500, 1000, 600]; const speedLabels = ["CHẬM", "VỪA", "NHANH"]; let speedIdx = 1; let scanInterval;
+        let scanGroups = []; let currentGroupIdx = 0; let currentItemIdx = 0; let scanState = 'GROUP'; let loopCount = 0;
+
         function toggleSpeed() {
             speedIdx = (speedIdx + 1) % 3; const newLabel = "TỐC ĐỘ: " + speedLabels[speedIdx];
-            document.getElementById('top-btn-speed').innerText = newLabel + " ⏱️"; document.getElementById('grid-btn-speed').innerText = newLabel;
+            document.getElementById('top-btn-speed').innerText = newLabel + " "; document.getElementById('grid-btn-speed').innerText = newLabel;
             speakVoice(newLabel, true);
-            if (!isSleeping && !isSettingsOpen && currentView === 'KEYBOARD') { clearInterval(scanInterval); scanInterval = setInterval(tick, speeds[speedIdx]); }
+            if (!isSleeping && !isSettingsOpen) startScanning();
+        }
+
+        function buildScanTree() {
+            let activeView = document.getElementById('view-menu');
+            if (currentView === 'KEYBOARD') activeView = document.getElementById('view-keyboard');
+            else if (currentView === 'READER') activeView = document.getElementById('view-reader');
+            else if (currentView === 'QUICK') activeView = document.getElementById('view-quick');
+            
+            scanGroups = Array.from(activeView.querySelectorAll('.scan-group'));
+            currentGroupIdx = 0;
+            currentItemIdx = 0;
+            scanState = 'GROUP';
+            loopCount = 0;
+            renderScan();
+        }
+
+        function renderScan() { 
+            document.querySelectorAll('.scanning-row').forEach(el => el.classList.remove('scanning-row'));
+            document.querySelectorAll('.scanning-cell').forEach(el => el.classList.remove('scanning-cell'));
+            
+            if (!scanGroups || scanGroups.length === 0) return;
+            
+            if (scanState === 'GROUP') {
+                if(scanGroups[currentGroupIdx]) {
+                    scanGroups[currentGroupIdx].classList.add('scanning-row');
+                }
+            } else if (scanState === 'ITEM') {
+                if(scanGroups[currentGroupIdx]) {
+                    scanGroups[currentGroupIdx].classList.add('scanning-row');
+                    let items = scanGroups[currentGroupIdx].querySelectorAll('.scan-item');
+                    if (items && items[currentItemIdx]) {
+                        items[currentItemIdx].classList.add('scanning-cell');
+                    }
+                }
+            }
+        }
+
+        function tick() { 
+            if (isSleeping || isSettingsOpen) return; 
+            if (!scanGroups || scanGroups.length === 0) return;
+
+            if (scanState === 'GROUP') {
+                currentGroupIdx = (currentGroupIdx + 1) % scanGroups.length;
+            } else if (scanState === 'ITEM') {
+                let items = scanGroups[currentGroupIdx].querySelectorAll('.scan-item');
+                if (!items || items.length === 0) {
+                    scanState = 'GROUP';
+                } else {
+                    currentItemIdx++;
+                    if (currentItemIdx >= items.length) {
+                        loopCount++;
+                        if (loopCount >= 2) { 
+                            scanState = 'GROUP'; 
+                            currentItemIdx = 0; 
+                            loopCount = 0; 
+                        } else {
+                            currentItemIdx = 0;
+                        }
+                    }
+                    
+                    if (scanState === 'ITEM' && items[currentItemIdx]) {
+                        let text = items[currentItemIdx].innerText.trim().replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
+                        if (text === "CÁCH") text = "Cách"; 
+                        else if (text === "XÓA") text = "Xóa"; 
+                        else if (text === "XÓA HẾT") text = "Xóa hết"; 
+                        else if (text === "ĐỌC CÂU") text = "Đọc câu"; 
+                        else if (text === "CẤP CỨU") text = "Cấp cứu"; 
+                        else if (text.startsWith("TỐC ĐỘ")) text = "Tốc độ"; 
+                        else if (text.includes("ĐỌC BÁO") || text.includes("ĐỌC SÁCH")) text = "Đọc báo";
+                        else if (text.includes("ĐỔI BÀI")) text = "Đổi bài";
+                        else if (text.includes("TỰ CUỘN")) text = "Tự cuộn";
+                        else if (text.includes("ĐỌC TO")) text = "Đọc to";
+                        else if (text.includes("MENU")) text = "Về Menu";
+                        else if (text.includes("CUỘN LÊN")) text = "Cuộn lên";
+                        else if (text.includes("CUỘN XUỐNG")) text = "Cuộn xuống";
+                        else if (text.includes("ĐÈN")) text = "Đèn phòng";
+                        else if (text.includes("QUẠT")) text = "Quạt máy";
+                        else if (text.includes("CÀI ĐẶT")) text = "Cài đặt";
+                        else if (text.includes("BÀN PHÍM")) text = "Bàn phím";
+else if (text.includes("GIAO TIẾP NHANH")) text = "Mở giao tiếp nhanh";
+                    else if (text.includes("GÕ BÀN PHÍM")) text = "Mở gõ bàn phím chữ";
+            
+
+                        if (text) speakVoice(text, true); 
+                    }
+                }
+            }
+            renderScan(); 
+        }
+
+        function startScanning() { 
+            clearInterval(scanInterval); 
+            renderScan(); 
+            scanInterval = setInterval(tick, speeds[speedIdx]); 
+        }
+
+        function registerBlink() {
+            if (isSleeping || isSettingsOpen) return;
+            blinkCount++;
+            if (blinkCount === 1) clearInterval(scanInterval);
+            const counterEl = document.getElementById('blink-counter');
+            counterEl.innerText = " Nháy mắt: " + blinkCount; counterEl.style.display = 'block';
+            if (blinkTimeout) clearTimeout(blinkTimeout);
+            blinkTimeout = setTimeout(() => { counterEl.style.display = 'none'; processBlinks(blinkCount); blinkCount = 0; }, BLINK_WINDOW);
+        }
+
+        function processBlinks(count) {
+            if (count >= 6) {
+                sendQuickAlert("SOS");
+                return;
+            }
+
+            if (count === 1) {
+                console.log("Bỏ qua 1 lần nháy mắt (sinh học)");
+            } else if (count === 2) {
+                executeNormalSelection();
+            } else if (count === 3) {
+                sendQuickAlert("TÔI CẦN UỐNG NƯỚC");
+            } else if (count === 4) {
+                sendQuickAlert("TÔI CẦN ĐI VỆ SINH");
+            } else if (count === 5) {
+                sendQuickAlert("TÔI ĐANG RẤT ĐAU");
+            }
+
+            if (!isSleeping && !isSettingsOpen) startScanning();
+        }
+
+        function executeNormalSelection() {
+            if (!scanGroups || scanGroups.length === 0) return;
+
+            if (scanState === 'GROUP') {
+                let items = scanGroups[currentGroupIdx].querySelectorAll('.scan-item');
+                if (items && items.length > 0) {
+                    // CHỖ SỬA LỖI NẰM Ở ĐÂY:
+                    if (items.length === 1) {
+                        // Nếu hàng này CHỈ CÓ 1 NÚT, lập tức click luôn không cần vào trong
+                        items[0].click();
+                        scanState = 'GROUP'; 
+                        loopCount = 0;
+                        renderScan();
+                    } else {
+                        // Nếu hàng có từ 2 nút trở lên (như bàn phím, cài đặt), mới quét tiếp vào trong
+                        scanState = 'ITEM'; 
+                        currentItemIdx = 0; 
+                        loopCount = 0; 
+                        renderScan();
+                        
+                        let text = items[0].innerText.trim().replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
+                        if (text) speakVoice(text, true);
+                    }
+                }
+            } 
+            else if (scanState === 'ITEM') {
+                let items = scanGroups[currentGroupIdx].querySelectorAll('.scan-item');
+                if (items && items[currentItemIdx]) {
+                    let btn = items[currentItemIdx];
+                    btn.click();
+                    
+                    if (scanState === 'ITEM') {
+                        scanState = 'GROUP';
+                        loopCount = 0;
+                        renderScan();
+                    }
+                }
+            }
+        }
+
+        function sendQuickAlert(msg) {
+            if (msg === "SOS") { speakVoice("CẤP CỨU! CẦN BÁC SĨ GIÚP ĐỠ GẤP!", true); sendCommand("SOS"); } 
+            else { speakVoice(msg, true); sendCommand("SENTENCE:" + msg); }
+            showToastAlert(msg);
+        }
+
+        function showToastAlert(msg) {
+            const toast = document.getElementById('toast-alert');
+            toast.innerText = msg === "SOS" ? " CẤP CỨU KHẨN CẤP " : " " + msg;
+            toast.style.background = msg === "SOS" ? "var(--danger)" : "var(--warning)";
+            toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
         const dictionary = ["TÔI", "BẠN", "MẸ", "CHA", "BÁC SĨ", "Y TÁ", "CON", "CHỒNG", "VỢ", "NHÀ", "BỆNH VIỆN", "CẦN", "MUỐN", "THÍCH", "LÀM", "ĂN", "UỐNG", "ĐI", "NGỦ", "TẮM", "KHÁM", "MỞ", "BẬT", "TẮT", "LẤY", "GIÚP", "NGỒI", "NẰM", "MỆT", "ĐAU", "NHỨC", "MỎI", "NGỨA", "HO", "THỞ", "KHÁT", "ĐÓI", "NÓNG", "LẠNH", "KHỎE", "YẾU", "CHÓNG MẶT", "BUỒN NÔN", "NƯỚC", "CƠM", "MÌ", "PHỞ", "CHÁO", "SỮA", "THUỐC", "ÁO", "QUẦN", "GIƯỜNG", "ĐÈN", "QUẠT", "TV", "CHĂN", "GỐI", "ĐẦU", "BỤNG", "TAY", "CHÂN", "LƯNG", "NGỰC", "MẮT", "CỔ", "MIỆNG", "ĐÚNG", "SAI", "RẤT", "QUÁ", "KHÔNG", "CÓ", "CHƯA", "RỒI", "ĐANG", "SẼ", "XIN LỖI", "CẢM ƠN", "VÂNG", "DẠ", "NHIỀU", "ÍT", "NHANH", "CHẬM", "VỆ SINH", "QUẦN ÁO", "LAU NGƯỜI"];
@@ -707,35 +1192,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             updatePredictiveText();
         }
 
-        const rows = document.querySelectorAll('.row'); let currentRow = 0, currentCol = 0; let scanState = 'ROW'; let loopCount = 0; let isSleeping = false;
-
-        function renderScan() { 
-            rows.forEach(r => { r.classList.remove('scanning-row'); Array.from(r.children).forEach(c => c.classList.remove('scanning-cell')); }); 
-            if (scanState === 'ROW') rows[currentRow].classList.add('scanning-row'); 
-            else { rows[currentRow].classList.add('scanning-row'); rows[currentRow].children[currentCol].classList.add('scanning-cell'); } 
-        }
-
-        function tick() { 
-            if (isSleeping || isSettingsOpen || currentView !== 'KEYBOARD') return; 
-            if (scanState === 'ROW') currentRow = (currentRow + 1) % rows.length; 
-            else if (scanState === 'CELL') {
-                currentCol++;
-                if (currentCol >= rows[currentRow].children.length) {
-                    loopCount++;
-                    if (loopCount >= 2) { scanState = 'ROW'; currentCol = 0; loopCount = 0; } 
-                    else currentCol = 0;
-                }
-                if (scanState === 'CELL') {
-                    let text = rows[currentRow].children[currentCol].innerText.trim().replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
-                    if (text === "CÁCH") text = "Cách"; else if (text === "XÓA") text = "Xóa"; else if (text === "XÓA HẾT") text = "Xóa hết"; else if (text === "ĐỌC CÂU") text = "Đọc câu"; else if (text === "CẤP CỨU") text = "Cấp cứu"; else if (text.startsWith("TỐC ĐỘ")) text = "Tốc độ";
-                    if (text) speakVoice(text, true); 
-                }
-            }
-            renderScan(); 
-        }
-
-        function startScanning() { clearInterval(scanInterval); renderScan(); scanInterval = setInterval(tick, speeds[speedIdx]); }
-
         function executeAction(element) {
             const textRaw = element.innerText.trim();
             const text = textRaw.replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim(); 
@@ -743,6 +1199,20 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             const outBox = document.getElementById('output-box');
 
             if (element.classList.contains('word-suggest')) { applySuggestion(text); speakVoice(text, true); }
+
+            // LEVEL 1: Nếu bệnh nhân nháy vào Chủ đề (Ăn uống, Báo đau...)
+            else if (element.classList.contains('quick-cat')) { 
+                let target = element.getAttribute('data-target');
+                speakVoice(text, true); // Máy đọc tên Chủ đề
+                renderQuickGrid(target); // Vẽ ra giao diện con tương ứng
+            }
+            // LEVEL 2: Nếu bệnh nhân nháy vào Câu nói chi tiết
+            else if (element.classList.contains('quick-phrase')) { 
+                speakVoice(text, true); // Máy phát âm câu chốt
+                sendCommand("SENTENCE:" + text); // Đẩy lên Cloud / Y tá
+                showToastAlert(text);
+                setTimeout(showMenu, 2500); // Giao tiếp xong tự động dọn dẹp và quay về Menu
+            }
             else if (element.classList.contains('char')) { outBox.textContent += text; outBox.textContent = processTelex(outBox.textContent); updatePredictiveText(); speakVoice(text, true); }
             else if (text === "CÁCH") { if (!outBox.textContent.endsWith(' ') && outBox.textContent !== '') { outBox.textContent += " "; updatePredictiveText(); } speakVoice("Dấu cách", true); }
             else if (text === "XÓA") { outBox.textContent = outBox.textContent.slice(0, -1); updatePredictiveText(); speakVoice("Xóa", true); }
@@ -753,56 +1223,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             else if (text.includes("QUẠT")) toggleRelay(2);
             else if (text === "NGỦ") { enterSleepMode(); sendCommand('S'); }
             else if (text === "CẤP CỨU") sendQuickAlert("SOS");
-
-            scanState = 'ROW'; currentCol = 0; loopCount = 0; renderScan();
+            
+            scanState = 'GROUP'; loopCount = 0; renderScan();
         }
 
-        // ================= XỬ LÝ NHÁY MẮT =================
-        function registerBlink() {
-            if (isSleeping || isSettingsOpen) return;
-            blinkCount++;
-            if (blinkCount === 1) clearInterval(scanInterval);
-            const counterEl = document.getElementById('blink-counter');
-            counterEl.innerText = "👁️ Nháy mắt: " + blinkCount; counterEl.style.display = 'block';
-            if (blinkTimeout) clearTimeout(blinkTimeout);
-            blinkTimeout = setTimeout(() => { counterEl.style.display = 'none'; processBlinks(blinkCount); blinkCount = 0; }, BLINK_WINDOW);
-        }
-
-        function processBlinks(count) {
-            if (count === 1) console.log("Bỏ qua 1 lần nháy mắt (sinh học)");
-            else if (count === 2) executeNormalSelection();
-            else if (count === 3) sendQuickAlert("TÔI CẦN UỐNG NƯỚC");
-            else if (count === 4) sendQuickAlert("TÔI CẦN ĐI VỆ SINH");
-            else if (count === 5) sendQuickAlert("TÔI ĐANG RẤT ĐAU");
-            else if (count >= 6) sendQuickAlert("SOS");
-            if (currentView === 'KEYBOARD' && !isSleeping && !isSettingsOpen) startScanning();
-        }
-
-        function executeNormalSelection() {
-            if (currentView === 'MENU') { showKeyboard(); return; }
-            if (scanState === 'ROW') {
-                scanState = 'CELL'; currentCol = 0; loopCount = 0; renderScan();
-                let firstCellText = rows[currentRow].children[0].innerText.replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
-                if (firstCellText) speakVoice(firstCellText, true);
-            } 
-            else if (scanState === 'CELL') executeAction(rows[currentRow].children[currentCol]);
-        }
-
-        function sendQuickAlert(msg) {
-            if (msg === "SOS") { speakVoice("CẤP CỨU! CẦN BÁC SĨ GIÚP ĐỠ GẤP!", true); sendCommand("SOS"); } 
-            else { speakVoice(msg, true); sendCommand("SENTENCE:" + msg); }
-            showToastAlert(msg);
-        }
-
-        function showToastAlert(msg) {
-            const toast = document.getElementById('toast-alert');
-            toast.innerText = msg === "SOS" ? "🚨 CẤP CỨU KHẨN CẤP 🚨" : "⚠️ " + msg;
-            toast.style.background = msg === "SOS" ? "var(--danger)" : "var(--warning)";
-            toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 4000);
-        }
-
-        document.querySelectorAll('.cell, .btn-main, .btn-sub, .top-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if(btn.classList.contains('cell')) executeAction(btn); });
+        document.querySelectorAll('button, .cell, .btn-main, .btn-sub, .top-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { 
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                if(btn.classList.contains('cell')) executeAction(btn); 
+                if (document.activeElement) document.activeElement.blur(); 
+            });
         });
 
         function toggleRelay(num) { sendCommand('R' + num); }
@@ -811,7 +1242,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             let mEl = document.getElementById('menu-r' + num); if (mEl) { mEl.innerText = label; mEl.style.color = color; }
             let kEl = document.getElementById('grid-btn-r' + num);
             if (kEl) {
-                let name = num === 1 ? "ĐÈN" : "QUẠT"; let icon = num === 1 ? "💡" : "🌀";
+                let name = num === 1 ? "ĐÈN" : "QUẠT"; let icon = num === 1 ? "" : "";
                 kEl.innerText = `${icon} ${actionLabel} ${name}`;
                 kEl.style.backgroundColor = state ? "rgba(245, 158, 11, 0.15)" : "var(--key-sys-bg)"; 
                 kEl.style.color = state ? "var(--warning)" : "var(--text-muted)";
@@ -819,46 +1250,79 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             }
         }
 
-        function enterSleepMode() { isSleeping = true; document.getElementById('sleep-overlay').style.display = 'flex'; clearInterval(scanInterval); speakVoice("Hệ thống chuyển sang chế độ nghỉ ngơi", true); }
-        function exitSleepMode() { isSleeping = false; document.getElementById('sleep-overlay').style.display = 'none'; if (currentView === 'KEYBOARD') startScanning(); speakVoice("Hệ thống đã thức dậy", true); }
+        function enterSleepMode() { 
+            isSleeping = true; 
+            document.getElementById('sleep-overlay').style.display = 'flex'; 
+            clearInterval(scanInterval); 
+            if (isAutoScrolling) toggleAutoScroll();
+            speakVoice("Hệ thống chuyển sang chế độ nghỉ ngơi", true); 
+        }
+        function exitSleepMode() { 
+            isSleeping = false; 
+            document.getElementById('sleep-overlay').style.display = 'none'; 
+            startScanning(); 
+            speakVoice("Hệ thống đã thức dậy", true); 
+        }
 
         function openSettings() { isSettingsOpen = true; document.getElementById('settings-overlay').style.display = 'flex'; clearInterval(scanInterval); }
         function closeSettings() {
             isSettingsOpen = false; ttsRate = parseFloat(document.getElementById('rate-slider').value); ttsVolume = parseFloat(document.getElementById('vol-slider').value);
             savedVoiceURI = document.getElementById('voice-select').value;
             localStorage.setItem('ttsRate', ttsRate); localStorage.setItem('ttsVolume', ttsVolume); localStorage.setItem('ttsVoiceURI', savedVoiceURI);
-            document.getElementById('settings-overlay').style.display = 'none'; if (currentView === 'KEYBOARD' && !isSleeping) startScanning();
+            document.getElementById('settings-overlay').style.display = 'none'; if (!isSleeping) startScanning();
         }
         function testVoice() { let curR = ttsRate, curV = ttsVolume; ttsRate = parseFloat(document.getElementById('rate-slider').value); ttsVolume = parseFloat(document.getElementById('vol-slider').value); speakVoice("Chào bạn, chúc bạn một ngày tốt lành!", true); ttsRate = curR; ttsVolume = curV; }
 
         document.getElementById('rate-slider').oninput = function() { document.getElementById('rate-val').innerText = this.value; };
         document.getElementById('vol-slider').oninput = function() { document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%'; };
 
-        window.addEventListener('keydown', (e) => { if (e.code === 'Space') { e.preventDefault(); if (isSleeping) sendCommand('W'); else sendCommand('SIMULATE_BLINK'); } });
+        window.addEventListener('keydown', (e) => { 
+    if (e.code === 'Space') { 
+        e.preventDefault(); 
+        e.stopPropagation();
+        if (document.activeElement) document.activeElement.blur(); 
+        
+        if (isSleeping) {
+            sendCommand('W'); 
+            exitSleepMode();
+        } else {
+            // Chỉ gửi lệnh xuống ESP32, để ESP32 báo ngược lại thì mới đếm
+            sendCommand('SIMULATE_BLINK'); 
+        }
+    } 
+}, true);
+        // Khởi động giao diện & Cây quét
         updatePredictiveText();
+        
+        // CHỐT CHẶN: Chỉ khởi chạy quét khi web đã load được 100% để chống lỗi null
+        document.addEventListener('DOMContentLoaded', () => {
+            buildScanTree();
+            startScanning();
+        });
     </script>
 </body>
 </html>
 )rawliteral";
 
 // =========================================================================
-// BIẾN GIAO TIẾP ĐA LUỒNG (FREERTOS) - THÊM MỚI
+// BIẾN GIAO TIẾP ĐA LUỒNG (FREERTOS)
 // =========================================================================
 String pendingCloudSentence = "";
 bool pendingTelemetry = false;
 
 // =========================================================================
-// TASK FREERTOS: XỬ LÝ GỬI DỮ LIỆU LÊN CLOUD (CHẠY NGẦM Ở CORE 0)
+// TASK FREERTOS: XỬ LÝ GỬI DỮ LIỆU LÊN CLOUD RENDER (CHẠY NGẦM Ở CORE 0)
 // =========================================================================
 void cloudSyncTask(void * parameter) {
   for(;;) {
-    // 1. Gửi câu giao tiếp lên Cloud
+    vTaskDelay(pdMS_TO_TICKS(100));
+
     if (pendingCloudSentence != "") {
       if (WiFi.status() == WL_CONNECTED) {
         HTTPClient http;
         http.begin(secureClient, CLOUD_SERVER_URL);
         http.addHeader("Content-Type", "application/json");
-        http.setTimeout(5000); // Timeout 5 giây
+        http.setTimeout(2500); 
 
         String jsonPayload = "{\"sentence\":\"" + pendingCloudSentence + "\",\"attention\":" + String(attention) + ",\"meditation\":" + String(meditation) + ",\"signalQuality\":" + String(signalQuality) + "}";
         int httpResponseCode = http.POST(jsonPayload);
@@ -870,25 +1334,25 @@ void cloudSyncTask(void * parameter) {
         }
         http.end();
       }
-      pendingCloudSentence = ""; // Xóa sau khi gửi xong
+      pendingCloudSentence = ""; 
     }
 
-    // 2. Gửi Telemetry (Heartbeat, Pin, Sóng não) lên Cloud
     if (pendingTelemetry) {
       if (WiFi.status() == WL_CONNECTED) {
-        int rawBat = analogRead(BATTERY_PIN);
-        batteryPercent = map(rawBat, 0, 4095, 0, 100); 
-        if(batteryPercent > 100) batteryPercent = 100;
-        if(batteryPercent < 0) batteryPercent = 0;
+        readINA226();
 
         HTTPClient http;
         http.begin(secureClient, CLOUD_TELEMETRY_URL);
         http.addHeader("Content-Type", "application/json");
-        http.setTimeout(5000); // Timeout 5 giây
+        http.setTimeout(2500);
 
         String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
                          "\"signalQuality\":" + String(signalQuality) + "," +
                          "\"battery\":" + String(batteryPercent) + "," +
+                         "\"voltage\":" + String(inaBusVoltage, 2) + "," +
+                         "\"current\":" + String(inaCurrent_mA, 1) + "," +
+                         "\"power\":" + String(inaPower_mW, 1) + "," +
+                         "\"shuntVoltage\":" + String(inaShunt_mV, 2) + "," +
                          "\"attention\":" + String(attention) + "," +
                          "\"meditation\":" + String(meditation) + "," +
                          "\"delta\":" + String(delta) + "," +
@@ -900,19 +1364,15 @@ void cloudSyncTask(void * parameter) {
 
         int httpCode = http.POST(payload);
         if (httpCode > 0) {
-          Serial.printf("[TELEMETRY] Đã gửi Heartbeat lên Render (HTTP %d)\n", httpCode);
+          Serial.printf("[TELEMETRY] Đã gửi Heartbeat & INA226 lên Render (HTTP %d)\n", httpCode);
         }
         http.end();
       }
-      pendingTelemetry = false; // Xóa cờ sau khi gửi xong
+      pendingTelemetry = false;
     }
-
-    // Nhường CPU cho các tác vụ khác của Core 0 (Rất quan trọng để không bị crash)
-    vTaskDelay(100 / portTICK_PERIOD_MS); 
   }
 }
 
-// Hàm gọi từ Core 1 để kích hoạt Task ở Core 0
 void syncSentenceToCloud(String sentence) {
   pendingCloudSentence = sentence; 
 }
@@ -936,6 +1396,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       
       String rState = "RELAY:" + String(relay1State ? "1" : "0") + "," + String(relay2State ? "1" : "0");
       webSocket.sendTXT(num, rState);
+
+      String inaMsg = "INA:" + String(inaBusVoltage, 2) + "," + String(inaCurrent_mA, 1) + "," + String(inaPower_mW, 1) + "," + String(batteryPercent);
+      webSocket.sendTXT(num, inaMsg);
       
       if (isSleeping) {
         webSocket.sendTXT(num, "SLEEPING");
@@ -949,7 +1412,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
       if (msg == "S") {
         isSleeping = true;
-        WiFi.setSleep(true); // Modem sleep tiết kiệm pin
+        WiFi.setSleep(true); 
         webSocket.broadcastTXT("SLEEPING");
         syncTelemetryToCloud();
       } 
@@ -982,7 +1445,6 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         syncSentenceToCloud("SOS - CẤP CỨU KHẨN CẤP");
       }
       else if (msg == "SIMULATE_BLINK") {
-        // Giả lập có sóng não tốt và các chỉ số ngẫu nhiên
         signalQuality = 0;
         attention = random(60, 100);
         meditation = random(60, 100);
@@ -993,9 +1455,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         lowGamma = random(1000, 10000);
         blinkStrength = random(50, 100);
         
-        // Báo cho Web Local chớp mắt
         webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
-        // Bắn dữ liệu giả lập lên Web Global (Render) ngay lập tức
         syncTelemetryToCloud(); 
       }
       break;
@@ -1045,7 +1505,6 @@ void parseTGAMPacket(uint8_t* data, int length) {
       }
     } 
     else if (code == 0x83) { 
-        // Lấy 8 dải sóng não (24 byte tiếp theo)
         int vLength = data[i++];
         if (vLength == 24) {
             delta = (data[i]<<16) | (data[i+1]<<8) | data[i+2]; i+=3;
@@ -1068,6 +1527,7 @@ void parseTGAMPacket(uint8_t* data, int length) {
 
 void processTGAMSerial() {
   while (TGAMSerial.available() > 2) {
+    yield(); 
     if (TGAMSerial.read() == 0xAA) {
       if (TGAMSerial.read() == 0xAA) {
         uint8_t pLength = TGAMSerial.read();
@@ -1092,37 +1552,42 @@ void processTGAMSerial() {
 }
 
 void handleRoot() {
-  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-  server.send(200, "text/html", "");
-  
-  const char* ptr = INDEX_HTML;
-  size_t totalLen = strlen_P(INDEX_HTML);
-  size_t chunkSize = 2048;
-  
-  while (totalLen > 0) {
-    size_t len = (totalLen > chunkSize) ? chunkSize : totalLen;
-    server.sendContent_P(ptr, len);
-    ptr += len;
-    totalLen -= len;
-  }
-  server.sendContent(""); 
+  // BẢN FIX DÀNH CHO ESP32-S3: 
+  // ESP32-S3 cấp phát động file rất tốt, không cần chia nhỏ file chunk thủ công.
+  // Gửi trực tiếp bằng server.send_P sẽ ngăn việc file HTML bị cắt đứt giữa chừng gây lỗi Web quét.
+  server.sendHeader("Connection", "close");
+  server.send_P(200, "text/html", INDEX_HTML);
 }
 
 // =========================================================================
-// KHỞI ĐỘNG HỆ THỐNG
+// KHỞI ĐỘNG HỆ THỐNG ESP32-S3
 // =========================================================================
 void setup() {
+  // 1. Mở Serial và đợi 1.2 giây để USB CDC kết nối ổn định với Terminal
   Serial.begin(115200);
-  TGAMSerial.begin(TGAM_BAUDRATE, SERIAL_8N1, TGAM_RX_PIN, TGAM_TX_PIN);
+  delay(1200); 
 
+  Serial.println("\n\n==========================================");
+  Serial.println("  ESP32-S3 BCI SYSTEM - KHỞI ĐỘNG HỆ THỐNG ");
+  Serial.println("==========================================");
+
+  // 2. Cấu hình chân Relay
   pinMode(RELAY1_PIN, OUTPUT);
   pinMode(RELAY2_PIN, OUTPUT);
   digitalWrite(RELAY1_PIN, LOW);
   digitalWrite(RELAY2_PIN, LOW);
 
-  // Bỏ qua kiểm tra chứng chỉ SSL để tránh lỗi kết nối HTTPS
+  // 3. Khởi tạo UART1 cho TGAM với RX=18, TX=17 trên ESP32-S3
+  Serial.println("[UART] Khởi tạo HardwareSerial 1 cho TGAM (RX=18, TX=17)...");
+  TGAMSerial.begin(TGAM_BAUDRATE, SERIAL_8N1, TGAM_RX_PIN, TGAM_TX_PIN);
+
+  // 4. Khởi tạo INA226 (an toàn không treo)
+  Serial.println("[I2C] Đang kiểm tra cảm biến INA226 (SDA=8, SCL=9)...");
+  initINA226();
+
   secureClient.setInsecure(); 
 
+  // 5. Cấu hình Wi-Fi AP + STA
   WiFi.mode(WIFI_AP_STA);
   WiFi.setSleep(false);
   WiFi.softAP(AP_SSID, AP_PASS);
@@ -1130,7 +1595,7 @@ void setup() {
   wifiMulti.addAP(WIFI_SSID_1, WIFI_PASS_1);
   wifiMulti.addAP(WIFI_SSID_2, WIFI_PASS_2);
 
-  Serial.println("\n[SYSTEM] Đang kết nối Router Wi-Fi...");
+  Serial.println("[WIFI] Đang tìm kiếm và kết nối Wi-Fi Router...");
   int attempts = 0;
   while (wifiMulti.run() != WL_CONNECTED && attempts < 10) {
     delay(500);
@@ -1141,16 +1606,16 @@ void setup() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("[WIFI] Kết nối Router thành công!");
-    Serial.print("[IP] http://");
+    Serial.print("[IP ROUTER] http://");
     Serial.println(WiFi.localIP());
   } else {
-    Serial.println("[WIFI] Chưa kết nối được Router, chạy trên SoftAP:");
-    Serial.print("[IP] http://");
+    Serial.println("[WIFI] Chưa kết nối được Router, chạy trên SoftAP cục bộ:");
+    Serial.print("[IP AP] http://");
     Serial.println(WiFi.softAPIP());
   }
 
   if (MDNS.begin("esp32-bci")) {
-    Serial.println("[MDNS] http://esp32-bci.local");
+    Serial.println("[MDNS] Truy cập tên miền: http://esp32-bci.local");
   }
 
   server.on("/", HTTP_GET, handleRoot);
@@ -1160,20 +1625,20 @@ void setup() {
   webSocket.onEvent(webSocketEvent);
   webSocket.enableHeartbeat(15000, 10000, 2);
 
-
-  // KHỞI TẠO TASK FREERTOS CHẠY Ở CORE 0 (Chuyên lo gửi Cloud)
+  // Tạo Task chạy ngầm trên Core 0 của ESP32-S3
   xTaskCreatePinnedToCore(
-    cloudSyncTask,   /* Hàm thực thi Task */
-    "CloudTask",     /* Tên Task */
-    8192,            /* Kích thước Stack (RAM) */
-    NULL,            /* Tham số truyền vào */
-    1,               /* Độ ưu tiên */
-    NULL,            /* Handle */
-    0                /* Chạy ở Core 0 (Core 1 để dành cho Web Local) */
+    cloudSyncTask,   
+    "CloudTask",     
+    8192,            
+    NULL,            
+    1,               
+    NULL,            
+    0                
   );
 
   lastActivityTime = millis();
   lastTelemetrySyncTime = millis();
+  Serial.println("[SYSTEM] Toàn bộ dịch vụ WebServer & WebSocket đã sẵn sàng!");
 }
 
 // =========================================================================
@@ -1184,7 +1649,25 @@ void loop() {
   server.handleClient();
   processTGAMSerial();
 
-  // Tự động duy trì kết nối Wi-Fi Router
+  static unsigned long lastSensorBroadcast = 0;
+  if (millis() - lastSensorBroadcast > 1000) {
+    lastSensorBroadcast = millis();
+    readINA226();
+
+    if (!isSleeping && webSocket.connectedClients() > 0) {
+      String tgamData = "TGAM:" + String(signalQuality) + "," + 
+                                  String(attention) + "," + 
+                                  String(meditation);
+      webSocket.broadcastTXT(tgamData);
+
+      String inaData = "INA:" + String(inaBusVoltage, 2) + "," + 
+                                String(inaCurrent_mA, 1) + "," + 
+                                String(inaPower_mW, 1) + "," + 
+                                String(batteryPercent);
+      webSocket.broadcastTXT(inaData);
+    }
+  }
+
   static unsigned long lastWifiCheck = 0;
   if (millis() - lastWifiCheck > 10000) {
     lastWifiCheck = millis();
@@ -1193,7 +1676,6 @@ void loop() {
     }
   }
 
-  // Tự động chuyển sang chế độ Modem Sleep nếu không có thao tác sau AUTO_SLEEP_TIMEOUT
   if (!isSleeping && (millis() - lastActivityTime > AUTO_SLEEP_TIMEOUT)) {
     isSleeping = true;
     WiFi.setSleep(true);
@@ -1201,20 +1683,6 @@ void loop() {
     syncTelemetryToCloud();
   }
 
-  // Cập nhật thông số cơ bản cho client mỗi 1 giây
-  static unsigned long lastBroadcastTime = 0;
-  if (millis() - lastBroadcastTime > 1000) {
-    lastBroadcastTime = millis();
-
-    if (!isSleeping && webSocket.connectedClients() > 0) {
-      String tgamData = "TGAM:" + String(signalQuality) + "," + 
-                                  String(attention) + "," + 
-                                  String(meditation);
-      webSocket.broadcastTXT(tgamData);
-    }
-  }
-
-  // Định kỳ gửi Telemetry Heartbeat lên máy chủ Cloud Render
   if (millis() - lastTelemetrySyncTime > TELEMETRY_INTERVAL) {
     lastTelemetrySyncTime = millis();
     syncTelemetryToCloud();
