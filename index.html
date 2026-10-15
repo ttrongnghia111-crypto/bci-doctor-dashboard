@@ -111,6 +111,7 @@
         .metric-val-row { display: flex; align-items: baseline; gap: 5px; margin: 4px 0 8px 0; }
         .metric-value { font-size: 30px; font-weight: 800; font-family: monospace; line-height: 1; font-variant-numeric: tabular-nums; }
         .metric-unit { font-size: 12px; color: var(--text-dim); font-family: monospace; }
+        .metric-pct { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-left: 6px; font-variant-numeric: tabular-nums; }
         .progress-bar-bg { width: 100%; height: 4px; background: var(--bg-base); border-radius: 2px; overflow: hidden; }
         .progress-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
 
@@ -142,7 +143,11 @@
         .bio-box:hover { border-color: var(--border-light); }
         .bio-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: monospace; margin-bottom: 6px; }
         .bio-status-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; font-family: monospace; background: rgba(255,255,255,0.05); }
-        .bio-main-val { font-size: 24px; font-weight: 800; font-family: monospace; color: var(--text-primary); margin: 6px 0 8px 0; font-variant-numeric: tabular-nums; }
+        .bio-main-val { 
+            font-size: 24px; font-weight: 800; font-family: monospace; color: var(--text-primary); 
+            margin: 6px 0 8px 0; font-variant-numeric: tabular-nums; 
+            display: flex; align-items: baseline;
+        }
 
         /* ================= ROW 2: REAL-TIME OSCILLOSCOPE + RADAR ================= */
         .row-eeg { display: grid; grid-template-columns: 3fr 1.15fr; gap: 14px; }
@@ -299,6 +304,7 @@
                 </div>
                 <div class="metric-val-row">
                     <span class="metric-value" style="color:var(--emerald)" id="fatigue-val">1.20</span>
+                    <span class="metric-pct" id="fatigue-pct-val">(30%)</span>
                 </div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-fatigue" style="width: 25%; background: var(--emerald);"></div></div>
             </div>
@@ -310,14 +316,15 @@
                     <span id="ina-stat-tag" style="color:var(--emerald);">BÌNH THƯỜNG</span>
                 </div>
                 <div class="metric-val-row">
-                    <span class="metric-value" style="color:var(--emerald)" id="ina-bat-val">0%</span>
-                    <span class="metric-unit" id="ina-pwr-val" style="margin-left:auto; font-size:13px; font-weight:700; color:var(--text-primary);">0 mW</span>
+                    <span class="metric-value" style="color:var(--emerald)" id="ina-bat-val">100%</span>
+                    <span class="metric-unit" id="ina-volt-val" style="font-size:15px; font-weight:700; color:var(--text-secondary); margin-left:8px;">3.85V</span>
+                    <span class="metric-unit" id="ina-pwr-val" style="margin-left:auto; font-size:13px; font-weight:700; color:var(--text-dim);">0 mW</span>
                 </div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-ina-bat" style="width: 0%; background: var(--emerald);"></div></div>
             </div>
         </section>
 
-        <!-- HÀNG 1.5: KHỐI CHỈ SỐ NÃO BỘ PHÂN TÍCH (GỌN GÀNG, BỎ HẾT CHỮ VÀ CÔNG THỨC THỪA) -->
+        <!-- HÀNG 1.5: KHỐI CHỈ SỐ NÃO BỘ PHÂN TÍCH -->
         <section class="biomarkers-container">
             <div class="biomarkers-header">
                 <div class="biomarkers-title" id="lbl-bio-section-title">CÁC CHỈ SỐ PHÂN TÍCH SÓNG NÃO</div>
@@ -330,17 +337,23 @@
                         <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-eng">MỨC ĐỘ GẮN KẾT</span>
                         <span class="bio-status-badge" id="bio-eng-badge" style="color:var(--cyan)">CHỦ ĐỘNG</span>
                     </div>
-                    <div class="bio-main-val" id="bio-eng-val">0.45</div>
+                    <div class="bio-main-val">
+                        <span id="bio-eng-val">0.45</span>
+                        <span class="metric-pct" id="bio-eng-pct">(38%)</span>
+                    </div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-eng" style="width:45%; background:var(--cyan)"></div></div>
                 </div>
 
-                <!-- 2. TBR -->
+                <!-- 2. TBR (Tỉ Lệ Theta / Beta) -->
                 <div class="bio-box">
                     <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-tbr">TỈ LỆ THETA / BETA</span>
+                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-tbr">TỈ LỆ THETA / BETA (TBR)</span>
                         <span class="bio-status-badge" id="bio-tbr-badge" style="color:var(--emerald)">TỐI ƯU</span>
                     </div>
-                    <div class="bio-main-val" id="bio-tbr-val">1.32</div>
+                    <div class="bio-main-val">
+                        <span id="bio-tbr-val">1.32</span>
+                        <span class="metric-pct" id="bio-tbr-pct">(33%)</span>
+                    </div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-tbr" style="width:30%; background:var(--emerald)"></div></div>
                 </div>
 
@@ -350,7 +363,10 @@
                         <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-alert">MỨC ĐỘ TỈNH TÁO</span>
                         <span class="bio-status-badge" id="bio-alert-badge" style="color:var(--emerald)">TỈNH TÁO</span>
                     </div>
-                    <div class="bio-main-val" id="bio-alert-val">0.68</div>
+                    <div class="bio-main-val">
+                        <span id="bio-alert-val">0.68</span>
+                        <span class="metric-pct" id="bio-alert-pct">(45%)</span>
+                    </div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-alert" style="width:68%; background:var(--emerald)"></div></div>
                 </div>
 
@@ -360,7 +376,10 @@
                         <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-stress">MỨC ĐỘ CĂNG THẲNG</span>
                         <span class="bio-status-badge" id="bio-stress-badge" style="color:var(--text-secondary)">THẤP</span>
                     </div>
-                    <div class="bio-main-val" id="bio-stress-val">1.10</div>
+                    <div class="bio-main-val">
+                        <span id="bio-stress-val">1.10</span>
+                        <span class="metric-pct" id="bio-stress-pct">(37%)</span>
+                    </div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-stress" style="width:28%; background:var(--text-secondary)"></div></div>
                 </div>
             </div>
@@ -541,7 +560,7 @@
                 lbl_pwr: 'Nguồn Điện & Pin',
                 bio_section_title: 'CÁC CHỈ SỐ PHÂN TÍCH SÓNG NÃO',
                 bio_eng: 'MỨC ĐỘ GẮN KẾT',
-                bio_tbr: 'TỈ LỆ THETA / BETA',
+                bio_tbr: 'TỈ LỆ THETA / BETA (TBR)',
                 bio_alert: 'MỨC ĐỘ TỈNH TÁO',
                 bio_stress: 'MỨC ĐỘ CĂNG THẲNG',
                 eeg_title: 'SÓNG ĐIỆN NÃO THỜI GIAN THỰC',
@@ -602,7 +621,7 @@
                 lbl_pwr: 'Power & Battery',
                 bio_section_title: 'COMPUTED BRAIN BIOMARKERS',
                 bio_eng: 'ENGAGEMENT LEVEL',
-                bio_tbr: 'THETA / BETA RATIO',
+                bio_tbr: 'THETA / BETA RATIO (TBR)',
                 bio_alert: 'ALERTNESS LEVEL',
                 bio_stress: 'STRESS LEVEL',
                 eeg_title: 'REAL-TIME EEG TRACE',
@@ -977,8 +996,8 @@
                 g: isDemoMode ? Math.floor(Math.random()*40000)+5000 : (tData.lowGamma||0)
             };
 
-            let bat = isDemoMode ? 85 : (tData.battery!==undefined ? tData.battery : 0);
-            let vol = isDemoMode ? (3.8+Math.random()*0.1).toFixed(2) : (tData.voltage||0);
+            let bat = isDemoMode ? 100 : (tData.battery!==undefined ? tData.battery : 0);
+            let vol = isDemoMode ? (3.8+Math.random()*0.1).toFixed(2) : (tData.voltage ? Number(tData.voltage).toFixed(2) : '3.85');
             let cur = isDemoMode ? (100+Math.random()*20).toFixed(1) : (tData.current||0);
 
             const isRecent = isDemoMode || (Date.now() - (tData.lastUpdate || Date.now())) < 40000;
@@ -993,6 +1012,8 @@
             document.getElementById('bar-med').style.width = med + '%';
             
             document.getElementById('ina-bat-val').innerText = bat + '%'; 
+            const voltEl = document.getElementById('ina-volt-val');
+            if (voltEl) voltEl.innerText = vol + 'V';
             document.getElementById('ina-pwr-val').innerText = Math.round(vol*cur) + ' mW';
             document.getElementById('bar-ina-bat').style.width = bat + '%';
 
@@ -1000,13 +1021,21 @@
             document.getElementById('signal-text').innerText = sig === 0 ? t.sig_good : `${t.sig_lost} (${sig})`;
             document.getElementById('signal-text').style.color = sig === 0 ? 'var(--emerald)' : 'var(--rose)';
 
-            document.getElementById('val-delta').innerText = w.d.toLocaleString(); 
-            document.getElementById('val-theta').innerText = w.t.toLocaleString();
-            document.getElementById('val-alpha').innerText = w.a.toLocaleString(); 
-            document.getElementById('val-beta').innerText = w.b.toLocaleString();
-            document.getElementById('val-gamma').innerText = w.g.toLocaleString();
+            // Tính toán tổng công suất để tính % cho 5 dải sóng
+            let totalPower = w.d + w.t + w.a + w.b + w.g || 1;
+            let p_d = Math.round((w.d / totalPower) * 100);
+            let p_t = Math.round((w.t / totalPower) * 100);
+            let p_a = Math.round((w.a / totalPower) * 100);
+            let p_b = Math.round((w.b / totalPower) * 100);
+            let p_g = Math.round((w.g / totalPower) * 100);
 
-            // Tính toán 4 chỉ số cơ bản
+            document.getElementById('val-delta').innerText = `${w.d.toLocaleString()} (${p_d}%)`; 
+            document.getElementById('val-theta').innerText = `${w.t.toLocaleString()} (${p_t}%)`;
+            document.getElementById('val-alpha').innerText = `${w.a.toLocaleString()} (${p_a}%)`; 
+            document.getElementById('val-beta').innerText = `${w.b.toLocaleString()} (${p_b}%)`;
+            document.getElementById('val-gamma').innerText = `${w.g.toLocaleString()} (${p_g}%)`;
+
+            // Tính toán các chỉ số cơ bản
             let safeBeta = Math.max(10, w.b);
             let safeAlpha = Math.max(10, w.a);
             let safeThetaAlpha = Math.max(20, w.a + w.t);
@@ -1018,8 +1047,10 @@
             const fatigueValEl = document.getElementById('fatigue-val');
             const fatigueStatEl = document.getElementById('fatigue-status');
             const barFatigueEl = document.getElementById('bar-fatigue');
+            const fatiguePctVal = document.getElementById('fatigue-pct-val');
 
             fatigueValEl.innerText = fatigueRatio.toFixed(2);
+            if (fatiguePctVal) fatiguePctVal.innerText = `(${fatiguePct}%)`;
             barFatigueEl.style.width = fatiguePct + '%';
 
             if (fatigueRatio >= 3.0 || isForcedFatigue) {
@@ -1044,9 +1075,12 @@
 
             // 2. Mức độ Gắn kết = Beta / (Alpha + Theta)
             let engRatio = safeBeta / safeThetaAlpha;
-            document.getElementById('bio-eng-val').innerText = engRatio.toFixed(2);
             let engPct = Math.min(100, Math.round((engRatio / 1.2) * 100));
+            document.getElementById('bio-eng-val').innerText = engRatio.toFixed(2);
+            const bioEngPct = document.getElementById('bio-eng-pct');
+            if (bioEngPct) bioEngPct.innerText = `(${engPct}%)`;
             document.getElementById('bar-bio-eng').style.width = engPct + '%';
+            
             let engBadge = document.getElementById('bio-eng-badge');
             if (engRatio >= 0.5) {
                 engBadge.innerText = currentLang === 'vi' ? 'CHỦ ĐỘNG CAO' : 'HIGH';
@@ -1061,9 +1095,12 @@
 
             // 3. Tỉ lệ Theta / Beta (TBR) = Theta / Beta
             let tbrRatio = w.t / safeBeta;
-            document.getElementById('bio-tbr-val').innerText = tbrRatio.toFixed(2);
             let tbrPct = Math.min(100, Math.round((tbrRatio / 4.0) * 100));
+            document.getElementById('bio-tbr-val').innerText = tbrRatio.toFixed(2);
+            const bioTbrPct = document.getElementById('bio-tbr-pct');
+            if (bioTbrPct) bioTbrPct.innerText = `(${tbrPct}%)`;
             document.getElementById('bar-bio-tbr').style.width = tbrPct + '%';
+            
             let tbrBadge = document.getElementById('bio-tbr-badge');
             if (tbrRatio > 2.5) {
                 tbrBadge.innerText = currentLang === 'vi' ? 'PHÂN TÂM' : 'DROWSY';
@@ -1078,9 +1115,12 @@
 
             // 4. Mức độ Tỉnh táo = (Beta + Gamma) / (Alpha + Theta)
             let alertRatio = (safeBeta + w.g) / safeThetaAlpha;
-            document.getElementById('bio-alert-val').innerText = alertRatio.toFixed(2);
             let alertPct = Math.min(100, Math.round((alertRatio / 1.5) * 100));
+            document.getElementById('bio-alert-val').innerText = alertRatio.toFixed(2);
+            const bioAlertPct = document.getElementById('bio-alert-pct');
+            if (bioAlertPct) bioAlertPct.innerText = `(${alertPct}%)`;
             document.getElementById('bar-bio-alert').style.width = alertPct + '%';
+            
             let alertBadge = document.getElementById('bio-alert-badge');
             if (alertRatio >= 0.7) {
                 alertBadge.innerText = currentLang === 'vi' ? 'TỈNH TÁO CAO' : 'ALERT';
@@ -1095,9 +1135,12 @@
 
             // 5. Mức độ Căng thẳng = (Beta + Gamma) / Alpha
             let stressRatio = (safeBeta + w.g) / safeAlpha;
-            document.getElementById('bio-stress-val').innerText = stressRatio.toFixed(2);
             let stressPct = Math.min(100, Math.round((stressRatio / 3.0) * 100));
+            document.getElementById('bio-stress-val').innerText = stressRatio.toFixed(2);
+            const bioStressPct = document.getElementById('bio-stress-pct');
+            if (bioStressPct) bioStressPct.innerText = `(${stressPct}%)`;
             document.getElementById('bar-bio-stress').style.width = stressPct + '%';
+            
             let stressBadge = document.getElementById('bio-stress-badge');
             if (stressRatio >= 2.0) {
                 stressBadge.innerText = currentLang === 'vi' ? 'CĂNG THẲNG' : 'HIGH';
@@ -1110,7 +1153,7 @@
                 stressBadge.style.color = 'var(--text-secondary)';
             }
 
-            // Vẽ sóng điện não
+            // Biểu đồ sóng điện não
             let cData = eegChart.data.datasets[0].data;
             let eVal = sig === 0 ? (Math.sin(Date.now()/140)*18 + Math.cos(Date.now()/50)*12 + (att/3)) : 0;
             if (sig === 0 && isDemoMode && Math.random() > 0.9) eVal += (Math.random()-0.5)*80;
@@ -1118,10 +1161,9 @@
             cData.shift(); 
             eegChart.update();
 
-            // Vẽ radar
+            // Biểu đồ radar
             if (sig === 0) {
-                let tot = w.d + w.t + w.a + w.b + w.g || 1;
-                radarChart.data.datasets[0].data = [(w.d/tot)*100, (w.t/tot)*100, (w.a/tot)*100, (w.b/tot)*100, (w.g/tot)*100];
+                radarChart.data.datasets[0].data = [p_d, p_t, p_a, p_b, p_g];
             } else {
                 radarChart.data.datasets[0].data = [0,0,0,0,0];
             }
