@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BCI Telemetry Clinical Monitor</title>
+    <title>Hệ Thống Giám Sát Y Sinh BCI</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -27,7 +27,7 @@
         body { 
             background-color: var(--bg-base); 
             color: var(--text-primary); 
-            padding: 20px 24px; 
+            padding: 18px 24px; 
             font-size: 14px; 
             line-height: 1.5; 
             min-height: 100vh; 
@@ -46,21 +46,22 @@
         }
         .dept-brand { display: flex; align-items: center; gap: 12px; }
         .brand-indicator { width: 4px; height: 32px; background: var(--cyan); border-radius: 2px; }
-        .brand-text h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-primary); margin-bottom: 2px; }
-        .brand-text p { font-size: 11px; font-family: monospace; color: var(--text-dim); letter-spacing: 0.5px; }
+        .brand-text h1 { font-size: 16px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-primary); margin-bottom: 2px; }
+        .brand-text p { font-size: 11px; font-family: monospace; color: var(--text-dim); letter-spacing: 0.4px; }
 
         .nav-actions { display: flex; gap: 10px; align-items: center; }
         .btn { 
-            padding: 7px 14px; border-radius: 4px; border: 1px solid var(--border); 
+            padding: 7px 13px; border-radius: 4px; border: 1px solid var(--border); 
             font-size: 12px; font-family: monospace; font-weight: 600; cursor: pointer; 
             display: inline-flex; align-items: center; gap: 6px; background: var(--bg-panel); 
-            color: var(--text-secondary); transition: all 0.15s ease; letter-spacing: 0.3px;
+            color: var(--text-secondary); transition: all 0.15s ease;
         }
         .btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-light); }
         .btn-demo { border-color: #854d0e; color: var(--amber); background: rgba(245, 158, 11, 0.08); }
         .btn-demo.active { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: #fff; }
         .btn-trigger-fatigue { border-color: #7f1d1d; color: #f87171; background: rgba(239, 68, 68, 0.08); }
         .btn-trigger-fatigue:hover { background: rgba(239, 68, 68, 0.2); border-color: var(--rose); color: #fff; }
+        .btn-lang { border-color: var(--border-light); color: var(--cyan); background: rgba(56, 189, 248, 0.06); }
 
         .status-pill { display: flex; align-items: center; gap: 8px; font-family: monospace; font-size: 12px; font-weight: 600; padding: 6px 12px; background: var(--bg-panel); border-radius: 4px; border: 1px solid var(--border); }
         .dot { width: 7px; height: 7px; border-radius: 50%; }
@@ -68,128 +69,125 @@
         .dot-yellow { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
         .dot-red { background: var(--rose); box-shadow: 0 0 6px var(--rose); }
 
-        /* ================= ICU ALARM BANNER (FATIGUE INDEX THRESHOLD) ================= */
+        /* ================= BÁO ĐỘNG LÂM SÀNG KIỆT SỨC ================= */
         .fatigue-alert-banner {
             display: none;
-            background: #1e090a;
+            background: #1a090b;
             border: 1px solid var(--rose);
             border-left: 6px solid var(--rose);
             border-radius: 6px;
             padding: 12px 18px;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 2px 14px rgba(239, 68, 68, 0.25);
         }
-        .fatigue-alert-left { display: flex; flex-direction: column; gap: 3px; }
-        .fatigue-alert-tag { font-size: 11px; font-weight: 800; color: var(--rose); text-transform: uppercase; font-family: monospace; letter-spacing: 0.8px; }
+        .fatigue-alert-left { display: flex; flex-direction: column; gap: 2px; }
+        .fatigue-alert-tag { font-size: 11px; font-weight: 800; color: var(--rose); text-transform: uppercase; font-family: monospace; letter-spacing: 0.6px; }
         .fatigue-alert-msg { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: 0.2px; }
-        .fatigue-alert-nurse { font-size: 12px; font-family: monospace; color: var(--text-dim); }
+        .fatigue-alert-nurse { font-size: 11px; font-family: monospace; color: var(--text-dim); }
         .fatigue-alert-actions { display: flex; gap: 10px; align-items: center; }
         .btn-rest-timer { background: var(--rose); color: #fff; border: 1px solid var(--rose); font-weight: 700; padding: 7px 14px; border-radius: 4px; font-family: monospace; font-size: 12px; cursor: pointer; transition: 0.15s; }
         .btn-rest-timer:hover { background: #dc2626; }
         .btn-dismiss-alert { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); padding: 7px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; cursor: pointer; }
         .btn-dismiss-alert:hover { color: #fff; border-color: var(--text-secondary); }
 
-        .main-wrapper { display: flex; flex-direction: column; gap: 18px; }
+        .main-wrapper { display: flex; flex-direction: column; gap: 16px; }
 
         /* ================= ROW 1: BỆNH NHÂN & THÔNG SỐ VITAL CHÍNH ================= */
-        .row-vitals { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 16px; }
-        .panel { background: var(--bg-panel); border-radius: 8px; padding: 18px; border: 1px solid var(--border); position: relative; }
+        .row-vitals { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 14px; }
+        .panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); position: relative; }
         
         .patient-card { display: flex; align-items: center; justify-content: flex-start; }
         .patient-profile { display: flex; align-items: center; gap: 14px; }
-        .avatar-initials { width: 50px; height: 50px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; font-family: monospace; color: var(--cyan); }
-        .patient-info h2 { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .avatar-initials { width: 48px; height: 48px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; font-family: monospace; color: var(--cyan); }
+        .patient-info h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
         .badge-id { background: var(--bg-base); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; color: var(--cyan); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
         .badge-id:hover { border-color: var(--cyan); }
-        .patient-details { color: var(--text-secondary); font-size: 13px; line-height: 1.4; }
+        .patient-details { color: var(--text-secondary); font-size: 12px; line-height: 1.4; }
 
-        .metric-card { display: flex; flex-direction: column; justify-content: space-between; }
-        .metric-header { display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
-        .metric-val-row { display: flex; align-items: baseline; gap: 5px; margin: 8px 0 10px 0; }
-        .metric-value { font-size: 32px; font-weight: 800; font-family: monospace; line-height: 1; font-variant-numeric: tabular-nums; }
+        .metric-card { display: flex; flex-direction: column; justify-content: center; }
+        .metric-header { display: flex; justify-content: space-between; align-items: center; font-family: monospace; font-size: 11px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 6px; }
+        .metric-val-row { display: flex; align-items: baseline; gap: 5px; margin: 4px 0 8px 0; }
+        .metric-value { font-size: 30px; font-weight: 800; font-family: monospace; line-height: 1; font-variant-numeric: tabular-nums; }
         .metric-unit { font-size: 12px; color: var(--text-dim); font-family: monospace; }
-        .progress-bar-bg { width: 100%; height: 4px; background: var(--bg-base); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+        .progress-bar-bg { width: 100%; height: 4px; background: var(--bg-base); border-radius: 2px; overflow: hidden; }
         .progress-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
-        .metric-footer { font-size: 11px; font-family: monospace; color: var(--text-dim); display: flex; justify-content: space-between; }
 
-        /* ================= ROW 1.5: KHỐI THAM SỐ Y SINH ĐIỆN NÃO (QEEG BIOMARKERS) ================= */
+        /* ================= ROW 1.5: KHỐI CHỈ SỐ NÃO BỘ NÂNG CAO ================= */
         .biomarkers-container {
             background: var(--bg-panel);
             border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 16px 18px;
+            border-radius: 6px;
+            padding: 14px 16px;
         }
         .biomarkers-header {
             display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+            margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
         }
         .biomarkers-title {
             font-size: 12px; font-weight: 700; font-family: monospace; color: var(--text-secondary);
-            letter-spacing: 0.8px; text-transform: uppercase;
+            letter-spacing: 0.6px; text-transform: uppercase;
         }
         .biomarkers-grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
         }
         .bio-box {
             background: var(--bg-base);
             border: 1px solid var(--border);
-            border-radius: 6px;
+            border-radius: 4px;
             padding: 12px 14px;
             transition: border-color 0.15s ease;
         }
         .bio-box:hover { border-color: var(--border-light); }
-        .bio-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: monospace; margin-bottom: 4px; }
-        .bio-formula { color: var(--text-dim); font-size: 10px; font-family: monospace; }
+        .bio-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: monospace; margin-bottom: 6px; }
         .bio-status-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; font-family: monospace; background: rgba(255,255,255,0.05); }
-        .bio-main-val { font-size: 22px; font-weight: 800; font-family: monospace; color: var(--text-primary); margin: 4px 0; font-variant-numeric: tabular-nums; }
-        .bio-desc { font-size: 11px; color: var(--text-dim); font-family: monospace; margin-top: 4px; }
+        .bio-main-val { font-size: 24px; font-weight: 800; font-family: monospace; color: var(--text-primary); margin: 6px 0 8px 0; font-variant-numeric: tabular-nums; }
 
         /* ================= ROW 2: REAL-TIME OSCILLOSCOPE + RADAR ================= */
-        .row-eeg { display: grid; grid-template-columns: 3fr 1.15fr; gap: 16px; }
-        .eeg-section { background: var(--bg-panel); border-radius: 8px; padding: 18px; border: 1px solid var(--border); display: flex; flex-direction: column; }
-        .section-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .row-eeg { display: grid; grid-template-columns: 3fr 1.15fr; gap: 14px; }
+        .eeg-section { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .section-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         
-        .chart-container-eeg { width: 100%; height: 320px; position: relative; background: #04070d; border-radius: 6px; border: 1px solid var(--border); overflow: hidden; padding: 8px; }
+        .chart-container-eeg { width: 100%; height: 300px; position: relative; background: #04070d; border-radius: 4px; border: 1px solid var(--border); overflow: hidden; padding: 8px; }
         #no-signal-overlay { position: absolute; inset: 0; background: rgba(5, 9, 16, 0.94); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 6px; }
         
-        .radar-panel { background: var(--bg-panel); border-radius: 8px; padding: 18px; border: 1px solid var(--border); display: flex; flex-direction: column; }
-        .chart-container-radar { height: 210px; width: 100%; background: #04070d; border-radius: 6px; border: 1px solid var(--border); padding: 8px; margin-bottom: 14px; display: flex; align-items: center; justify-content: center; }
+        .radar-panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .chart-container-radar { height: 200px; width: 100%; background: #04070d; border-radius: 4px; border: 1px solid var(--border); padding: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; }
         
         .mini-wave-list { display: grid; grid-template-columns: 1fr; gap: 6px; }
-        .mini-wave-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-base); padding: 7px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; border: 1px solid var(--border); }
+        .mini-wave-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-base); padding: 6px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; border: 1px solid var(--border); }
         .wave-label { color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
         .w-dot { width: 6px; height: 6px; border-radius: 2px; display: inline-block; background: var(--cyan); }
         .wave-val { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
         /* ================= ROW 3: PHÂN TÍCH & BẢNG GIAO TIẾP ================= */
-        .row-bottom { display: grid; grid-template-columns: 1fr 2.4fr; gap: 16px; }
+        .row-bottom { display: grid; grid-template-columns: 1fr 2.4fr; gap: 14px; }
         
-        .stats-col { display: flex; flex-direction: column; gap: 16px; }
-        .stat-box { background: var(--bg-panel); border-radius: 8px; padding: 18px; border: 1px solid var(--border); }
+        .stats-col { display: flex; flex-direction: column; gap: 14px; }
+        .stat-box { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); }
         
-        .dist-item { margin-bottom: 12px; }
-        .dist-info { display: flex; justify-content: space-between; font-size: 12px; font-family: monospace; margin-bottom: 5px; color: var(--text-secondary); }
+        .dist-item { margin-bottom: 10px; }
+        .dist-info { display: flex; justify-content: space-between; font-size: 12px; font-family: monospace; margin-bottom: 4px; color: var(--text-secondary); }
         .dist-count { color: var(--text-primary); font-weight: 700; }
         
-        .chart-wrapper { height: 100px; background: #04070d; border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-around; padding: 10px 8px 0 8px; margin-top: 12px; }
+        .chart-wrapper { height: 90px; background: #04070d; border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-around; padding: 10px 8px 0 8px; margin-top: 10px; }
         .bar-col { width: 12%; background: #1a2538; border-radius: 2px 2px 0 0; transition: height 0.4s ease; min-height: 4px; }
         .bar-col.active { background: var(--cyan); }
         .x-labels { display: flex; justify-content: space-around; font-size: 11px; font-family: monospace; color: var(--text-dim); margin-top: 6px; }
 
-        .history-card { background: var(--bg-panel); border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 480px; }
-        .history-header { padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; }
-        .history-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.8px; display: flex; align-items: center; gap: 8px; }
+        .history-card { background: var(--bg-panel); border-radius: 6px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 460px; }
+        .history-header { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; }
+        .history-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.6px; display: flex; align-items: center; gap: 8px; }
         
         .filters-group { display: flex; gap: 8px; }
         .select-filter { background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 6px 10px; border-radius: 4px; font-size: 12px; font-family: monospace; outline: none; }
         
-        .table-container { flex: 1; max-height: 520px; overflow-y: auto; }
+        .table-container { flex: 1; max-height: 500px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 13px; }
         thead { position: sticky; top: 0; background: #0a101b; z-index: 2; border-bottom: 1px solid var(--border); }
-        th { text-align: left; padding: 10px 16px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.6px;}
-        td { padding: 12px 16px; border-bottom: 1px solid rgba(26, 37, 56, 0.6); vertical-align: middle; }
+        th { text-align: left; padding: 10px 14px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;}
+        td { padding: 11px 14px; border-bottom: 1px solid rgba(26, 37, 56, 0.6); vertical-align: middle; }
         tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
 
         .time-hm { font-weight: 700; color: var(--text-primary); font-size: 13px; }
@@ -206,191 +204,186 @@
         .btn-export:hover { border-color: var(--cyan); color: var(--cyan); }
 
         .modal-overlay { position: fixed; inset: 0; background: rgba(4, 7, 13, 0.85); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 8px; width: 100%; max-width: 480px; padding: 24px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        .modal-title { font-size: 14px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-primary); letter-spacing: 0.5px; }
-        .user-list { max-height: 220px; overflow-y: auto; margin: 14px 0; display: flex; flex-direction: column; gap: 8px; }
-        .user-row { padding: 12px 14px; background: var(--bg-base); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-family: monospace; transition: all 0.15s; }
+        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; width: 100%; max-width: 480px; padding: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .modal-title { font-size: 13px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-primary); letter-spacing: 0.5px; }
+        .user-list { max-height: 220px; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
+        .user-row { padding: 11px 13px; background: var(--bg-base); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-family: monospace; transition: all 0.15s; }
         .user-row:hover { border-color: var(--cyan); }
-        .form-input { width: 100%; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 12px; border-radius: 4px; font-size: 13px; font-family: monospace; margin-top: 4px; margin-bottom: 12px; outline: none; }
+        .form-input { width: 100%; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 9px 12px; border-radius: 4px; font-size: 13px; font-family: monospace; margin-top: 4px; margin-bottom: 12px; outline: none; }
         .form-input:focus { border-color: var(--cyan); }
-        .btn-primary { background: var(--cyan); border: 1px solid var(--cyan); color: #04080e; font-weight: 700; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 12px; }
+        .btn-primary { background: var(--cyan); border: 1px solid var(--cyan); color: #04080e; font-weight: 700; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 12px; }
     </style>
 </head>
 <body>
 
-    <!-- TOP NAVIGATION -->
+    <!-- THANH ĐIỀU HƯỚNG TRÊN CÙNG -->
     <header class="top-nav">
         <div class="dept-brand">
             <div class="brand-indicator"></div>
             <div class="brand-text">
-                <h1>Hệ Thống Giám Sát Y Sinh BCI</h1>
-                <p>NEURO-TELEMETRY CLINICAL MONITOR • ICU INTENSIVE CARE</p>
+                <h1 id="txt-brand-title">Hệ Thống Giám Sát Y Sinh BCI</h1>
+                <p id="txt-brand-sub">GIÁM SÁT LÂM SÀNG THỜI GIAN THỰC • PHÒNG ĐIỀU TRỊ TÍCH CỰC</p>
             </div>
         </div>
 
         <div class="nav-actions">
+            <button class="btn btn-lang" id="btn-lang" onclick="toggleLanguage()">NGÔN NGỮ: TIẾNG VIỆT</button>
             <div class="status-pill">
                 <span class="dot dot-green" id="conn-dot"></span>
-                <span id="conn-text" style="color:var(--text-primary)">HW ONLINE</span>
+                <span id="conn-text" style="color:var(--text-primary)">THIẾT BỊ ONLINE</span>
             </div>
             <div class="status-pill">
                 <span class="dot dot-green" id="cloud-dot"></span>
-                <span id="cloud-text">CLOUD OK</span>
+                <span id="cloud-text">MÁY CHỦ SẴN SÀNG</span>
             </div>
-            <button class="btn btn-demo" id="btn-demo" onclick="toggleDemo()">CHẾ ĐỘ MÔ PHỎNG</button>
+            <button class="btn btn-demo" id="btn-demo" onclick="toggleDemo()">MÔ PHỎNG DỮ LIỆU</button>
             <button class="btn btn-trigger-fatigue" id="btn-force-fatigue" onclick="forceFatigueDemo()">THỬ NGHIỆM BÁO ĐỘNG</button>
         </div>
     </header>
 
-    <!-- ICU ALARM BANNER (FATIGUE CRITICAL ALERT) -->
+    <!-- BÁO ĐỘNG LÂM SÀNG KIỆT SỨC NÃO BỘ -->
     <div id="fatigue-alert-banner" class="fatigue-alert-banner">
         <div class="fatigue-alert-left">
-            <div class="fatigue-alert-tag">CẢNH BÁO LÂM SÀNG: NGƯỠNG KIỆT SỨC NÃO BỘ (FATIGUE ALARM)</div>
+            <div class="fatigue-alert-tag" id="txt-alarm-tag">CẢNH BÁO LÂM SÀNG: NÃO BỘ ĐẠT NGƯỠNG KIỆT SỨC</div>
             <div class="fatigue-alert-msg" id="fatigue-banner-msg">"Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi"</div>
-            <div class="fatigue-alert-nurse">Trạng thái: Đã truyền tín hiệu khẩn cấp đến trung tâm giám sát điều dưỡng trực buồng bệnh.</div>
+            <div class="fatigue-alert-nurse" id="txt-alarm-nurse">Trạng thái: Đã gửi tín hiệu khẩn cấp đến trung tâm điều dưỡng buồng bệnh.</div>
         </div>
         <div class="fatigue-alert-actions">
-            <button class="btn-rest-timer" id="btn-rest-toggle" onclick="toggleRestBreak()">KÍCH HOẠT NGHỈ 30 PHÚT</button>
-            <button class="btn-dismiss-alert" onclick="dismissFatigueAlert()">XÁC NHẬN BÁO ĐỘNG</button>
+            <button class="btn-rest-timer" id="btn-rest-toggle" onclick="toggleRestBreak()">NGHỈ 30 PHÚT</button>
+            <button class="btn-dismiss-alert" id="btn-dismiss-alert" onclick="dismissFatigueAlert()">XÁC NHẬN BÁO ĐỘNG</button>
         </div>
     </div>
 
     <div class="main-wrapper">
-        <!-- ROW 1: BỆNH NHÂN & 4 THÔNG SỐ VITAL CHÍNH -->
+        <!-- HÀNG 1: THÔNG TIN BỆNH NHÂN & CÁC CHỈ SỐ NHANH -->
         <section class="row-vitals">
             <div class="panel patient-card">
                 <div class="patient-profile">
                     <div class="avatar-initials" id="patient-initials">NA</div>
                     <div class="patient-info">
-                        <h2><span id="patient-display-name">Nguyễn Văn An</span> <span class="badge-id" onclick="openProfileModal()" id="patient-code" title="Nhấn để đổi hồ sơ">HỒ SƠ</span></h2>
+                        <h2><span id="patient-display-name">Nguyễn Văn An</span> <span class="badge-id" onclick="openProfileModal()" id="patient-code" title="Nhấn để đổi hồ sơ">ĐỔI HỒ SƠ</span></h2>
                         <div class="patient-details">
                             <span id="patient-location" style="color:var(--text-primary); font-weight:600;">Phòng ICU 402</span><br>
-                            <span style="color: var(--text-dim)">Chẩn đoán:</span> <span id="patient-diag">LIS (Locked-In Syndrome)</span>
+                            <span style="color: var(--text-dim)" id="lbl-patient-diag">Chẩn đoán:</span> <span id="patient-diag">Hội chứng khóa trong (LIS)</span>
                         </div>
                     </div>
                 </div>
             </div>
 
+            <!-- MỨC TẬP TRUNG -->
             <div class="panel metric-card">
-                <div class="metric-header"><span>Tập Trung (ATT)</span><span id="att-status" style="color:var(--cyan)">BÌNH THƯỜNG</span></div>
+                <div class="metric-header">
+                    <span id="lbl-att-title">Mức Tập Trung</span>
+                    <span id="att-status" style="color:var(--cyan)">BÌNH THƯỜNG</span>
+                </div>
                 <div class="metric-val-row"><span class="metric-value" style="color:var(--cyan)" id="avg-att">0</span><span class="metric-unit">/100</span></div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-att" style="width: 0%; background: var(--cyan);"></div></div>
-                <div class="metric-footer"><span>Trạng thái chú ý</span><span>Đo thời gian thực</span></div>
             </div>
 
+            <!-- MỨC THƯ GIÃN -->
             <div class="panel metric-card">
-                <div class="metric-header"><span>Thư Giãn (MED)</span><span id="med-status" style="color:var(--emerald)">ỔN ĐỊNH</span></div>
+                <div class="metric-header">
+                    <span id="lbl-med-title">Mức Thư Giãn</span>
+                    <span id="med-status" style="color:var(--emerald)">ỔN ĐỊNH</span>
+                </div>
                 <div class="metric-val-row"><span class="metric-value" style="color:var(--emerald)" id="avg-med">0</span><span class="metric-unit">/100</span></div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-med" style="width: 0%; background: var(--emerald);"></div></div>
-                <div class="metric-footer"><span>Mức độ thả lỏng</span><span>Ổn định định kỳ</span></div>
             </div>
 
-            <!-- CHỈ SỐ KIỆT SỨC NÃO (FATIGUE RATIO) -->
+            <!-- MỨC KIỆT SỨC NÃO -->
             <div class="panel metric-card" id="card-fatigue">
                 <div class="metric-header">
-                    <span>Kiệt Sức (Fatigue)</span>
+                    <span id="lbl-fatigue-title">Kiệt Sức Não</span>
                     <span id="fatigue-status" style="color:var(--emerald)">BÌNH THƯỜNG</span>
                 </div>
                 <div class="metric-val-row">
                     <span class="metric-value" style="color:var(--emerald)" id="fatigue-val">1.20</span>
-                    <span class="metric-unit" id="fatigue-subtext">Tỉ số (θ+α)/β</span>
                 </div>
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-fatigue" style="width: 25%; background: var(--emerald);"></div></div>
-                <div class="metric-footer">
-                    <span>Ngưỡng cảnh báo: ≥ 3.00</span>
-                    <span id="fatigue-pct-tag" style="color:var(--text-dim)">25% tải mệt</span>
-                </div>
             </div>
 
+            <!-- HỆ THỐNG NGUỒN PIN -->
             <div class="panel metric-card">
-                <div class="metric-header"><span>Hệ Thống Nguồn</span><span id="ina-stat-tag" style="color:var(--emerald);">BÌNH THƯỜNG</span></div>
-                <div class="metric-val-row"><span class="metric-value" style="color:var(--emerald)" id="ina-bat-val">0%</span><span class="metric-unit" id="ina-pwr-val" style="margin-left:auto; font-size:14px; font-weight:700; color:var(--text-primary);">0 mW</span></div>
-                <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-ina-bat" style="width: 0%; background: var(--emerald);"></div></div>
-                <div class="metric-footer">
-                    <span id="ina-volt">0.00V</span><span id="ina-curr" style="color:var(--text-secondary)">0mA</span>
+                <div class="metric-header">
+                    <span id="lbl-pwr-title">Nguồn Điện & Pin</span>
+                    <span id="ina-stat-tag" style="color:var(--emerald);">BÌNH THƯỜNG</span>
                 </div>
+                <div class="metric-val-row">
+                    <span class="metric-value" style="color:var(--emerald)" id="ina-bat-val">0%</span>
+                    <span class="metric-unit" id="ina-pwr-val" style="margin-left:auto; font-size:13px; font-weight:700; color:var(--text-primary);">0 mW</span>
+                </div>
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-ina-bat" style="width: 0%; background: var(--emerald);"></div></div>
             </div>
         </section>
 
-        <!-- ROW 1.5: KHỐI CHỈ SỐ Y SINH ĐIỆN NÃO (QEEG DERIVED BIOMARKERS) -->
+        <!-- HÀNG 1.5: KHỐI CHỈ SỐ NÃO BỘ PHÂN TÍCH (GỌN GÀNG, BỎ HẾT CHỮ VÀ CÔNG THỨC THỪA) -->
         <section class="biomarkers-container">
             <div class="biomarkers-header">
-                <div class="biomarkers-title">CHỈ SỐ Y SINH ĐIỆN NÃO QEEG (DERIVED BIOMARKERS)</div>
-                <div style="font-size:11px; font-family:monospace; color:var(--text-dim);">
-                    THUẬT TOÁN ĐÁNH GIÁ CHUẨN LÂM SÀNG FDA & NASA COGNITIVE METRICS
-                </div>
+                <div class="biomarkers-title" id="lbl-bio-section-title">CÁC CHỈ SỐ PHÂN TÍCH SÓNG NÃO</div>
             </div>
             
             <div class="biomarkers-grid">
-                <!-- 1. Engagement Index -->
+                <!-- 1. Gắn kết -->
                 <div class="bio-box">
                     <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);">GẮN KẾT (ENGAGEMENT)</span>
+                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-eng">MỨC ĐỘ GẮN KẾT</span>
                         <span class="bio-status-badge" id="bio-eng-badge" style="color:var(--cyan)">CHỦ ĐỘNG</span>
                     </div>
-                    <div class="bio-formula">Công thức: β / (α + θ)</div>
                     <div class="bio-main-val" id="bio-eng-val">0.45</div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-eng" style="width:45%; background:var(--cyan)"></div></div>
-                    <div class="bio-desc" id="bio-eng-desc">Mức độ não chủ động điều khiển BCI</div>
                 </div>
 
-                <!-- 2. TBR (Theta/Beta Ratio) -->
+                <!-- 2. TBR -->
                 <div class="bio-box">
                     <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);">TỈ LỆ THETA/BETA (TBR)</span>
+                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-tbr">TỈ LỆ THETA / BETA</span>
                         <span class="bio-status-badge" id="bio-tbr-badge" style="color:var(--emerald)">TỐI ƯU</span>
                     </div>
-                    <div class="bio-formula">Công thức: θ / β</div>
                     <div class="bio-main-val" id="bio-tbr-val">1.32</div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-tbr" style="width:30%; background:var(--emerald)"></div></div>
-                    <div class="bio-desc" id="bio-tbr-desc">Đánh giá sự phân tâm và buồn ngủ</div>
                 </div>
 
-                <!-- 3. Alertness Index -->
+                <!-- 3. Tỉnh táo -->
                 <div class="bio-box">
                     <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);">TỈNH TÁO (ALERTNESS)</span>
-                        <span class="bio-status-badge" id="bio-alert-badge" style="color:var(--emerald)">THỨC TỈNH</span>
+                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-alert">MỨC ĐỘ TỈNH TÁO</span>
+                        <span class="bio-status-badge" id="bio-alert-badge" style="color:var(--emerald)">TỈNH TÁO</span>
                     </div>
-                    <div class="bio-formula">Công thức: (β + γ) / (α + θ)</div>
                     <div class="bio-main-val" id="bio-alert-val">0.68</div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-alert" style="width:68%; background:var(--emerald)"></div></div>
-                    <div class="bio-desc" id="bio-alert-desc">Khả năng phản ứng vỏ não</div>
                 </div>
 
-                <!-- 4. Stress Index -->
+                <!-- 4. Căng thẳng -->
                 <div class="bio-box">
                     <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);">CĂNG THẲNG (STRESS)</span>
+                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-stress">MỨC ĐỘ CĂNG THẲNG</span>
                         <span class="bio-status-badge" id="bio-stress-badge" style="color:var(--text-secondary)">THẤP</span>
                     </div>
-                    <div class="bio-formula">Công thức: (β + γ) / α</div>
                     <div class="bio-main-val" id="bio-stress-val">1.10</div>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-stress" style="width:28%; background:var(--text-secondary)"></div></div>
-                    <div class="bio-desc" id="bio-stress-desc">Áp lực vỏ não khi kích hoạt lệnh</div>
                 </div>
             </div>
         </section>
 
-        <!-- ROW 2: OSCILLOSCOPE + RADAR -->
+        <!-- HÀNG 2: BIỂU ĐỒ SÓNG ĐIỆN NÃO THỜI GIAN THỰC & PHÂN BỔ RADAR -->
         <section class="row-eeg">
             <div class="eeg-section">
                 <div class="section-title">
-                    <span>ĐIỆN NÃO ĐỒ THỜI GIAN THỰC (REAL-TIME OSCILLOSCOPE)</span>
-                    <span id="signal-text" style="color: var(--rose); font-size: 11px;">TÍN HIỆU: 200 (DISCONNECTED)</span>
+                    <span id="lbl-eeg-title">SÓNG ĐIỆN NÃO THỜI GIAN THỰC</span>
+                    <span id="signal-text" style="color: var(--rose); font-size: 11px;">MẤT TÍN HIỆU ĐIỆN CỰC (200)</span>
                 </div>
                 <div class="chart-container-eeg">
                     <div id="no-signal-overlay">
-                        <div style="color: var(--rose); font-family: monospace; font-weight: 700; font-size: 15px;">CHƯA NHẬN TÍN HIỆU ĐIỆN CỰC</div>
-                        <div style="color: var(--text-dim); font-size: 12px; font-family: monospace;">Kiểm tra tiếp xúc điện cực trán (Fp1) và điểm tham chiếu (A1/A2)</div>
+                        <div style="color: var(--rose); font-family: monospace; font-weight: 700; font-size: 15px;" id="lbl-no-sig-title">CHƯA NHẬN TÍN HIỆU ĐIỆN CỰC</div>
+                        <div style="color: var(--text-dim); font-size: 12px; font-family: monospace;" id="lbl-no-sig-desc">Kiểm tra tiếp xúc điện cực trán (Fp1) và điểm tham chiếu (A1/A2)</div>
                     </div>
                     <canvas id="eegChart"></canvas>
                 </div>
             </div>
             
             <div class="radar-panel">
-                <div class="section-title"><span>PHỔ SÓNG NÃO QEEG</span></div>
+                <div class="section-title"><span id="lbl-radar-title">PHÂN BỔ TẦN SỐ SÓNG NÃO</span></div>
                 <div class="chart-container-radar">
                     <canvas id="radarChart"></canvas>
                 </div>
@@ -404,36 +397,36 @@
             </div>
         </section>
 
-        <!-- ROW 3: THỐNG KÊ & BẢNG NHẬT KÝ GIAO TIẾP -->
+        <!-- HÀNG 3: BẢNG THỐNG KÊ & NHẬT KÝ GIAO TIẾP -->
         <section class="row-bottom">
             <div class="stats-col">
                 <div class="stat-box">
-                    <div class="section-title" style="margin-bottom: 14px;">PHÂN BỔ TẦN SUẤT NHU CẦU</div>
-                    <div class="dist-item"><div class="dist-info"><span>Nước / Uống</span><span id="txt-water" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-water" style="width:0%; background:var(--cyan)"></div></div></div>
-                    <div class="dist-item"><div class="dist-info"><span>Cơm / Ăn</span><span id="txt-food" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-food" style="width:0%; background:var(--emerald)"></div></div></div>
-                    <div class="dist-item"><div class="dist-info"><span>Đau / Khó chịu</span><span id="txt-pain" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-pain" style="width:0%; background:var(--rose)"></div></div></div>
-                    <div class="dist-item"><div class="dist-info"><span>Nghỉ ngơi</span><span id="txt-rest" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-rest" style="width:0%; background:var(--text-secondary)"></div></div></div>
-                    <div class="dist-item"><div class="dist-info"><span>Điều khiển IoT</span><span id="txt-iot" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-iot" style="width:0%; background:var(--amber)"></div></div></div>
+                    <div class="section-title" style="margin-bottom: 12px;" id="lbl-dist-title">PHÂN BỔ TẦN SUẤT NHU CẦU</div>
+                    <div class="dist-item"><div class="dist-info"><span id="lbl-dist-water">Nước / Uống</span><span id="txt-water" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-water" style="width:0%; background:var(--cyan)"></div></div></div>
+                    <div class="dist-item"><div class="dist-info"><span id="lbl-dist-food">Cơm / Ăn</span><span id="txt-food" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-food" style="width:0%; background:var(--emerald)"></div></div></div>
+                    <div class="dist-item"><div class="dist-info"><span id="lbl-dist-pain">Đau / Khó chịu</span><span id="txt-pain" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-pain" style="width:0%; background:var(--rose)"></div></div></div>
+                    <div class="dist-item"><div class="dist-info"><span id="lbl-dist-rest">Nghỉ ngơi</span><span id="txt-rest" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-rest" style="width:0%; background:var(--text-secondary)"></div></div></div>
+                    <div class="dist-item"><div class="dist-info"><span id="lbl-dist-iot">Lệnh thiết bị</span><span id="txt-iot" class="dist-count">0</span></div><div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-iot" style="width:0%; background:var(--amber)"></div></div></div>
                 </div>
 
                 <div class="stat-box">
-                    <div class="section-title">MẬT ĐỘ THEO KHUNG GIỜ</div>
+                    <div class="section-title" id="lbl-hourly-title">MẬT ĐỘ THEO KHUNG GIỜ</div>
                     <div class="chart-wrapper">
                         <div class="bar-col" id="h-0"></div><div class="bar-col" id="h-4"></div><div class="bar-col" id="h-8"></div>
                         <div class="bar-col" id="h-12"></div><div class="bar-col" id="h-16"></div><div class="bar-col" id="h-20"></div>
                     </div>
                     <div class="x-labels"><span>0-4h</span><span>4-8h</span><span>8-12h</span><span>12-16h</span><span>16-20h</span><span>20-24h</span></div>
-                    <div style="font-size: 11px; font-family: monospace; margin-top: 10px; color: var(--text-dim);" id="peak-text">Cao điểm: --</div>
+                    <div style="font-size: 11px; font-family: monospace; margin-top: 10px; color: var(--text-dim);" id="peak-text">Khung giờ cao điểm: --</div>
                 </div>
             </div>
 
             <div class="history-card">
                 <div class="history-header">
                     <div class="history-title">
-                        NHẬT KÝ GIAO TIẾP <span style="background:var(--bg-base);border:1px solid var(--border);color:var(--cyan);padding:2px 8px;border-radius:4px;font-size:11px;" id="count-badge">0 MỤC</span>
+                        <span id="lbl-history-title">NHẬT KÝ GIAO TIẾP</span> <span style="background:var(--bg-base);border:1px solid var(--border);color:var(--cyan);padding:2px 8px;border-radius:4px;font-size:11px;" id="count-badge">0 MỤC</span>
                     </div>
                     
-                    <div style="display:flex; gap:12px;">
+                    <div style="display:flex; gap:10px;">
                         <div class="filters-group">
                             <input type="text" id="search-input" class="select-filter" placeholder="Tìm nội dung..." onkeyup="applyFilters()" style="width:130px;">
                             <select id="category-filter" class="select-filter" onchange="applyFilters()">
@@ -441,12 +434,12 @@
                                 <option value="water">Nước / Uống</option>
                                 <option value="food">Cơm / Ăn</option>
                                 <option value="pain">Đau / Khó chịu</option>
-                                <option value="iot">Lệnh IoT</option>
+                                <option value="iot">Lệnh thiết bị</option>
                             </select>
                         </div>
                         <div class="export-group">
-                            <button class="btn-export" onclick="exportCSV()">XUẤT CSV</button>
-                            <button class="btn-export" onclick="exportJSON()">XUẤT JSON</button>
+                            <button class="btn-export" id="btn-export-csv" onclick="exportCSV()">XUẤT CSV</button>
+                            <button class="btn-export" id="btn-export-json" onclick="exportJSON()">XUẤT JSON</button>
                         </div>
                     </div>
                 </div>
@@ -455,79 +448,277 @@
                     <table>
                         <thead>
                             <tr>
-                                <th width="16%">Thời Gian</th>
-                                <th width="42%">Nội Dung Phát Ngôn</th>
-                                <th width="16%">Phân Loại</th>
-                                <th width="8%" style="text-align:center">ATT</th>
-                                <th width="8%" style="text-align:center">MED</th>
-                                <th width="10%" style="text-align:center">Thao Tác</th>
+                                <th width="16%" id="th-time">Thời Gian</th>
+                                <th width="42%" id="th-sentence">Nội Dung Phát Ngôn</th>
+                                <th width="16%" id="th-cat">Phân Loại</th>
+                                <th width="8%" style="text-align:center" id="th-att">Tập Trung</th>
+                                <th width="8%" style="text-align:center" id="th-med">Thư Giãn</th>
+                                <th width="10%" style="text-align:center" id="th-action">Thao Tác</th>
                             </tr>
                         </thead>
                         <tbody id="logs-body">
-                            <tr><td colspan="6" style="text-align:center; padding: 50px; color: var(--text-dim); font-size: 13px;">Hệ thống đang chờ dữ liệu điện não BCI...</td></tr>
+                            <tr><td colspan="6" style="text-align:center; padding: 50px; color: var(--text-dim); font-size: 13px;" id="lbl-waiting-logs">Hệ thống đang chờ dữ liệu giao tiếp...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </section>
         
-        <div style="height: 30px; width: 100%; text-align: center; color: var(--text-dim); font-size: 11px; font-family: monospace; padding-top: 6px;">
-            CLINICAL TELEMETRY SYSTEM • BCI BIOMEDICAL SENSING PLATFORM
+        <div style="height: 30px; width: 100%; text-align: center; color: var(--text-dim); font-size: 11px; font-family: monospace; padding-top: 6px;" id="lbl-footer">
+            HỆ THỐNG GIÁM SÁT Y SINH ĐIỆN NÃO BCI • KHOA HỒI SỨC THẦN KINH
         </div>
     </div>
 
-    <!-- MODAL QUẢN LÝ BỆNH NHÂN -->
+    <!-- MODAL HỒ SƠ BỆNH NHÂN -->
     <div id="user-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
                 <div class="modal-title" id="modal-title">HỒ SƠ BỆNH NHÂN</div>
-                <button onclick="closeModal()" id="btn-close-modal" style="background:transparent; border:none; color:var(--text-dim); font-size:14px; cursor:pointer; font-family:monospace; display:none;">ĐÓNG</button>
+                <button onclick="closeModal()" id="btn-close-modal" style="background:transparent; border:none; color:var(--text-dim); font-size:13px; cursor:pointer; font-family:monospace; display:none;">ĐÓNG</button>
             </div>
             <div id="view-select-user">
                 <div class="user-list" id="saved-user-list"></div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
-                    <button class="btn" onclick="showCreateUserView()">THÊM MỚI</button>
-                    <button class="btn-primary" onclick="confirmSelectUser()">XÁC NHẬN CHỌN</button>
+                    <button class="btn" id="btn-modal-create" onclick="showCreateUserView()">THÊM MỚI</button>
+                    <button class="btn-primary" id="btn-modal-confirm" onclick="confirmSelectUser()">XÁC NHẬN CHỌN</button>
                 </div>
             </div>
             <div id="view-create-user" style="display: none;">
-                <label style="font-size:11px; color:var(--text-dim); font-family:monospace;">HỌ TÊN BỆNH NHÂN</label>
+                <label style="font-size:11px; color:var(--text-dim); font-family:monospace;" id="lbl-f-name">HỌ TÊN BỆNH NHÂN</label>
                 <input type="text" id="input-new-name" class="form-input" placeholder="VD: Nguyễn Văn An">
                 
                 <div style="display: flex; gap: 10px;">
                     <div style="flex:1">
-                        <label style="font-size:11px; color:var(--text-dim); font-family:monospace;">TUỔI</label>
+                        <label style="font-size:11px; color:var(--text-dim); font-family:monospace;" id="lbl-f-age">TUỔI</label>
                         <input type="number" id="input-new-age" class="form-input" placeholder="Tuổi">
                     </div>
                     <div style="flex:1">
-                        <label style="font-size:11px; color:var(--text-dim); font-family:monospace;">MÃ HỒ SƠ</label>
+                        <label style="font-size:11px; color:var(--text-dim); font-family:monospace;" id="lbl-f-code">MÃ HỒ SƠ</label>
                         <input type="text" id="input-new-code" class="form-input" placeholder="Mã BN">
                     </div>
                 </div>
                 
-                <label style="font-size:11px; color:var(--text-dim); font-family:monospace;">PHÒNG / GIƯỜNG</label>
+                <label style="font-size:11px; color:var(--text-dim); font-family:monospace;" id="lbl-f-room">PHÒNG / GIƯỜNG</label>
                 <input type="text" id="input-new-room" class="form-input" placeholder="Phòng/Giường">
                 
-                <label style="font-size:11px; color:var(--text-dim); font-family:monospace;">CHẨN ĐOÁN LÂM SÀNG</label>
+                <label style="font-size:11px; color:var(--text-dim); font-family:monospace;" id="lbl-f-diag">CHẨN ĐOÁN LÂM SÀNG</label>
                 <input type="text" id="input-new-diag" class="form-input" placeholder="Chẩn đoán">
                 
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
                     <button class="btn" id="btn-cancel-create" onclick="cancelCreateUser()">QUAY LẠI</button>
-                    <button class="btn-primary" onclick="saveNewPatient()">LƯU HỒ SƠ</button>
+                    <button class="btn-primary" id="btn-save-patient" onclick="saveNewPatient()">LƯU HỒ SƠ</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // ================= QUẢN LÝ HỒ SƠ =================
+        // ================= TỪ ĐIỂN ĐA NGÔN NGỮ (I18N: VI / EN) =================
+        let currentLang = localStorage.getItem('bci_telemetry_lang') || 'vi';
+
+        const i18n = {
+            vi: {
+                brand_title: 'Hệ Thống Giám Sát Y Sinh BCI',
+                brand_sub: 'GIÁM SÁT LÂM SÀNG THỜI GIAN THỰC • PHÒNG ĐIỀU TRỊ TÍCH CỰC',
+                btn_lang: 'NGÔN NGỮ: TIẾNG VIỆT',
+                conn_online: 'THIẾT BỊ ONLINE',
+                conn_offline: 'MẤT KẾT NỐI',
+                cloud_ok: 'MÁY CHỦ SẴN SÀNG',
+                demo_btn_off: 'MÔ PHỎNG DỮ LIỆU',
+                demo_btn_on: 'ĐANG MÔ PHỎNG',
+                fatigue_test_off: 'THỬ NGHIỆM BÁO ĐỘNG',
+                fatigue_test_on: 'ĐANG TEST BÁO ĐỘNG',
+                alarm_tag: 'CẢNH BÁO LÂM SÀNG: NÃO BỘ ĐẠT NGƯỠNG KIỆT SỨC',
+                alarm_msg: '"Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi"',
+                alarm_nurse: 'Trạng thái: Đã gửi tín hiệu khẩn cấp đến trung tâm điều dưỡng buồng bệnh.',
+                btn_rest: 'NGHỈ 30 PHÚT',
+                btn_dismiss: 'XÁC NHẬN BÁO ĐỘNG',
+                btn_profile: 'ĐỔI HỒ SƠ',
+                lbl_diag: 'Chẩn đoán:',
+                lbl_att: 'Mức Tập Trung',
+                lbl_med: 'Mức Thư Giãn',
+                lbl_fatigue: 'Kiệt Sức Não',
+                lbl_pwr: 'Nguồn Điện & Pin',
+                bio_section_title: 'CÁC CHỈ SỐ PHÂN TÍCH SÓNG NÃO',
+                bio_eng: 'MỨC ĐỘ GẮN KẾT',
+                bio_tbr: 'TỈ LỆ THETA / BETA',
+                bio_alert: 'MỨC ĐỘ TỈNH TÁO',
+                bio_stress: 'MỨC ĐỘ CĂNG THẲNG',
+                eeg_title: 'SÓNG ĐIỆN NÃO THỜI GIAN THỰC',
+                sig_good: 'TÍN HIỆU TỐT (0)',
+                sig_lost: 'MẤT TÍN HIỆU ĐIỆN CỰC',
+                eeg_no_sig_title: 'CHƯA NHẬN TÍN HIỆU ĐIỆN CỰC',
+                eeg_no_sig_desc: 'Kiểm tra tiếp xúc điện cực trán (Fp1) và điểm tham chiếu (A1/A2)',
+                radar_title: 'PHÂN BỔ TẦN SỐ SÓNG NÃO',
+                dist_title: 'PHÂN BỔ TẦN SUẤT NHU CẦU',
+                dist_water: 'Nước / Uống',
+                dist_food: 'Cơm / Ăn',
+                dist_pain: 'Đau / Khó chịu',
+                dist_rest: 'Nghỉ ngơi',
+                dist_iot: 'Lệnh thiết bị',
+                hourly_title: 'MẬT ĐỘ THEO KHUNG GIỜ',
+                peak_text_prefix: 'Khung giờ cao điểm: ',
+                peak_none: 'Chưa ghi nhận',
+                history_title: 'NHẬT KÝ GIAO TIẾP',
+                search_ph: 'Tìm nội dung...',
+                opt_all: 'Tất cả nhu cầu',
+                opt_water: 'Nước / Uống',
+                opt_food: 'Cơm / Ăn',
+                opt_pain: 'Đau / Khó chịu',
+                opt_iot: 'Lệnh thiết bị',
+                btn_csv: 'XUẤT CSV',
+                btn_json: 'XUẤT JSON',
+                th_time: 'Thời Gian',
+                th_sentence: 'Nội Dung Phát Ngôn',
+                th_cat: 'Phân Loại',
+                th_att: 'Tập Trung',
+                th_med: 'Thư Giãn',
+                th_action: 'Thao Tác',
+                btn_speak: 'ĐỌC LẠI',
+                waiting_logs: 'Hệ thống đang chờ dữ liệu giao tiếp...',
+                footer: 'HỆ THỐNG GIÁM SÁT Y SINH ĐIỆN NÃO BCI • KHOA HỒI SỨC THẦN KINH'
+            },
+            en: {
+                brand_title: 'BCI Clinical Monitoring System',
+                brand_sub: 'REAL-TIME TELEMETRY MONITOR • NEUROLOGICAL ICU',
+                btn_lang: 'LANGUAGE: ENGLISH',
+                conn_online: 'HW ONLINE',
+                conn_offline: 'HW OFFLINE',
+                cloud_ok: 'CLOUD CONNECTED',
+                demo_btn_off: 'SIMULATION MODE',
+                demo_btn_on: 'SIMULATION ACTIVE',
+                fatigue_test_off: 'TEST ALARM',
+                fatigue_test_on: 'ALARM TESTING',
+                alarm_tag: 'CLINICAL ALARM: BRAIN REACHED FATIGUE THRESHOLD',
+                alarm_msg: '"System detected brain fatigue. Pause BCI for 30 minutes to rest"',
+                alarm_nurse: 'Status: Emergency alert transmitted to nurse station.',
+                btn_rest: 'REST 30 MIN',
+                btn_dismiss: 'ACKNOWLEDGE ALARM',
+                btn_profile: 'SWITCH PATIENT',
+                lbl_diag: 'Diagnosis:',
+                lbl_att: 'Attention Level',
+                lbl_med: 'Meditation Level',
+                lbl_fatigue: 'Fatigue Level',
+                lbl_pwr: 'Power & Battery',
+                bio_section_title: 'COMPUTED BRAIN BIOMARKERS',
+                bio_eng: 'ENGAGEMENT LEVEL',
+                bio_tbr: 'THETA / BETA RATIO',
+                bio_alert: 'ALERTNESS LEVEL',
+                bio_stress: 'STRESS LEVEL',
+                eeg_title: 'REAL-TIME EEG TRACE',
+                sig_good: 'SIGNAL GOOD (0)',
+                sig_lost: 'ELECTRODE DISCONNECTED',
+                eeg_no_sig_title: 'NO ELECTRODE SIGNAL DETECTED',
+                eeg_no_sig_desc: 'Check electrode contact at forehead (Fp1) and reference (A1/A2)',
+                radar_title: 'BRAINWAVE SPECTRUM',
+                dist_title: 'NEED FREQUENCY DISTRIBUTION',
+                dist_water: 'Water / Drink',
+                dist_food: 'Food / Meal',
+                dist_pain: 'Pain / Discomfort',
+                dist_rest: 'Rest / Sleep',
+                dist_iot: 'Device Command',
+                hourly_title: 'HOURLY DENSITY',
+                peak_text_prefix: 'Peak Period: ',
+                peak_none: 'None',
+                history_title: 'COMMUNICATION LOGS',
+                search_ph: 'Search records...',
+                opt_all: 'All Categories',
+                opt_water: 'Water / Drink',
+                opt_food: 'Food / Meal',
+                opt_pain: 'Pain / Discomfort',
+                opt_iot: 'Device Commands',
+                btn_csv: 'EXPORT CSV',
+                btn_json: 'EXPORT JSON',
+                th_time: 'Timestamp',
+                th_sentence: 'Spoken Sentence',
+                th_cat: 'Category',
+                th_att: 'Attention',
+                th_med: 'Meditation',
+                th_action: 'Action',
+                btn_speak: 'PLAY',
+                waiting_logs: 'Awaiting BCI telemetry records...',
+                footer: 'BCI CLINICAL TELEMETRY PLATFORM • INTENSIVE CARE UNIT'
+            }
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'vi' ? 'en' : 'vi';
+            localStorage.setItem('bci_telemetry_lang', currentLang);
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            const t = i18n[currentLang];
+            document.getElementById('btn-lang').innerText = t.btn_lang;
+            document.getElementById('txt-brand-title').innerText = t.brand_title;
+            document.getElementById('txt-brand-sub').innerText = t.brand_sub;
+            document.getElementById('cloud-text').innerText = t.cloud_ok;
+            document.getElementById('btn-demo').innerText = isDemoMode ? t.demo_btn_on : t.demo_btn_off;
+            document.getElementById('btn-force-fatigue').innerText = isForcedFatigue ? t.fatigue_test_on : t.fatigue_test_off;
+            document.getElementById('txt-alarm-tag').innerText = t.alarm_tag;
+            document.getElementById('txt-alarm-nurse').innerText = t.alarm_nurse;
+            document.getElementById('btn-rest-toggle').innerText = t.btn_rest;
+            document.getElementById('btn-dismiss-alert').innerText = t.btn_dismiss;
+            document.getElementById('patient-code').innerText = t.btn_profile;
+            document.getElementById('lbl-patient-diag').innerText = t.lbl_diag;
+            
+            document.getElementById('lbl-att-title').innerText = t.lbl_att;
+            document.getElementById('lbl-med-title').innerText = t.lbl_med;
+            document.getElementById('lbl-fatigue-title').innerText = t.lbl_fatigue;
+            document.getElementById('lbl-pwr-title').innerText = t.lbl_pwr;
+            
+            document.getElementById('lbl-bio-section-title').innerText = t.bio_section_title;
+            document.getElementById('lbl-bio-eng').innerText = t.bio_eng;
+            document.getElementById('lbl-bio-tbr').innerText = t.bio_tbr;
+            document.getElementById('lbl-bio-alert').innerText = t.bio_alert;
+            document.getElementById('lbl-bio-stress').innerText = t.bio_stress;
+
+            document.getElementById('lbl-eeg-title').innerText = t.eeg_title;
+            document.getElementById('lbl-no-sig_title').innerText = t.eeg_no_sig_title;
+            document.getElementById('lbl-no-sig_desc').innerText = t.eeg_no_sig_desc;
+            document.getElementById('lbl-radar-title').innerText = t.radar_title;
+            document.getElementById('lbl-dist-title').innerText = t.dist_title;
+            document.getElementById('lbl-dist-water').innerText = t.dist_water;
+            document.getElementById('lbl-dist-food').innerText = t.dist_food;
+            document.getElementById('lbl-dist-pain').innerText = t.dist_pain;
+            document.getElementById('lbl-dist-rest').innerText = t.dist_rest;
+            document.getElementById('lbl-dist-iot').innerText = t.dist_iot;
+            document.getElementById('lbl-hourly-title').innerText = t.hourly_title;
+            document.getElementById('lbl-history-title').innerText = t.history_title;
+            document.getElementById('search-input').placeholder = t.search_ph;
+
+            const catEl = document.getElementById('category-filter');
+            catEl.options[0].text = t.opt_all;
+            catEl.options[1].text = t.opt_water;
+            catEl.options[2].text = t.opt_food;
+            catEl.options[3].text = t.opt_pain;
+            catEl.options[4].text = t.opt_iot;
+
+            document.getElementById('btn-export-csv').innerText = t.btn_csv;
+            document.getElementById('btn-export-json').innerText = t.btn_json;
+            document.getElementById('th-time').innerText = t.th_time;
+            document.getElementById('th-sentence').innerText = t.th_sentence;
+            document.getElementById('th-cat').innerText = t.th_cat;
+            document.getElementById('th-att').innerText = t.th_att;
+            document.getElementById('th-med').innerText = t.th_med;
+            document.getElementById('th-action').innerText = t.th_action;
+            document.getElementById('lbl-footer').innerText = t.footer;
+
+            applyFilters();
+        }
+
+        // ================= QUẢN LÝ BỆNH NHÂN =================
         let savedProfiles = JSON.parse(localStorage.getItem('bci_cloud_profiles') || '[]');
         let currentPatientId = localStorage.getItem('bci_cloud_active_id') || '';
         let currentPatient = null;
         let selectedPatientIdInModal = '';
 
         function initUserSystem() {
-            if (savedProfiles.length === 0) { showCreateUserView(); document.getElementById('user-modal').style.display = 'flex'; return; }
+            if (savedProfiles.length === 0) { 
+                showCreateUserView(); 
+                document.getElementById('user-modal').style.display = 'flex'; 
+                return; 
+            }
             if (currentPatientId) {
                 currentPatient = savedProfiles.find(p => p.id === currentPatientId);
                 if (currentPatient) { applyCurrentPatientToUI(currentPatient); return; }
@@ -561,9 +752,10 @@
                 code: document.getElementById('input-new-code').value || 'BN-1001',
                 age: document.getElementById('input-new-age').value || '',
                 room: document.getElementById('input-new-room').value || '',
-                diag: document.getElementById('input-new-diag').value || ''
+                diag: document.getElementById('input-new-diag').value || 'Theo dõi lâm sàng'
             };
-            savedProfiles.push(newPatient); localStorage.setItem('bci_cloud_profiles', JSON.stringify(savedProfiles));
+            savedProfiles.push(newPatient); 
+            localStorage.setItem('bci_cloud_profiles', JSON.stringify(savedProfiles));
             activatePatient(newPatient);
         }
 
@@ -573,21 +765,23 @@
         }
 
         function activatePatient(p) {
-            currentPatient = p; localStorage.setItem('bci_cloud_active_id', p.id);
-            applyCurrentPatientToUI(p); closeModal(); applyFilters();
+            currentPatient = p; 
+            localStorage.setItem('bci_cloud_active_id', p.id);
+            applyCurrentPatientToUI(p); 
+            closeModal(); 
+            applyFilters();
         }
 
         function closeModal() { if (currentPatient) document.getElementById('user-modal').style.display = 'none'; }
 
         function applyCurrentPatientToUI(p) {
             document.getElementById('patient-display-name').innerText = p.name;
-            document.getElementById('patient-code').innerText = p.code;
-            document.getElementById('patient-location').innerText = p.room;
-            document.getElementById('patient-diag').innerText = p.diag;
+            document.getElementById('patient-location').innerText = p.room || 'Phòng Theo Dõi';
+            document.getElementById('patient-diag').innerText = p.diag || 'Bình thường';
             document.getElementById('patient-initials').innerText = p.name.split(' ').map(w => w[0]).slice(-2).join('').toUpperCase() || 'BN';
         }
 
-        // ================= CHART CONFIGURATION =================
+        // ================= KHỞI TẠO BIỂU ĐỒ =================
         Chart.defaults.color = '#64748b';
         Chart.defaults.font.family = 'monospace';
         
@@ -615,28 +809,34 @@
 
         function formatTime(isoString) {
             const d = new Date(isoString);
-            return { hm: d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), date: d.toLocaleDateString('vi-VN') };
+            return { 
+                hm: d.toLocaleTimeString(currentLang === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }), 
+                date: d.toLocaleDateString(currentLang === 'vi' ? 'vi-VN' : 'en-US') 
+            };
         }
 
         function identifyCategory(sentence) {
             let s = sentence.toUpperCase();
-            if (s.includes("NƯỚC") || s.includes("UỐNG")) return 'water';
-            if (s.includes("ĂN") || s.includes("CƠM") || s.includes("CHÁO")) return 'food';
-            if (s.includes("ĐAU") || s.includes("MỆT") || s.includes("KHÓ CHỊU")) return 'pain';
-            if (s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT")) return 'iot';
-            if (s.includes("NGỦ") || s.includes("NGHỈ")) return 'rest';
+            if (s.includes("NƯỚC") || s.includes("UỐNG") || s.includes("WATER") || s.includes("DRINK")) return 'water';
+            if (s.includes("ĂN") || s.includes("CƠM") || s.includes("CHÁO") || s.includes("FOOD") || s.includes("EAT")) return 'food';
+            if (s.includes("ĐAU") || s.includes("MỆT") || s.includes("KHÓ CHỊU") || s.includes("PAIN") || s.includes("TIRED")) return 'pain';
+            if (s.includes("BẬT") || s.includes("TẮT") || s.includes("QUẠT") || s.includes("LIGHT") || s.includes("FAN")) return 'iot';
+            if (s.includes("NGỦ") || s.includes("NGHỈ") || s.includes("REST") || s.includes("SLEEP")) return 'rest';
             return 'other';
         }
 
         function getTagHtml(cat) {
-            const map = { water: 'NƯỚC / UỐNG', food: 'CƠM / ĂN', pain: 'ĐAU / KHÓ CHỊU', iot: 'LỆNH IOT', rest: 'NGHỈ NGƠI', other: 'GIAO TIẾP' };
+            const t = i18n[currentLang];
+            const map = { water: t.dist_water, food: t.dist_food, pain: t.dist_pain, iot: t.dist_iot, rest: t.dist_rest, other: currentLang === 'vi' ? 'GIAO TIẾP' : 'GENERAL' };
             return `<span class="tag">${map[cat] || map.other}</span>`;
         }
 
-        function speakText(t) {
+        function speakText(text) {
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
-                let msg = new SpeechSynthesisUtterance(t); msg.lang = 'vi-VN'; msg.rate = 0.95;
+                let msg = new SpeechSynthesisUtterance(text);
+                msg.lang = currentLang === 'vi' ? 'vi-VN' : 'en-US';
+                msg.rate = 0.95;
                 window.speechSynthesis.speak(msg);
             }
         }
@@ -647,73 +847,90 @@
             let hours = [0,0,0,0,0,0];
 
             logs.forEach(l => {
-                let cat = identifyCategory(l.sentence); if(counts[cat]!==undefined) counts[cat]++;
+                let cat = identifyCategory(l.sentence); 
+                if (counts[cat] !== undefined) counts[cat]++;
                 hours[Math.floor(new Date(l.timestamp).getHours() / 4)]++;
             });
 
             ['water','food','pain','rest','iot'].forEach(c => {
                 let pct = total ? Math.round((counts[c]/total)*100) : 0;
-                let el = document.getElementById(`txt-${c}`); if(el) el.innerText = `${counts[c]} LẦN (${pct}%)`;
-                let bar = document.getElementById(`bar-${c}`); if(bar) bar.style.width = pct+'%';
+                let el = document.getElementById(`txt-${c}`); 
+                if (el) el.innerText = currentLang === 'vi' ? `${counts[c]} LẦN (${pct}%)` : `${counts[c]} (${pct}%)`;
+                let bar = document.getElementById(`bar-${c}`); 
+                if (bar) bar.style.width = pct + '%';
             });
 
             let maxH = Math.max(...hours) || 1, peakIdx = hours.indexOf(maxH);
-            hours.forEach((v, i) => { let el = document.getElementById(`h-${i*4}`); if(el) { el.style.height = Math.max(5, (v/maxH)*100)+'%'; v>0 && i===peakIdx ? el.classList.add('active') : el.classList.remove('active'); }});
-            document.getElementById('peak-text').innerText = hours[peakIdx]>0 ? `Khung giờ cao điểm: ${peakIdx*4}h - ${(peakIdx+1)*4}h` : 'Khung giờ cao điểm: Chưa ghi nhận';
+            hours.forEach((v, i) => { 
+                let el = document.getElementById(`h-${i*4}`); 
+                if (el) { 
+                    el.style.height = Math.max(5, (v/maxH)*100) + '%'; 
+                    v > 0 && i === peakIdx ? el.classList.add('active') : el.classList.remove('active'); 
+                }
+            });
+            const t = i18n[currentLang];
+            document.getElementById('peak-text').innerText = hours[peakIdx] > 0 ? `${t.peak_text_prefix}${peakIdx*4}h - ${(peakIdx+1)*4}h` : `${t.peak_text_prefix}${t.peak_none}`;
         }
 
         function applyFilters() {
             let filtered = allLogs.filter(l => document.getElementById('category-filter').value === 'all' || identifyCategory(l.sentence) === document.getElementById('category-filter').value);
             let search = document.getElementById('search-input').value.toLowerCase();
-            if(search) filtered = filtered.filter(l => l.sentence.toLowerCase().includes(search));
+            if (search) filtered = filtered.filter(l => l.sentence.toLowerCase().includes(search));
 
-            document.getElementById('count-badge').innerText = filtered.length + ' MỤC';
+            document.getElementById('count-badge').innerText = filtered.length + (currentLang === 'vi' ? ' MỤC' : ' ITEMS');
             updateCharts(filtered);
 
+            const t = i18n[currentLang];
             document.getElementById('logs-body').innerHTML = filtered.length ? filtered.map(l => {
-                let t = formatTime(l.timestamp);
+                let timeObj = formatTime(l.timestamp);
                 return `<tr>
-                    <td><div class="time-hm">${t.hm}</div><div class="time-date">${t.date}</div></td>
+                    <td><div class="time-hm">${timeObj.hm}</div><div class="time-date">${timeObj.date}</div></td>
                     <td class="col-sentence">"${l.sentence}"</td>
                     <td>${getTagHtml(identifyCategory(l.sentence))}</td>
                     <td align="center" style="color:var(--cyan); font-weight:700; font-size:14px;">${l.attention||0}</td>
                     <td align="center" style="color:var(--emerald); font-weight:700; font-size:14px;">${l.meditation||0}</td>
-                    <td align="center"><button class="btn-speak" onclick="speakText('${l.sentence}')">ĐỌC LẠI</button></td>
+                    <td align="center"><button class="btn-speak" onclick="speakText('${l.sentence}')">${t.btn_speak}</button></td>
                 </tr>`;
-            }).join('') : '<tr><td colspan="6" style="text-align:center; padding: 50px; color: var(--text-dim); font-size:13px;">Không tìm thấy lịch sử phù hợp bộ lọc.</td></tr>';
+            }).join('') : `<tr><td colspan="6" style="text-align:center; padding: 50px; color: var(--text-dim); font-size:13px;">${t.waiting_logs}</td></tr>`;
         }
 
         function toggleDemo() { 
             isDemoMode = !isDemoMode; 
             document.getElementById('btn-demo').classList.toggle('active'); 
-            document.getElementById('btn-demo').innerText = isDemoMode ? 'ĐANG MÔ PHỎNG' : 'CHẾ ĐỘ MÔ PHỎNG'; 
+            const t = i18n[currentLang];
+            document.getElementById('btn-demo').innerText = isDemoMode ? t.demo_btn_on : t.demo_btn_off; 
         }
 
         function forceFatigueDemo() {
             isForcedFatigue = !isForcedFatigue;
             const btn = document.getElementById('btn-force-fatigue');
+            const t = i18n[currentLang];
             if (isForcedFatigue) {
                 btn.style.background = 'var(--rose)';
                 btn.style.color = '#fff';
-                btn.innerText = 'ĐANG TEST BÁO ĐỘNG';
+                btn.innerText = t.fatigue_test_on;
                 triggerFatigueAlert(3.85);
             } else {
                 btn.style.background = 'rgba(239, 68, 68, 0.08)';
                 btn.style.color = '#f87171';
-                btn.innerText = 'THỬ NGHIỆM BÁO ĐỘNG';
+                btn.innerText = t.fatigue_test_off;
                 dismissFatigueAlert();
             }
         }
 
-        // ================= ALARM MANAGEMENT =================
+        // ================= QUẢN LÝ BÁO ĐỘNG KIỆT SỨC =================
         function triggerFatigueAlert(ratio) {
             const banner = document.getElementById('fatigue-alert-banner');
+            const t = i18n[currentLang];
             if (banner.style.display !== 'flex') {
                 banner.style.display = 'flex';
-                speakText("Cảnh báo: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi.");
+                speakText(currentLang === 'vi' ? 
+                    "Cảnh báo: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
+                    "Warning: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
             }
-            document.getElementById('fatigue-banner-msg').innerText = 
-                `"Hệ thống phát hiện não bộ đang mệt mỏi (Tỉ số kiệt sức: ${ratio.toFixed(2)} ≥ 3.00). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"`;
+            document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
+                `"Hệ thống phát hiện não bộ đang mệt mỏi (Tỉ số: ${ratio.toFixed(2)} ≥ 3.00). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"` :
+                `"System detected brain fatigue (Fatigue Ratio: ${ratio.toFixed(2)} ≥ 3.00). Pause BCI for 30 minutes to rest"`;
         }
 
         function dismissFatigueAlert() {
@@ -721,10 +938,11 @@
         }
 
         function toggleRestBreak() {
+            const t = i18n[currentLang];
             if (isRestBreakActive) {
                 clearInterval(restTimerInterval);
                 isRestBreakActive = false;
-                document.getElementById('btn-rest-toggle').innerText = 'KÍCH HOẠT NGHỈ 30 PHÚT';
+                document.getElementById('btn-rest-toggle').innerText = t.btn_rest;
                 document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
             } else {
                 isRestBreakActive = true;
@@ -734,171 +952,197 @@
                     restBreakSecondsLeft--;
                     let m = Math.floor(restBreakSecondsLeft / 60);
                     let s = restBreakSecondsLeft % 60;
-                    document.getElementById('btn-rest-toggle').innerText = `ĐANG NGHỈ: ${m}:${s < 10 ? '0' : ''}${s}`;
+                    document.getElementById('btn-rest-toggle').innerText = (currentLang === 'vi' ? `ĐANG NGHỈ: ` : `RESTING: `) + `${m}:${s < 10 ? '0' : ''}${s}`;
                     if (restBreakSecondsLeft <= 0) {
                         clearInterval(restTimerInterval);
                         isRestBreakActive = false;
-                        alert('Thời gian nghỉ ngơi 30 phút đã hoàn tất. Bệnh nhân có thể tái sử dụng thiết bị.');
+                        alert(currentLang === 'vi' ? 'Thời gian nghỉ 30 phút đã hoàn tất.' : '30-minute rest break completed.');
                         dismissFatigueAlert();
                     }
                 }, 1000);
             }
         }
 
-        // ================= UI UPDATE & CLINICAL BIOMARKERS =================
-        function updateUI(t) {
-            let sig = isDemoMode ? 0 : t.signalQuality;
-            let att = isDemoMode ? Math.floor(Math.random()*25)+65 : (t.attention||0);
-            let med = isDemoMode ? Math.floor(Math.random()*30)+55 : (t.meditation||0);
+        // ================= CẬP NHẬT GIAO DIỆN & TÍNH TOÁN DỮ LIỆU ĐIỆN NÃO =================
+        function updateUI(tData) {
+            let sig = isDemoMode ? 0 : tData.signalQuality;
+            let att = isDemoMode ? Math.floor(Math.random()*25)+65 : (tData.attention||0);
+            let med = isDemoMode ? Math.floor(Math.random()*30)+55 : (tData.meditation||0);
             
             let w = {
-                d: isDemoMode ? Math.floor(Math.random()*150000)+50000 : (t.delta||0),
-                t: isDemoMode ? (isForcedFatigue ? 260000 : Math.floor(Math.random()*80000)+20000) : (t.theta||0),
-                a: isDemoMode ? (isForcedFatigue ? 190000 : Math.floor(Math.random()*60000)+10000) : (t.lowAlpha||0),
-                b: isDemoMode ? (isForcedFatigue ? 35000 : Math.floor(Math.random()*70000)+25000) : (t.lowBeta||0),
-                g: isDemoMode ? Math.floor(Math.random()*40000)+5000 : (t.lowGamma||0)
+                d: isDemoMode ? Math.floor(Math.random()*150000)+50000 : (tData.delta||0),
+                t: isDemoMode ? (isForcedFatigue ? 260000 : Math.floor(Math.random()*80000)+20000) : (tData.theta||0),
+                a: isDemoMode ? (isForcedFatigue ? 190000 : Math.floor(Math.random()*60000)+10000) : (tData.lowAlpha||0),
+                b: isDemoMode ? (isForcedFatigue ? 35000 : Math.floor(Math.random()*70000)+25000) : (tData.lowBeta||0),
+                g: isDemoMode ? Math.floor(Math.random()*40000)+5000 : (tData.lowGamma||0)
             };
 
-            let bat = isDemoMode ? 85 : (t.battery!==undefined ? t.battery : 0);
-            let vol = isDemoMode ? (3.8+Math.random()*0.1).toFixed(2) : (t.voltage||0);
-            let cur = isDemoMode ? (100+Math.random()*20).toFixed(1) : (t.current||0);
+            let bat = isDemoMode ? 85 : (tData.battery!==undefined ? tData.battery : 0);
+            let vol = isDemoMode ? (3.8+Math.random()*0.1).toFixed(2) : (tData.voltage||0);
+            let cur = isDemoMode ? (100+Math.random()*20).toFixed(1) : (tData.current||0);
 
-            const isRecent = isDemoMode || (Date.now() - (t.lastUpdate || Date.now())) < 40000;
+            const isRecent = isDemoMode || (Date.now() - (tData.lastUpdate || Date.now())) < 40000;
+            const t = i18n[currentLang];
             document.getElementById('conn-dot').className = isRecent ? 'dot dot-green' : 'dot dot-red';
-            document.getElementById('conn-text').innerText = isDemoMode ? 'SIMULATION' : (isRecent ? 'HW ONLINE' : 'HW OFFLINE');
+            document.getElementById('conn-text').innerText = isDemoMode ? (currentLang === 'vi' ? 'ĐANG MÔ PHỎNG' : 'SIMULATION') : (isRecent ? t.conn_online : t.conn_offline);
             document.getElementById('conn-text').style.color = isRecent ? 'var(--emerald)' : 'var(--rose)';
 
-            document.getElementById('avg-att').innerText = att; document.getElementById('bar-att').style.width = att+'%';
-            document.getElementById('avg-med').innerText = med; document.getElementById('bar-med').style.width = med+'%';
+            document.getElementById('avg-att').innerText = att; 
+            document.getElementById('bar-att').style.width = att + '%';
+            document.getElementById('avg-med').innerText = med; 
+            document.getElementById('bar-med').style.width = med + '%';
             
-            document.getElementById('ina-bat-val').innerText = bat+'%'; document.getElementById('ina-pwr-val').innerText = Math.round(vol*cur)+' mW';
-            document.getElementById('bar-ina-bat').style.width = bat+'%';
-            document.getElementById('ina-volt').innerText = vol+'V | '; document.getElementById('ina-curr').innerText = cur+'mA';
+            document.getElementById('ina-bat-val').innerText = bat + '%'; 
+            document.getElementById('ina-pwr-val').innerText = Math.round(vol*cur) + ' mW';
+            document.getElementById('bar-ina-bat').style.width = bat + '%';
 
-            document.getElementById('no-signal-overlay').style.display = sig===0 ? 'none' : 'flex';
-            document.getElementById('signal-text').innerText = sig===0 ? 'TÍN HIỆU TỐT (0)' : `RỚT ĐIỆN CỰC (${sig})`;
-            document.getElementById('signal-text').style.color = sig===0 ? 'var(--emerald)' : 'var(--rose)';
+            document.getElementById('no-signal-overlay').style.display = sig === 0 ? 'none' : 'flex';
+            document.getElementById('signal-text').innerText = sig === 0 ? t.sig_good : `${t.sig_lost} (${sig})`;
+            document.getElementById('signal-text').style.color = sig === 0 ? 'var(--emerald)' : 'var(--rose)';
 
-            document.getElementById('val-delta').innerText = w.d.toLocaleString(); document.getElementById('val-theta').innerText = w.t.toLocaleString();
-            document.getElementById('val-alpha').innerText = w.a.toLocaleString(); document.getElementById('val-beta').innerText = w.b.toLocaleString();
+            document.getElementById('val-delta').innerText = w.d.toLocaleString(); 
+            document.getElementById('val-theta').innerText = w.t.toLocaleString();
+            document.getElementById('val-alpha').innerText = w.a.toLocaleString(); 
+            document.getElementById('val-beta').innerText = w.b.toLocaleString();
             document.getElementById('val-gamma').innerText = w.g.toLocaleString();
 
-            // Tính toán Biomarkers
+            // Tính toán 4 chỉ số cơ bản
             let safeBeta = Math.max(10, w.b);
             let safeAlpha = Math.max(10, w.a);
             let safeThetaAlpha = Math.max(20, w.a + w.t);
 
-            // 1. Fatigue Index = (Theta + Alpha) / Beta
+            // 1. Tỉ lệ Kiệt sức = (Theta + Alpha) / Beta
             let fatigueRatio = (w.t + w.a) / safeBeta;
             let fatiguePct = Math.min(100, Math.round((fatigueRatio / 4.0) * 100));
 
             const fatigueValEl = document.getElementById('fatigue-val');
             const fatigueStatEl = document.getElementById('fatigue-status');
             const barFatigueEl = document.getElementById('bar-fatigue');
-            const fatiguePctTag = document.getElementById('fatigue-pct-tag');
 
             fatigueValEl.innerText = fatigueRatio.toFixed(2);
             barFatigueEl.style.width = fatiguePct + '%';
-            fatiguePctTag.innerText = fatiguePct + '% tải mệt';
 
             if (fatigueRatio >= 3.0 || isForcedFatigue) {
                 fatigueValEl.style.color = 'var(--rose)';
-                fatigueStatEl.innerText = 'KIỆT SỨC (BÁO ĐỘNG)';
+                fatigueStatEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'CRITICAL';
                 fatigueStatEl.style.color = 'var(--rose)';
                 barFatigueEl.style.background = 'var(--rose)';
                 triggerFatigueAlert(fatigueRatio);
             } else if (fatigueRatio >= 2.0) {
                 fatigueValEl.style.color = 'var(--amber)';
-                fatigueStatEl.innerText = 'CẬN MỆT MỎI';
+                fatigueStatEl.innerText = currentLang === 'vi' ? 'CẬN MỆT MỎI' : 'WARNING';
                 fatigueStatEl.style.color = 'var(--amber)';
                 barFatigueEl.style.background = 'var(--amber)';
-                if(!isForcedFatigue) dismissFatigueAlert();
+                if (!isForcedFatigue) dismissFatigueAlert();
             } else {
                 fatigueValEl.style.color = 'var(--emerald)';
-                fatigueStatEl.innerText = 'BÌNH THƯỜNG';
+                fatigueStatEl.innerText = currentLang === 'vi' ? 'BÌNH THƯỜNG' : 'STABLE';
                 fatigueStatEl.style.color = 'var(--emerald)';
                 barFatigueEl.style.background = 'var(--emerald)';
-                if(!isForcedFatigue) dismissFatigueAlert();
+                if (!isForcedFatigue) dismissFatigueAlert();
             }
 
-            // 2. Engagement Index: Beta / (Alpha + Theta)
+            // 2. Mức độ Gắn kết = Beta / (Alpha + Theta)
             let engRatio = safeBeta / safeThetaAlpha;
             document.getElementById('bio-eng-val').innerText = engRatio.toFixed(2);
             let engPct = Math.min(100, Math.round((engRatio / 1.2) * 100));
             document.getElementById('bar-bio-eng').style.width = engPct + '%';
             let engBadge = document.getElementById('bio-eng-badge');
             if (engRatio >= 0.5) {
-                engBadge.innerText = 'CHỦ ĐỘNG CAO'; engBadge.style.color = 'var(--cyan)';
+                engBadge.innerText = currentLang === 'vi' ? 'CHỦ ĐỘNG CAO' : 'HIGH';
+                engBadge.style.color = 'var(--cyan)';
             } else if (engRatio >= 0.3) {
-                engBadge.innerText = 'TRUNG BÌNH'; engBadge.style.color = 'var(--text-secondary)';
+                engBadge.innerText = currentLang === 'vi' ? 'TRUNG BÌNH' : 'MODERATE';
+                engBadge.style.color = 'var(--text-secondary)';
             } else {
-                engBadge.innerText = 'THỤ ĐỘNG'; engBadge.style.color = 'var(--text-dim)';
+                engBadge.innerText = currentLang === 'vi' ? 'THỤ ĐỘNG' : 'PASSIVE';
+                engBadge.style.color = 'var(--text-dim)';
             }
 
-            // 3. Theta/Beta Ratio (TBR): Theta / Beta
+            // 3. Tỉ lệ Theta / Beta (TBR) = Theta / Beta
             let tbrRatio = w.t / safeBeta;
             document.getElementById('bio-tbr-val').innerText = tbrRatio.toFixed(2);
             let tbrPct = Math.min(100, Math.round((tbrRatio / 4.0) * 100));
             document.getElementById('bar-bio-tbr').style.width = tbrPct + '%';
             let tbrBadge = document.getElementById('bio-tbr-badge');
             if (tbrRatio > 2.5) {
-                tbrBadge.innerText = 'PHÂN TÂM'; tbrBadge.style.color = 'var(--rose)';
+                tbrBadge.innerText = currentLang === 'vi' ? 'PHÂN TÂM' : 'DROWSY';
+                tbrBadge.style.color = 'var(--rose)';
             } else if (tbrRatio > 1.5) {
-                tbrBadge.innerText = 'THƯ GIÃN'; tbrBadge.style.color = 'var(--amber)';
+                tbrBadge.innerText = currentLang === 'vi' ? 'THƯ GIÃN' : 'RELAXED';
+                tbrBadge.style.color = 'var(--amber)';
             } else {
-                tbrBadge.innerText = 'TỐI ƯU'; tbrBadge.style.color = 'var(--emerald)';
+                tbrBadge.innerText = currentLang === 'vi' ? 'TỐI ƯU' : 'OPTIMAL';
+                tbrBadge.style.color = 'var(--emerald)';
             }
 
-            // 4. Alertness Index: (Beta + Gamma) / (Alpha + Theta)
+            // 4. Mức độ Tỉnh táo = (Beta + Gamma) / (Alpha + Theta)
             let alertRatio = (safeBeta + w.g) / safeThetaAlpha;
             document.getElementById('bio-alert-val').innerText = alertRatio.toFixed(2);
             let alertPct = Math.min(100, Math.round((alertRatio / 1.5) * 100));
             document.getElementById('bar-bio-alert').style.width = alertPct + '%';
             let alertBadge = document.getElementById('bio-alert-badge');
             if (alertRatio >= 0.7) {
-                alertBadge.innerText = 'THỨC TỈNH CAO'; alertBadge.style.color = 'var(--emerald)';
+                alertBadge.innerText = currentLang === 'vi' ? 'TỈNH TÁO CAO' : 'ALERT';
+                alertBadge.style.color = 'var(--emerald)';
             } else if (alertRatio >= 0.4) {
-                alertBadge.innerText = 'BÌNH THƯỜNG'; alertBadge.style.color = 'var(--cyan)';
+                alertBadge.innerText = currentLang === 'vi' ? 'BÌNH THƯỜNG' : 'NORMAL';
+                alertBadge.style.color = 'var(--cyan)';
             } else {
-                alertBadge.innerText = 'BUỒN NGỦ'; alertBadge.style.color = 'var(--amber)';
+                alertBadge.innerText = currentLang === 'vi' ? 'BUỒN NGỦ' : 'SLEEPY';
+                alertBadge.style.color = 'var(--amber)';
             }
 
-            // 5. Stress Index: (Beta + Gamma) / Alpha
+            // 5. Mức độ Căng thẳng = (Beta + Gamma) / Alpha
             let stressRatio = (safeBeta + w.g) / safeAlpha;
             document.getElementById('bio-stress-val').innerText = stressRatio.toFixed(2);
             let stressPct = Math.min(100, Math.round((stressRatio / 3.0) * 100));
             document.getElementById('bar-bio-stress').style.width = stressPct + '%';
             let stressBadge = document.getElementById('bio-stress-badge');
             if (stressRatio >= 2.0) {
-                stressBadge.innerText = 'CĂNG THẲNG'; stressBadge.style.color = 'var(--rose)';
+                stressBadge.innerText = currentLang === 'vi' ? 'CĂNG THẲNG' : 'HIGH';
+                stressBadge.style.color = 'var(--rose)';
             } else if (stressRatio >= 1.2) {
-                stressBadge.innerText = 'VỪA PHẢI'; stressBadge.style.color = 'var(--amber)';
+                stressBadge.innerText = currentLang === 'vi' ? 'VỪA PHẢI' : 'MODERATE';
+                stressBadge.style.color = 'var(--amber)';
             } else {
-                stressBadge.innerText = 'THOẢI MÁI'; stressBadge.style.color = 'var(--text-secondary)';
+                stressBadge.innerText = currentLang === 'vi' ? 'THOẢI MÁI' : 'RELAXED';
+                stressBadge.style.color = 'var(--text-secondary)';
             }
 
-            // Biểu đồ sóng
+            // Vẽ sóng điện não
             let cData = eegChart.data.datasets[0].data;
-            let eVal = sig===0 ? (Math.sin(Date.now()/140)*18 + Math.cos(Date.now()/50)*12 + (att/3)) : 0;
-            if(sig===0 && isDemoMode && Math.random()>0.9) eVal += (Math.random()-0.5)*80;
-            cData.push(eVal); cData.shift(); eegChart.update();
+            let eVal = sig === 0 ? (Math.sin(Date.now()/140)*18 + Math.cos(Date.now()/50)*12 + (att/3)) : 0;
+            if (sig === 0 && isDemoMode && Math.random() > 0.9) eVal += (Math.random()-0.5)*80;
+            cData.push(eVal); 
+            cData.shift(); 
+            eegChart.update();
 
-            // Biểu đồ radar
-            if(sig===0) {
-                let tot = w.d+w.t+w.a+w.b+w.g || 1;
+            // Vẽ radar
+            if (sig === 0) {
+                let tot = w.d + w.t + w.a + w.b + w.g || 1;
                 radarChart.data.datasets[0].data = [(w.d/tot)*100, (w.t/tot)*100, (w.a/tot)*100, (w.b/tot)*100, (w.g/tot)*100];
-            } else radarChart.data.datasets[0].data = [0,0,0,0,0];
+            } else {
+                radarChart.data.datasets[0].data = [0,0,0,0,0];
+            }
             radarChart.update();
         }
 
         function exportCSV() {
-            if(!allLogs.length) return alert('Không có dữ liệu');
+            if (!allLogs.length) return alert(currentLang === 'vi' ? 'Không có dữ liệu để xuất' : 'No logs to export');
             let csv = "Time,Sentence,Category,Att,Med\n" + allLogs.map(l => `"${l.timestamp}","${l.sentence}","${identifyCategory(l.sentence)}",${l.attention||0},${l.meditation||0}`).join('\n');
-            let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(["\uFEFF"+csv], {type:'text/csv'})); a.download = 'BCI_Logs.csv'; a.click();
+            let a = document.createElement('a'); 
+            a.href = URL.createObjectURL(new Blob(["\uFEFF"+csv], {type:'text/csv'})); 
+            a.download = 'BCI_Logs.csv'; 
+            a.click();
         }
+
         function exportJSON() {
-            if(!allLogs.length) return alert('Không có dữ liệu');
-            let a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({patient:currentPatient, logs:allLogs}, null, 2)], {type:'application/json'})); a.download = 'BCI_Logs.json'; a.click();
+            if (!allLogs.length) return alert(currentLang === 'vi' ? 'Không có dữ liệu để xuất' : 'No logs to export');
+            let a = document.createElement('a'); 
+            a.href = URL.createObjectURL(new Blob([JSON.stringify({patient:currentPatient, logs:allLogs}, null, 2)], {type:'application/json'})); 
+            a.download = 'BCI_Logs.json'; 
+            a.click();
         }
 
         setInterval(async () => {
@@ -907,11 +1151,17 @@
                 if (res.ok) {
                     let data = await res.json();
                     if (data.telemetry) updateUI(data.telemetry);
-                    if (data.logs && Array.isArray(data.logs) && data.logs.length !== allLogs.length) { allLogs = data.logs; applyFilters(); }
+                    if (data.logs && Array.isArray(data.logs) && data.logs.length !== allLogs.length) { 
+                        allLogs = data.logs; 
+                        applyFilters(); 
+                    }
                 }
-            } catch (e) { if(isDemoMode) updateUI({signalQuality:0}); }
+            } catch (e) { 
+                if (isDemoMode) updateUI({signalQuality:0}); 
+            }
         }, 2000);
 
+        applyLanguage();
         initUserSystem();
     </script>
 </body>
