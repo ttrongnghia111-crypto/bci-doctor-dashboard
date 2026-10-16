@@ -1055,50 +1055,83 @@
             }
         }
 
+        // ================= GỬI LỆNH KHÓA/MỞ NGHỈ NGƠI XUỐNG CLOUD CHO ESP32 =================
+async function syncRestCommandToCloud(action, durationSec = 1800) {
+    try {
+        // Trỏ thẳng về đúng server Render của hệ thống
+        await fetch('https://bci-api-server.onrender.com/api/command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                command: action,          // "LOCK_REST" hoặc "UNLOCK_REST"
+                duration: durationSec,    // Mặc định 1800s (30 phút)
+                timestamp: Date.now()
+            })
+        });
+        console.log(`[CLOUD CMD] Đã gửi lệnh: ${action} (${durationSec}s)`);
+    } catch (err) {
+        console.warn("[CLOUD CMD] Không thể gửi lệnh tới Cloud Server:", err);
+    }
+}
+
+
         // ================= QUẢN LÝ BÁO ĐỘNG KIỆT SỨC =================
         function triggerFatigueAlert(ratio) {
-            const banner = document.getElementById('fatigue-alert-banner');
-            const t = i18n[currentLang];
-            if (banner.style.display !== 'flex') {
-                banner.style.display = 'flex';
-                speakText(currentLang === 'vi' ? 
-                    "Cảnh báo lâm sàng: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
-                    "Clinical alert: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
-            }
-            document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
-                `"Hệ thống phát hiện não bộ đang mệt mỏi (TBR: ${ratio.toFixed(2)} ≥ 2.80). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"` :
-                `"System detected brain fatigue (TBR: ${ratio.toFixed(2)} ≥ 2.80). Pause BCI for 30 minutes to rest"`;
-        }
+    const banner = document.getElementById('fatigue-alert-banner');
+    const t = i18n[currentLang];
+    if (banner.style.display !== 'flex') {
+        banner.style.display = 'flex';
+        speakText(currentLang === 'vi' ? 
+            "Cảnh báo lâm sàng: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
+            "Clinical alert: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
+        // Gửi lệnh khóa 30 phút xuống ESP32 qua Cloud
+        syncRestCommandToCloud("LOCK_REST", 1800);
+    }
+    document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
+        `"Hệ thống phát hiện não bộ đang mệt mỏi (TBR: ${ratio.toFixed(2)} ≥ 2.80). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"` :
+        `"System detected brain fatigue (TBR: ${ratio.toFixed(2)} ≥ 2.80). Pause BCI for 30 minutes to rest"`;
+}
 
-        function dismissFatigueAlert() {
-            document.getElementById('fatigue-alert-banner').style.display = 'none';
-        }
+function dismissFatigueAlert() {
+    document.getElementById('fatigue-alert-banner').style.display = 'none';
+    if (isRestBreakActive) {
+        clearInterval(restTimerInterval);
+        isRestBreakActive = false;
+        document.getElementById('btn-rest-toggle').innerText = i18n[currentLang].btn_rest;
+        document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
+    }
+    // Gửi lệnh mở khóa xuống ESP32
+    syncRestCommandToCloud("UNLOCK_REST", 0);
+}
 
-        function toggleRestBreak() {
-            const t = i18n[currentLang];
-            if (isRestBreakActive) {
+function toggleRestBreak() {
+    const t = i18n[currentLang];
+    if (isRestBreakActive) {
+        clearInterval(restTimerInterval);
+        isRestBreakActive = false;
+        document.getElementById('btn-rest-toggle').innerText = t.btn_rest;
+        document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
+        syncRestCommandToCloud("UNLOCK_REST", 0);
+    } else {
+        isRestBreakActive = true;
+        restBreakSecondsLeft = 30 * 60;
+        document.getElementById('btn-rest-toggle').style.background = 'var(--amber)';
+        syncRestCommandToCloud("LOCK_REST", 30 * 60);
+
+        restTimerInterval = setInterval(() => {
+            restBreakSecondsLeft--;
+            let m = Math.floor(restBreakSecondsLeft / 60);
+            let s = restBreakSecondsLeft % 60;
+            document.getElementById('btn-rest-toggle').innerText = (currentLang === 'vi' ? `ĐANG NGHỈ: ` : `RESTING: `) + `${m}:${s < 10 ? '0' : ''}${s}`;
+            if (restBreakSecondsLeft <= 0) {
                 clearInterval(restTimerInterval);
                 isRestBreakActive = false;
-                document.getElementById('btn-rest-toggle').innerText = t.btn_rest;
-                document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
-            } else {
-                isRestBreakActive = true;
-                restBreakSecondsLeft = 30 * 60;
-                document.getElementById('btn-rest-toggle').style.background = 'var(--amber)';
-                restTimerInterval = setInterval(() => {
-                    restBreakSecondsLeft--;
-                    let m = Math.floor(restBreakSecondsLeft / 60);
-                    let s = restBreakSecondsLeft % 60;
-                    document.getElementById('btn-rest-toggle').innerText = (currentLang === 'vi' ? `ĐANG NGHỈ: ` : `RESTING: `) + `${m}:${s < 10 ? '0' : ''}${s}`;
-                    if (restBreakSecondsLeft <= 0) {
-                        clearInterval(restTimerInterval);
-                        isRestBreakActive = false;
-                        alert(currentLang === 'vi' ? 'Thời gian nghỉ 30 phút đã hoàn tất.' : '30-minute rest break completed.');
-                        dismissFatigueAlert();
-                    }
-                }, 1000);
+                alert(currentLang === 'vi' ? 'Thời gian nghỉ 30 phút đã hoàn tất.' : '30-minute rest break completed.');
+                dismissFatigueAlert();
             }
-        }
+        }, 1000);
+    }
+}
 
         // ================= CẬP NHẬT GIAO DIỆN & TÍNH TOÁN DỮ LIỆU ĐIỆN NÃO =================
         function updateUI(tData) {
