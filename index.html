@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,10 +7,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
+            /* DARK THEME (MẶC ĐỊNH) */
             --bg-base: #070b12;
             --bg-panel: #0d1422;
             --bg-card: #111a2c;
             --bg-hover: #162238;
+            --bg-chart: #04070d;
+            --bg-overlay: rgba(5, 9, 16, 0.94);
             --border: #1a2538;
             --border-light: #25344e;
             --text-primary: #f8fafc;
@@ -21,9 +24,39 @@
             --amber: #f59e0b;
             --rose: #ef4444;
             --purple: #a855f7;
+            --bar-empty: #1a2538;
+            --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.25);
+            --alert-bg: #1a090b;
+            --alert-border: #ef4444;
+            --alert-text: #ffffff;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        /* LIGHT THEME (DỊU MẮT, TƯƠNG PHẢN CAO, KHÔNG BỊ CHÓI) */
+        [data-theme="light"] {
+            --bg-base: #e9eef5;
+            --bg-panel: #ffffff;
+            --bg-card: #f8fafc;
+            --bg-hover: #f1f5f9;
+            --bg-chart: #f8fafc;
+            --bg-overlay: rgba(248, 250, 252, 0.94);
+            --border: #cbd5e1;
+            --border-light: #94a3b8;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-dim: #64748b;
+            --cyan: #0284c7;
+            --emerald: #059669;
+            --amber: #d97706;
+            --rose: #dc2626;
+            --purple: #7e22ce;
+            --bar-empty: #e2e8f0;
+            --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.06);
+            --alert-bg: #fef2f2;
+            --alert-border: #f87171;
+            --alert-text: #991b1b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease; }
         
         body { 
             background-color: var(--bg-base); 
@@ -58,9 +91,11 @@
             color: var(--text-secondary); transition: all 0.15s ease;
         }
         .btn:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-light); }
+        .btn-theme { border-color: var(--border-light); color: var(--amber); background: rgba(245, 158, 11, 0.08); }
+        .btn-theme:hover { background: rgba(245, 158, 11, 0.2); }
         .btn-demo { border-color: #854d0e; color: var(--amber); background: rgba(245, 158, 11, 0.08); }
-        .btn-demo.active { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: #fff; }
-        .btn-trigger-fatigue { border-color: #7f1d1d; color: #f87171; background: rgba(239, 68, 68, 0.08); }
+        .btn-demo.active { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: var(--text-primary); }
+        .btn-trigger-fatigue { border-color: #7f1d1d; color: var(--rose); background: rgba(239, 68, 68, 0.08); }
         .btn-trigger-fatigue:hover { background: rgba(239, 68, 68, 0.2); border-color: var(--rose); color: #fff; }
         .btn-lang { border-color: var(--border-light); color: var(--cyan); background: rgba(56, 189, 248, 0.06); }
 
@@ -73,8 +108,8 @@
         /* ================= BÁO ĐỘNG LÂM SÀNG KIỆT SỨC ================= */
         .fatigue-alert-banner {
             display: none;
-            background: #1a090b;
-            border: 1px solid var(--rose);
+            background: var(--alert-bg);
+            border: 1px solid var(--alert-border);
             border-left: 6px solid var(--rose);
             border-radius: 6px;
             padding: 12px 18px;
@@ -85,23 +120,23 @@
         }
         .fatigue-alert-left { display: flex; flex-direction: column; gap: 2px; }
         .fatigue-alert-tag { font-size: 11px; font-weight: 800; color: var(--rose); text-transform: uppercase; font-family: monospace; letter-spacing: 0.6px; }
-        .fatigue-alert-msg { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: 0.2px; }
+        .fatigue-alert-msg { font-size: 14px; font-weight: 700; color: var(--alert-text); letter-spacing: 0.2px; }
         .fatigue-alert-nurse { font-size: 11px; font-family: monospace; color: var(--text-dim); }
         .fatigue-alert-actions { display: flex; gap: 10px; align-items: center; }
         .btn-rest-timer { background: var(--rose); color: #fff; border: 1px solid var(--rose); font-weight: 700; padding: 7px 14px; border-radius: 4px; font-family: monospace; font-size: 12px; cursor: pointer; transition: 0.15s; }
         .btn-rest-timer:hover { background: #dc2626; }
         .btn-dismiss-alert { background: transparent; border: 1px solid var(--border-light); color: var(--text-secondary); padding: 7px 12px; border-radius: 4px; font-family: monospace; font-size: 12px; cursor: pointer; }
-        .btn-dismiss-alert:hover { color: #fff; border-color: var(--text-secondary); }
+        .btn-dismiss-alert:hover { color: var(--text-primary); border-color: var(--text-secondary); }
 
         .main-wrapper { display: flex; flex-direction: column; gap: 16px; }
 
         /* ================= HÀNG 1: TỔNG QUAN LÂM SÀNG & TGAM NATIVE ================= */
         .row-vitals { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 14px; }
-        .panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); position: relative; }
+        .panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); position: relative; box-shadow: var(--shadow-card); }
         
         .patient-card { display: flex; align-items: center; justify-content: flex-start; }
         .patient-profile { display: flex; align-items: center; gap: 14px; }
-        .avatar-initials { width: 48px; height: 48px; background: rgba(56, 189, 248, 0.08); border: 1px solid var(--border-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; font-family: monospace; color: var(--cyan); }
+        .avatar-initials { width: 48px; height: 48px; background: rgba(56, 189, 248, 0.1); border: 1px solid var(--border-light); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; font-family: monospace; color: var(--cyan); }
         .patient-info h2 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
         .badge-id { background: var(--bg-base); padding: 3px 8px; border-radius: 4px; font-size: 11px; font-family: monospace; color: var(--cyan); border: 1px solid var(--border); cursor: pointer; transition: 0.2s; }
         .badge-id:hover { border-color: var(--cyan); }
@@ -112,7 +147,7 @@
         .metric-val-row { display: flex; align-items: baseline; gap: 5px; margin: 4px 0 8px 0; }
         .metric-value { font-size: 30px; font-weight: 800; font-family: monospace; line-height: 1; font-variant-numeric: tabular-nums; }
         .metric-unit { font-size: 12px; color: var(--text-dim); font-family: monospace; }
-        .progress-bar-bg { width: 100%; height: 4px; background: var(--bg-base); border-radius: 2px; overflow: hidden; }
+        .progress-bar-bg { width: 100%; height: 4px; background: var(--bar-empty); border-radius: 2px; overflow: hidden; }
         .progress-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
 
         /* ================= HÀNG 2: HỆ THỐNG CHỈ SỐ CHUYÊN GIA (EXPERT SYSTEM) ================= */
@@ -121,6 +156,7 @@
             border: 1px solid var(--border);
             border-radius: 6px;
             padding: 14px 16px;
+            box-shadow: var(--shadow-card);
         }
         .biomarkers-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -145,7 +181,7 @@
         }
         .bio-box:hover { border-color: var(--border-light); }
         .bio-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: monospace; margin-bottom: 4px; }
-        .bio-status-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; font-family: monospace; background: rgba(255,255,255,0.05); }
+        .bio-status-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; font-family: monospace; background: rgba(125,125,125,0.1); }
         .bio-main-val { 
             font-size: 24px; font-weight: 800; font-family: monospace; color: var(--text-primary); 
             margin: 4px 0 6px 0; font-variant-numeric: tabular-nums; 
@@ -156,14 +192,14 @@
 
         /* ================= HÀNG 3: REAL-TIME OSCILLOSCOPE + RADAR ================= */
         .row-eeg { display: grid; grid-template-columns: 3fr 1.15fr; gap: 14px; }
-        .eeg-section { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; }
+        .eeg-section { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: var(--shadow-card); }
         .section-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         
-        .chart-container-eeg { width: 100%; height: 300px; position: relative; background: #04070d; border-radius: 4px; border: 1px solid var(--border); overflow: hidden; padding: 8px; }
-        #no-signal-overlay { position: absolute; inset: 0; background: rgba(5, 9, 16, 0.94); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 6px; }
+        .chart-container-eeg { width: 100%; height: 300px; position: relative; background: var(--bg-chart); border-radius: 4px; border: 1px solid var(--border); overflow: hidden; padding: 8px; }
+        #no-signal-overlay { position: absolute; inset: 0; background: var(--bg-overlay); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; gap: 6px; }
         
-        .radar-panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; }
-        .chart-container-radar { height: 200px; width: 100%; background: #04070d; border-radius: 4px; border: 1px solid var(--border); padding: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; }
+        .radar-panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; box-shadow: var(--shadow-card); }
+        .chart-container-radar { height: 200px; width: 100%; background: var(--bg-chart); border-radius: 4px; border: 1px solid var(--border); padding: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; }
         
         .mini-wave-list { display: grid; grid-template-columns: 1fr; gap: 6px; }
         .mini-wave-row { display: flex; justify-content: space-between; align-items: center; background: var(--bg-base); padding: 6px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; border: 1px solid var(--border); }
@@ -175,18 +211,18 @@
         .row-bottom { display: grid; grid-template-columns: 1fr 2.4fr; gap: 14px; }
         
         .stats-col { display: flex; flex-direction: column; gap: 14px; }
-        .stat-box { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); }
+        .stat-box { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-card); }
         
         .dist-item { margin-bottom: 10px; }
         .dist-info { display: flex; justify-content: space-between; font-size: 12px; font-family: monospace; margin-bottom: 4px; color: var(--text-secondary); }
         .dist-count { color: var(--text-primary); font-weight: 700; }
         
-        .chart-wrapper { height: 90px; background: #04070d; border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-around; padding: 10px 8px 0 8px; margin-top: 10px; }
-        .bar-col { width: 12%; background: #1a2538; border-radius: 2px 2px 0 0; transition: height 0.4s ease; min-height: 4px; }
+        .chart-wrapper { height: 90px; background: var(--bg-chart); border-radius: 4px; border: 1px solid var(--border); display: flex; align-items: flex-end; justify-content: space-around; padding: 10px 8px 0 8px; margin-top: 10px; }
+        .bar-col { width: 12%; background: var(--bar-empty); border-radius: 2px 2px 0 0; transition: height 0.4s ease; min-height: 4px; }
         .bar-col.active { background: var(--cyan); }
         .x-labels { display: flex; justify-content: space-around; font-size: 11px; font-family: monospace; color: var(--text-dim); margin-top: 6px; }
 
-        .history-card { background: var(--bg-panel); border-radius: 6px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 460px; }
+        .history-card { background: var(--bg-panel); border-radius: 6px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 460px; box-shadow: var(--shadow-card); }
         .history-header { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--bg-panel); display: flex; justify-content: space-between; align-items: center; }
         .history-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.6px; display: flex; align-items: center; gap: 8px; }
         
@@ -195,10 +231,10 @@
         
         .table-container { flex: 1; max-height: 500px; overflow-y: auto; }
         table { width: 100%; border-collapse: collapse; font-family: monospace; font-size: 13px; }
-        thead { position: sticky; top: 0; background: #0a101b; z-index: 2; border-bottom: 1px solid var(--border); }
+        thead { position: sticky; top: 0; background: var(--bg-card); z-index: 2; border-bottom: 1px solid var(--border); }
         th { text-align: left; padding: 10px 14px; color: var(--text-dim); font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;}
-        td { padding: 11px 14px; border-bottom: 1px solid rgba(26, 37, 56, 0.6); vertical-align: middle; }
-        tr:hover td { background-color: rgba(255, 255, 255, 0.02); }
+        td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tr:hover td { background-color: var(--bg-hover); }
 
         .time-hm { font-weight: 700; color: var(--text-primary); font-size: 13px; }
         .time-date { color: var(--text-dim); font-size: 11px; }
@@ -213,8 +249,8 @@
         .btn-export { padding: 6px 12px; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-secondary); font-size: 11px; border-radius: 4px; cursor: pointer; font-family: monospace; font-weight: 600; transition: 0.15s;}
         .btn-export:hover { border-color: var(--cyan); color: var(--cyan); }
 
-        .modal-overlay { position: fixed; inset: 0; background: rgba(4, 7, 13, 0.85); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 1000; }
-        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; width: 100%; max-width: 480px; padding: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7); }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(4, 7, 13, 0.7); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 6px; width: 100%; max-width: 480px; padding: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
         .modal-title { font-size: 13px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-primary); letter-spacing: 0.5px; }
         .user-list { max-height: 220px; overflow-y: auto; margin: 12px 0; display: flex; flex-direction: column; gap: 8px; }
@@ -222,7 +258,7 @@
         .user-row:hover { border-color: var(--cyan); }
         .form-input { width: 100%; background: var(--bg-base); border: 1px solid var(--border); color: var(--text-primary); padding: 9px 12px; border-radius: 4px; font-size: 13px; font-family: monospace; margin-top: 4px; margin-bottom: 12px; outline: none; }
         .form-input:focus { border-color: var(--cyan); }
-        .btn-primary { background: var(--cyan); border: 1px solid var(--cyan); color: #04080e; font-weight: 700; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 12px; }
+        .btn-primary { background: var(--cyan); border: 1px solid var(--cyan); color: #fff; font-weight: 700; padding: 7px 14px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -238,6 +274,8 @@
         </div>
 
         <div class="nav-actions">
+            <!-- NÚT CHUYỂN LIGHT / DARK MODE -->
+            <button class="btn btn-theme" id="btn-theme" onclick="toggleTheme()">☀️ CHẾ ĐỘ SÁNG</button>
             <button class="btn btn-lang" id="btn-lang" onclick="toggleLanguage()">NGÔN NGỮ: TIẾNG VIỆT</button>
             <div class="status-pill">
                 <span class="dot dot-green" id="conn-dot"></span>
@@ -540,6 +578,52 @@
     </div>
 
     <script>
+        // ================= QUẢN LÝ GIAO DIỆN LIGHT / DARK MODE =================
+        let currentTheme = localStorage.getItem('bci_theme') || 'dark';
+
+        function applyTheme(theme) {
+            currentTheme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('bci_theme', theme);
+            
+            // Cập nhật biểu tượng và chữ trên nút
+            const btnTheme = document.getElementById('btn-theme');
+            const t = i18n[currentLang];
+            if (theme === 'light') {
+                btnTheme.innerText = t.btn_theme_dark;
+                btnTheme.style.color = 'var(--text-primary)';
+                btnTheme.style.background = 'var(--bg-hover)';
+            } else {
+                btnTheme.innerText = t.btn_theme_light;
+                btnTheme.style.color = 'var(--amber)';
+                btnTheme.style.background = 'rgba(245, 158, 11, 0.08)';
+            }
+
+            // Đồng bộ màu đường kẻ và text trong Chart.js
+            const isLight = theme === 'light';
+            if (window.eegChart) {
+                eegChart.options.scales.y.grid.color = isLight ? '#cbd5e1' : '#131d2e';
+                eegChart.options.scales.y.ticks.color = isLight ? '#334155' : '#64748b';
+                eegChart.data.datasets[0].borderColor = isLight ? '#0284c7' : '#38bdf8';
+                eegChart.update('none');
+            }
+
+            if (window.radarChart) {
+                radarChart.options.scales.r.pointLabels.color = isLight ? '#0f172a' : '#94a3b8';
+                radarChart.options.scales.r.angleLines.color = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.06)';
+                radarChart.options.scales.r.grid.color = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.06)';
+                radarChart.data.datasets[0].borderColor = isLight ? '#0284c7' : '#38bdf8';
+                radarChart.data.datasets[0].pointBackgroundColor = isLight ? '#0284c7' : '#38bdf8';
+                radarChart.data.datasets[0].backgroundColor = isLight ? 'rgba(2, 132, 199, 0.15)' : 'rgba(56, 189, 248, 0.12)';
+                radarChart.update('none');
+            }
+        }
+
+        function toggleTheme() {
+            const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(nextTheme);
+        }
+
         // ================= TỪ ĐIỂN ĐA NGÔN NGỮ (I18N: VI / EN) =================
         let currentLang = localStorage.getItem('bci_telemetry_lang') || 'vi';
 
@@ -548,6 +632,8 @@
                 brand_title: 'Hệ Thống Giám Sát Y Sinh BCI',
                 brand_sub: 'GIÁM SÁT LÂM SÀNG THỜI GIAN THỰC • PHÒNG ĐIỀU TRỊ TÍCH CỰC',
                 btn_lang: 'NGÔN NGỮ: TIẾNG VIỆT',
+                btn_theme_light: '☀️ CHẾ ĐỘ SÁNG',
+                btn_theme_dark: '🌙 CHẾ ĐỘ TỐI',
                 conn_online: 'THIẾT BỊ ONLINE',
                 conn_offline: 'MẤT KẾT NỐI',
                 cloud_ok: 'MÁY CHỦ SẴN SÀNG',
@@ -616,6 +702,8 @@
                 brand_title: 'BCI Clinical Monitoring System',
                 brand_sub: 'REAL-TIME TELEMETRY MONITOR • NEUROLOGICAL ICU',
                 btn_lang: 'LANGUAGE: ENGLISH',
+                btn_theme_light: '☀️ LIGHT MODE',
+                btn_theme_dark: '🌙 DARK MODE',
                 conn_online: 'HW ONLINE',
                 conn_offline: 'HW OFFLINE',
                 cloud_ok: 'CLOUD CONNECTED',
@@ -750,6 +838,10 @@
             document.getElementById('th-action').innerText = t.th_action;
             document.getElementById('lbl-footer').innerText = t.footer;
 
+            // Cập nhật lại nhãn nút theme
+            const btnTheme = document.getElementById('btn-theme');
+            btnTheme.innerText = currentTheme === 'light' ? t.btn_theme_dark : t.btn_theme_light;
+
             applyFilters();
         }
 
@@ -778,7 +870,7 @@
                 const row = document.createElement('div');
                 row.className = 'user-row';
                 if (p.id === currentPatient?.id) { selectedPatientIdInModal = p.id; row.style.borderColor = 'var(--cyan)'; }
-                row.innerHTML = `<div><div style="font-weight:700; color:#fff; font-size:14px;">${p.name} <span style="font-size:11px; color:var(--cyan)">[${p.code}]</span></div><div style="color:var(--text-dim); font-size:11px; margin-top:2px;">${p.room}</div></div>`;
+                row.innerHTML = `<div><div style="font-weight:700; color:var(--text-primary); font-size:14px;">${p.name} <span style="font-size:11px; color:var(--cyan)">[${p.code}]</span></div><div style="color:var(--text-dim); font-size:11px; margin-top:2px;">${p.room}</div></div>`;
                 row.onclick = () => { selectedPatientIdInModal = p.id; document.querySelectorAll('.user-row').forEach(el => el.style.borderColor = 'var(--border)'); row.style.borderColor = 'var(--cyan)'; };
                 listEl.appendChild(row);
             });
@@ -828,7 +920,6 @@
         }
 
         // ================= KHỞI TẠO BIỂU ĐỒ =================
-        Chart.defaults.color = '#64748b';
         Chart.defaults.font.family = 'monospace';
         
         const eegChart = new Chart(document.getElementById('eegChart').getContext('2d'), {
@@ -958,7 +1049,7 @@
                 triggerFatigueAlert(3.85);
             } else {
                 btn.style.background = 'rgba(239, 68, 68, 0.08)';
-                btn.style.color = '#f87171';
+                btn.style.color = 'var(--rose)';
                 btn.innerText = t.fatigue_test_off;
                 dismissFatigueAlert();
             }
@@ -1179,7 +1270,7 @@
             if (sig === 0 && isDemoMode && Math.random() > 0.9) eVal += (Math.random()-0.5)*80;
             cData.push(eVal); 
             cData.shift(); 
-            eegChart.update();
+            eegChart.update('none');
 
             // Biểu đồ radar
             if (sig === 0) {
@@ -1187,7 +1278,7 @@
             } else {
                 radarChart.data.datasets[0].data = [0,0,0,0,0];
             }
-            radarChart.update();
+            radarChart.update('none');
         }
 
         function exportCSV() {
@@ -1223,6 +1314,8 @@
             }
         }, 2000);
 
+        // Khởi tạo
+        applyTheme(currentTheme);
         applyLanguage();
         initUserSystem();
     </script>
