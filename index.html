@@ -20,6 +20,7 @@
             --emerald: #10b981;
             --amber: #f59e0b;
             --rose: #ef4444;
+            --purple: #a855f7;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
@@ -94,8 +95,8 @@
 
         .main-wrapper { display: flex; flex-direction: column; gap: 16px; }
 
-        /* ================= ROW 1: BỆNH NHÂN & THÔNG SỐ VITAL CHÍNH ================= */
-        .row-vitals { display: grid; grid-template-columns: 1.4fr repeat(4, 1fr); gap: 14px; }
+        /* ================= HÀNG 1: TỔNG QUAN LÂM SÀNG & TGAM NATIVE ================= */
+        .row-vitals { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 14px; }
         .panel { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); position: relative; }
         
         .patient-card { display: flex; align-items: center; justify-content: flex-start; }
@@ -111,11 +112,10 @@
         .metric-val-row { display: flex; align-items: baseline; gap: 5px; margin: 4px 0 8px 0; }
         .metric-value { font-size: 30px; font-weight: 800; font-family: monospace; line-height: 1; font-variant-numeric: tabular-nums; }
         .metric-unit { font-size: 12px; color: var(--text-dim); font-family: monospace; }
-        .metric-pct { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-left: 6px; font-variant-numeric: tabular-nums; }
         .progress-bar-bg { width: 100%; height: 4px; background: var(--bg-base); border-radius: 2px; overflow: hidden; }
         .progress-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
 
-        /* ================= ROW 1.5: KHỐI CHỈ SỐ NÃO BỘ NÂNG CAO ================= */
+        /* ================= HÀNG 2: HỆ THỐNG CHỈ SỐ CHUYÊN GIA (EXPERT SYSTEM) ================= */
         .biomarkers-container {
             background: var(--bg-panel);
             border: 1px solid var(--border);
@@ -128,7 +128,7 @@
         }
         .biomarkers-title {
             font-size: 12px; font-weight: 700; font-family: monospace; color: var(--text-secondary);
-            letter-spacing: 0.6px; text-transform: uppercase;
+            letter-spacing: 0.6px; text-transform: uppercase; display: flex; align-items: center; gap: 8px;
         }
         .biomarkers-grid {
             display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
@@ -138,18 +138,23 @@
             border: 1px solid var(--border);
             border-radius: 4px;
             padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             transition: border-color 0.15s ease;
         }
         .bio-box:hover { border-color: var(--border-light); }
-        .bio-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: monospace; margin-bottom: 6px; }
+        .bio-top { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-family: monospace; margin-bottom: 4px; }
         .bio-status-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; font-family: monospace; background: rgba(255,255,255,0.05); }
         .bio-main-val { 
             font-size: 24px; font-weight: 800; font-family: monospace; color: var(--text-primary); 
-            margin: 6px 0 8px 0; font-variant-numeric: tabular-nums; 
+            margin: 4px 0 6px 0; font-variant-numeric: tabular-nums; 
             display: flex; align-items: baseline;
         }
+        .metric-pct { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-left: 6px; font-variant-numeric: tabular-nums; }
+        .bio-desc { font-size: 10.5px; font-family: monospace; color: var(--text-dim); margin-top: 6px; }
 
-        /* ================= ROW 2: REAL-TIME OSCILLOSCOPE + RADAR ================= */
+        /* ================= HÀNG 3: REAL-TIME OSCILLOSCOPE + RADAR ================= */
         .row-eeg { display: grid; grid-template-columns: 3fr 1.15fr; gap: 14px; }
         .eeg-section { background: var(--bg-panel); border-radius: 6px; padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; }
         .section-title { font-size: 12px; font-weight: 700; font-family: monospace; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
@@ -166,7 +171,7 @@
         .w-dot { width: 6px; height: 6px; border-radius: 2px; display: inline-block; background: var(--cyan); }
         .wave-val { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 
-        /* ================= ROW 3: PHÂN TÍCH & BẢNG GIAO TIẾP ================= */
+        /* ================= HÀNG 4: THỐNG KÊ & BẢNG GIAO TIẾP ================= */
         .row-bottom { display: grid; grid-template-columns: 1fr 2.4fr; gap: 14px; }
         
         .stats-col { display: flex; flex-direction: column; gap: 14px; }
@@ -261,7 +266,7 @@
     </div>
 
     <div class="main-wrapper">
-        <!-- HÀNG 1: THÔNG TIN BỆNH NHÂN & CÁC CHỈ SỐ NHANH -->
+        <!-- HÀNG 1: THÔNG TIN BỆNH NHÂN & THÔNG SỐ VITAL GỐC TỪ TGAM -->
         <section class="row-vitals">
             <div class="panel patient-card">
                 <div class="patient-profile">
@@ -276,7 +281,7 @@
                 </div>
             </div>
 
-            <!-- MỨC TẬP TRUNG -->
+            <!-- MỨC TẬP TRUNG (TGAM NATIVE) -->
             <div class="panel metric-card">
                 <div class="metric-header">
                     <span id="lbl-att-title">Mức Tập Trung</span>
@@ -286,7 +291,7 @@
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-att" style="width: 0%; background: var(--cyan);"></div></div>
             </div>
 
-            <!-- MỨC THƯ GIÃN -->
+            <!-- MỨC THƯ GIÃN (TGAM NATIVE) -->
             <div class="panel metric-card">
                 <div class="metric-header">
                     <span id="lbl-med-title">Mức Thư Giãn</span>
@@ -296,20 +301,7 @@
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-med" style="width: 0%; background: var(--emerald);"></div></div>
             </div>
 
-            <!-- MỨC KIỆT SỨC NÃO -->
-            <div class="panel metric-card" id="card-fatigue">
-                <div class="metric-header">
-                    <span id="lbl-fatigue-title">Kiệt Sức Não</span>
-                    <span id="fatigue-status" style="color:var(--emerald)">BÌNH THƯỜNG</span>
-                </div>
-                <div class="metric-val-row">
-                    <span class="metric-value" style="color:var(--emerald)" id="fatigue-val">1.20</span>
-                    <span class="metric-pct" id="fatigue-pct-val">(30%)</span>
-                </div>
-                <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-fatigue" style="width: 25%; background: var(--emerald);"></div></div>
-            </div>
-
-            <!-- HỆ THỐNG NGUỒN PIN -->
+            <!-- HỆ THỐNG NGUỒN PIN & MẠCH INA226 -->
             <div class="panel metric-card">
                 <div class="metric-header">
                     <span id="lbl-pwr-title">Nguồn Điện & Pin</span>
@@ -324,68 +316,84 @@
             </div>
         </section>
 
-        <!-- HÀNG 1.5: KHỐI CHỈ SỐ NÃO BỘ PHÂN TÍCH -->
+        <!-- HÀNG 2: CÁC CHỈ SỐ CHUYÊN GIA / EXPERT SYSTEM (THUẬT TOÁN PHÂN TÍCH RIÊNG) -->
         <section class="biomarkers-container">
             <div class="biomarkers-header">
-                <div class="biomarkers-title" id="lbl-bio-section-title">CÁC CHỈ SỐ PHÂN TÍCH SÓNG NÃO</div>
+                <div class="biomarkers-title">
+                    <span style="display:inline-block; width:8px; height:8px; background:var(--cyan); border-radius:50%;"></span>
+                    <span id="lbl-bio-section-title">CÁC CHỈ SỐ CHUYÊN GIA • EXPERT SYSTEM</span>
+                </div>
+                <div style="font-size:11px; font-family:monospace; color:var(--text-dim);" id="lbl-bio-section-sub">THUẬT TOÁN ĐÁNH GIÁ SÓNG ĐIỆN NÃO CHUYÊN SÂU</div>
             </div>
             
             <div class="biomarkers-grid">
-                <!-- 1. Gắn kết -->
+                <!-- Ô 1: TỶ LỆ KIỆT SỨC (FATIGUE INDEX) -->
                 <div class="bio-box">
-                    <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-eng">MỨC ĐỘ GẮN KẾT</span>
-                        <span class="bio-status-badge" id="bio-eng-badge" style="color:var(--cyan)">CHỦ ĐỘNG</span>
+                    <div>
+                        <div class="bio-top">
+                            <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-fatigue">TỶ LỆ KIỆT SỨC</span>
+                            <span class="bio-status-badge" id="bio-fatigue-badge" style="color:var(--emerald)">TỐI ƯU</span>
+                        </div>
+                        <div class="bio-main-val">
+                            <span id="bio-fatigue-val">1.25</span>
+                            <span class="metric-pct" id="bio-fatigue-pct">(31%)</span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-fatigue" style="width:31%; background:var(--emerald)"></div></div>
                     </div>
-                    <div class="bio-main-val">
-                        <span id="bio-eng-val">0.45</span>
-                        <span class="metric-pct" id="bio-eng-pct">(38%)</span>
-                    </div>
-                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-eng" style="width:45%; background:var(--cyan)"></div></div>
+                    <div class="bio-desc" id="desc-bio-fatigue">Dựa trên dải Theta & Beta (TBR Index)</div>
                 </div>
 
-                <!-- 2. TBR (Tỉ Lệ Theta / Beta) -->
+                <!-- Ô 2: MỨC ĐỘ CĂNG THẲNG (STRESS LEVEL) -->
                 <div class="bio-box">
-                    <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-tbr">TỈ LỆ THETA / BETA (TBR)</span>
-                        <span class="bio-status-badge" id="bio-tbr-badge" style="color:var(--emerald)">TỐI ƯU</span>
+                    <div>
+                        <div class="bio-top">
+                            <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-stress">MỨC ĐỘ CĂNG THẲNG</span>
+                            <span class="bio-status-badge" id="bio-stress-badge" style="color:var(--text-secondary)">THẤP</span>
+                        </div>
+                        <div class="bio-main-val">
+                            <span id="bio-stress-val">0.95</span>
+                            <span class="metric-pct" id="bio-stress-pct">(32%)</span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-stress" style="width:32%; background:var(--text-secondary)"></div></div>
                     </div>
-                    <div class="bio-main-val">
-                        <span id="bio-tbr-val">1.32</span>
-                        <span class="metric-pct" id="bio-tbr-pct">(33%)</span>
-                    </div>
-                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-tbr" style="width:30%; background:var(--emerald)"></div></div>
+                    <div class="bio-desc" id="desc-bio-stress">Phát hiện hoảng loạn & đau đớn qua High-Beta</div>
                 </div>
 
-                <!-- 3. Tỉnh táo -->
+                <!-- Ô 3: TRẠNG THÁI GIẤC NGỦ (SLEEP STATE) -->
                 <div class="bio-box">
-                    <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-alert">MỨC ĐỘ TỈNH TÁO</span>
-                        <span class="bio-status-badge" id="bio-alert-badge" style="color:var(--emerald)">TỈNH TÁO</span>
+                    <div>
+                        <div class="bio-top">
+                            <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-sleep">TRẠNG THÁI GIẤC NGỦ</span>
+                            <span class="bio-status-badge" id="bio-sleep-badge" style="color:var(--cyan)">THỨC</span>
+                        </div>
+                        <div class="bio-main-val">
+                            <span id="bio-sleep-val" style="font-size:21px;">TỈNH TÁO</span>
+                            <span class="metric-pct" id="bio-sleep-pct">(18% Delta)</span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-sleep" style="width:18%; background:var(--cyan)"></div></div>
                     </div>
-                    <div class="bio-main-val">
-                        <span id="bio-alert-val">0.68</span>
-                        <span class="metric-pct" id="bio-alert-pct">(45%)</span>
-                    </div>
-                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-alert" style="width:68%; background:var(--emerald)"></div></div>
+                    <div class="bio-desc" id="desc-bio-sleep">Khai thác dải Delta (0.5 - 4 Hz) cho ICU</div>
                 </div>
 
-                <!-- 4. Căng thẳng -->
+                <!-- Ô 4: CHẤT LƯỢNG TÍN HIỆU (SIGNAL QUALITY) -->
                 <div class="bio-box">
-                    <div class="bio-top">
-                        <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-stress">MỨC ĐỘ CĂNG THẲNG</span>
-                        <span class="bio-status-badge" id="bio-stress-badge" style="color:var(--text-secondary)">THẤP</span>
+                    <div>
+                        <div class="bio-top">
+                            <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-signal">CHẤT LƯỢNG TÍN HIỆU</span>
+                            <span class="bio-status-badge" id="bio-signal-badge" style="color:var(--emerald)">TỐT (0)</span>
+                        </div>
+                        <div class="bio-main-val">
+                            <span id="bio-signal-val">100%</span>
+                            <span class="metric-pct" id="bio-signal-raw">[0/200]</span>
+                        </div>
+                        <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-signal" style="width:100%; background:var(--emerald)"></div></div>
                     </div>
-                    <div class="bio-main-val">
-                        <span id="bio-stress-val">1.10</span>
-                        <span class="metric-pct" id="bio-stress-pct">(37%)</span>
-                    </div>
-                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-stress" style="width:28%; background:var(--text-secondary)"></div></div>
+                    <div class="bio-desc" id="desc-bio-signal">Tiếp xúc trán Fp1 & Tham chiếu A1/A2</div>
                 </div>
             </div>
         </section>
 
-        <!-- HÀNG 2: BIỂU ĐỒ SÓNG ĐIỆN NÃO THỜI GIAN THỰC & PHÂN BỔ RADAR -->
+        <!-- HÀNG 3: BIỂU ĐỒ SÓNG ĐIỆN NÃO THỜI GIAN THỰC & PHÂN BỔ RADAR -->
         <section class="row-eeg">
             <div class="eeg-section">
                 <div class="section-title">
@@ -416,7 +424,7 @@
             </div>
         </section>
 
-        <!-- HÀNG 3: BẢNG THỐNG KÊ & NHẬT KÝ GIAO TIẾP -->
+        <!-- HÀNG 4: BẢNG THỐNG KÊ & NHẬT KÝ GIAO TIẾP -->
         <section class="row-bottom">
             <div class="stats-col">
                 <div class="stat-box">
@@ -556,13 +564,20 @@
                 lbl_diag: 'Chẩn đoán:',
                 lbl_att: 'Mức Tập Trung',
                 lbl_med: 'Mức Thư Giãn',
-                lbl_fatigue: 'Kiệt Sức Não',
                 lbl_pwr: 'Nguồn Điện & Pin',
-                bio_section_title: 'CÁC CHỈ SỐ PHÂN TÍCH SÓNG NÃO',
-                bio_eng: 'MỨC ĐỘ GẮN KẾT',
-                bio_tbr: 'TỈ LỆ THETA / BETA (TBR)',
-                bio_alert: 'MỨC ĐỘ TỈNH TÁO',
+                
+                bio_section_title: 'CÁC CHỈ SỐ CHUYÊN GIA • EXPERT SYSTEM',
+                bio_section_sub: 'THUẬT TOÁN ĐÁNH GIÁ SÓNG ĐIỆN NÃO CHUYÊN SÂU',
+                bio_fatigue: 'TỶ LỆ KIỆT SỨC',
                 bio_stress: 'MỨC ĐỘ CĂNG THẲNG',
+                bio_sleep: 'TRẠNG THÁI GIẤC NGỦ',
+                bio_signal: 'CHẤT LƯỢNG TÍN HIỆU',
+                
+                desc_bio_fatigue: 'Dựa trên dải Theta & Beta (TBR Index)',
+                desc_bio_stress: 'Phát hiện hoảng loạn & đau đớn qua High-Beta',
+                desc_bio_sleep: 'Khai thác dải Delta (0.5 - 4 Hz) cho ICU',
+                desc_bio_signal: 'Tiếp xúc trán Fp1 & Tham chiếu A1/A2',
+
                 eeg_title: 'SÓNG ĐIỆN NÃO THỜI GIAN THỰC',
                 sig_good: 'TÍN HIỆU TỐT (0)',
                 sig_lost: 'MẤT TÍN HIỆU ĐIỆN CỰC',
@@ -617,13 +632,20 @@
                 lbl_diag: 'Diagnosis:',
                 lbl_att: 'Attention Level',
                 lbl_med: 'Meditation Level',
-                lbl_fatigue: 'Fatigue Level',
                 lbl_pwr: 'Power & Battery',
-                bio_section_title: 'COMPUTED BRAIN BIOMARKERS',
-                bio_eng: 'ENGAGEMENT LEVEL',
-                bio_tbr: 'THETA / BETA RATIO (TBR)',
-                bio_alert: 'ALERTNESS LEVEL',
+                
+                bio_section_title: 'EXPERT SYSTEM BIOMARKERS',
+                bio_section_sub: 'PROPRIETARY CLINICAL EEG SPECTRAL ALGORITHMS',
+                bio_fatigue: 'FATIGUE INDEX',
                 bio_stress: 'STRESS LEVEL',
+                bio_sleep: 'SLEEP STATE',
+                bio_signal: 'SIGNAL QUALITY',
+                
+                desc_bio_fatigue: 'Based on Theta & Beta bands (TBR Index)',
+                desc_bio_stress: 'Panic & pain detection via High-Beta',
+                desc_bio_sleep: 'Delta band exploitation (0.5 - 4 Hz) for ICU',
+                desc_bio_signal: 'Forehead Fp1 & Reference A1/A2 contact',
+
                 eeg_title: 'REAL-TIME EEG TRACE',
                 sig_good: 'SIGNAL GOOD (0)',
                 sig_lost: 'ELECTRODE DISCONNECTED',
@@ -683,14 +705,19 @@
             
             document.getElementById('lbl-att-title').innerText = t.lbl_att;
             document.getElementById('lbl-med-title').innerText = t.lbl_med;
-            document.getElementById('lbl-fatigue-title').innerText = t.lbl_fatigue;
             document.getElementById('lbl-pwr-title').innerText = t.lbl_pwr;
             
             document.getElementById('lbl-bio-section-title').innerText = t.bio_section_title;
-            document.getElementById('lbl-bio-eng').innerText = t.bio_eng;
-            document.getElementById('lbl-bio-tbr').innerText = t.bio_tbr;
-            document.getElementById('lbl-bio-alert').innerText = t.bio_alert;
+            document.getElementById('lbl-bio-section-sub').innerText = t.bio_section_sub;
+            document.getElementById('lbl-bio-fatigue').innerText = t.bio_fatigue;
             document.getElementById('lbl-bio-stress').innerText = t.bio_stress;
+            document.getElementById('lbl-bio-sleep').innerText = t.bio_sleep;
+            document.getElementById('lbl-bio-signal').innerText = t.bio_signal;
+
+            document.getElementById('desc-bio-fatigue').innerText = t.desc_bio_fatigue;
+            document.getElementById('desc-bio-stress').innerText = t.desc_bio_stress;
+            document.getElementById('desc-bio-sleep').innerText = t.desc_bio_sleep;
+            document.getElementById('desc-bio-signal').innerText = t.desc_bio_signal;
 
             document.getElementById('lbl-eeg-title').innerText = t.eeg_title;
             document.getElementById('lbl-no-sig_title').innerText = t.eeg_no_sig_title;
@@ -944,12 +971,12 @@
             if (banner.style.display !== 'flex') {
                 banner.style.display = 'flex';
                 speakText(currentLang === 'vi' ? 
-                    "Cảnh báo: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
-                    "Warning: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
+                    "Cảnh báo lâm sàng: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
+                    "Clinical alert: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
             }
             document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
-                `"Hệ thống phát hiện não bộ đang mệt mỏi (Tỉ số: ${ratio.toFixed(2)} ≥ 3.00). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"` :
-                `"System detected brain fatigue (Fatigue Ratio: ${ratio.toFixed(2)} ≥ 3.00). Pause BCI for 30 minutes to rest"`;
+                `"Hệ thống phát hiện não bộ đang mệt mỏi (TBR: ${ratio.toFixed(2)} ≥ 2.80). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"` :
+                `"System detected brain fatigue (TBR: ${ratio.toFixed(2)} ≥ 2.80). Pause BCI for 30 minutes to rest"`;
         }
 
         function dismissFatigueAlert() {
@@ -984,7 +1011,7 @@
 
         // ================= CẬP NHẬT GIAO DIỆN & TÍNH TOÁN DỮ LIỆU ĐIỆN NÃO =================
         function updateUI(tData) {
-            let sig = isDemoMode ? 0 : tData.signalQuality;
+            let sig = isDemoMode ? 0 : (tData.signalQuality !== undefined ? tData.signalQuality : 200);
             let att = isDemoMode ? Math.floor(Math.random()*25)+65 : (tData.attention||0);
             let med = isDemoMode ? Math.floor(Math.random()*30)+55 : (tData.meditation||0);
             
@@ -992,8 +1019,8 @@
                 d: isDemoMode ? Math.floor(Math.random()*150000)+50000 : (tData.delta||0),
                 t: isDemoMode ? (isForcedFatigue ? 260000 : Math.floor(Math.random()*80000)+20000) : (tData.theta||0),
                 a: isDemoMode ? (isForcedFatigue ? 190000 : Math.floor(Math.random()*60000)+10000) : (tData.lowAlpha||0),
-                b: isDemoMode ? (isForcedFatigue ? 35000 : Math.floor(Math.random()*70000)+25000) : (tData.lowBeta||0),
-                g: isDemoMode ? Math.floor(Math.random()*40000)+5000 : (tData.lowGamma||0)
+                b: isDemoMode ? (isForcedFatigue ? 32000 : Math.floor(Math.random()*70000)+25000) : (tData.lowBeta||0),
+                g: isDemoMode ? (isForcedFatigue ? 20000 : Math.floor(Math.random()*40000)+5000) : (tData.lowGamma||0)
             };
 
             let bat = isDemoMode ? 100 : (tData.battery!==undefined ? tData.battery : 0);
@@ -1006,6 +1033,7 @@
             document.getElementById('conn-text').innerText = isDemoMode ? (currentLang === 'vi' ? 'ĐANG MÔ PHỎNG' : 'SIMULATION') : (isRecent ? t.conn_online : t.conn_offline);
             document.getElementById('conn-text').style.color = isRecent ? 'var(--emerald)' : 'var(--rose)';
 
+            // HÀNG 1: Dữ liệu native từ TGAM và INA226
             document.getElementById('avg-att').innerText = att; 
             document.getElementById('bar-att').style.width = att + '%';
             document.getElementById('avg-med').innerText = med; 
@@ -1035,125 +1063,117 @@
             document.getElementById('val-beta').innerText = `${w.b.toLocaleString()} (${p_b}%)`;
             document.getElementById('val-gamma').innerText = `${w.g.toLocaleString()} (${p_g}%)`;
 
-            // Tính toán các chỉ số cơ bản
+            // ================= HÀNG 2: THUẬT TOÁN 4 CHỈ SỐ CHUYÊN GIA =================
             let safeBeta = Math.max(10, w.b);
             let safeAlpha = Math.max(10, w.a);
-            let safeThetaAlpha = Math.max(20, w.a + w.t);
 
-            // 1. Tỉ lệ Kiệt sức = (Theta + Alpha) / Beta
-            let fatigueRatio = (w.t + w.a) / safeBeta;
-            let fatiguePct = Math.min(100, Math.round((fatigueRatio / 4.0) * 100));
-
-            const fatigueValEl = document.getElementById('fatigue-val');
-            const fatigueStatEl = document.getElementById('fatigue-status');
-            const barFatigueEl = document.getElementById('bar-fatigue');
-            const fatiguePctVal = document.getElementById('fatigue-pct-val');
-
-            fatigueValEl.innerText = fatigueRatio.toFixed(2);
-            if (fatiguePctVal) fatiguePctVal.innerText = `(${fatiguePct}%)`;
+            // 1. Ô 1: TỶ LỆ KIỆT SỨC (Fatigue Index / TBR)
+            let fatigueRatio = (w.t + (w.a * 0.5)) / safeBeta;
+            let fatiguePct = Math.min(100, Math.round((fatigueRatio / 3.5) * 100));
+            document.getElementById('bio-fatigue-val').innerText = fatigueRatio.toFixed(2);
+            document.getElementById('bio-fatigue-pct').innerText = `(${fatiguePct}%)`;
+            const barFatigueEl = document.getElementById('bar-bio-fatigue');
+            const badgeFatigueEl = document.getElementById('bio-fatigue-badge');
             barFatigueEl.style.width = fatiguePct + '%';
 
-            if (fatigueRatio >= 3.0 || isForcedFatigue) {
-                fatigueValEl.style.color = 'var(--rose)';
-                fatigueStatEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'CRITICAL';
-                fatigueStatEl.style.color = 'var(--rose)';
+            if (fatigueRatio >= 2.8 || isForcedFatigue) {
+                document.getElementById('bio-fatigue-val').style.color = 'var(--rose)';
+                badgeFatigueEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'EXHAUSTED';
+                badgeFatigueEl.style.color = 'var(--rose)';
                 barFatigueEl.style.background = 'var(--rose)';
                 triggerFatigueAlert(fatigueRatio);
-            } else if (fatigueRatio >= 2.0) {
-                fatigueValEl.style.color = 'var(--amber)';
-                fatigueStatEl.innerText = currentLang === 'vi' ? 'CẬN MỆT MỎI' : 'WARNING';
-                fatigueStatEl.style.color = 'var(--amber)';
+            } else if (fatigueRatio >= 1.8) {
+                document.getElementById('bio-fatigue-val').style.color = 'var(--amber)';
+                badgeFatigueEl.innerText = currentLang === 'vi' ? 'CẬN MỆT MỎI' : 'WARNING';
+                badgeFatigueEl.style.color = 'var(--amber)';
                 barFatigueEl.style.background = 'var(--amber)';
                 if (!isForcedFatigue) dismissFatigueAlert();
             } else {
-                fatigueValEl.style.color = 'var(--emerald)';
-                fatigueStatEl.innerText = currentLang === 'vi' ? 'BÌNH THƯỜNG' : 'STABLE';
-                fatigueStatEl.style.color = 'var(--emerald)';
+                document.getElementById('bio-fatigue-val').style.color = 'var(--emerald)';
+                badgeFatigueEl.innerText = currentLang === 'vi' ? 'TỐI ƯU' : 'OPTIMAL';
+                badgeFatigueEl.style.color = 'var(--emerald)';
                 barFatigueEl.style.background = 'var(--emerald)';
                 if (!isForcedFatigue) dismissFatigueAlert();
             }
 
-            // 2. Mức độ Gắn kết = Beta / (Alpha + Theta)
-            let engRatio = safeBeta / safeThetaAlpha;
-            let engPct = Math.min(100, Math.round((engRatio / 1.2) * 100));
-            document.getElementById('bio-eng-val').innerText = engRatio.toFixed(2);
-            const bioEngPct = document.getElementById('bio-eng-pct');
-            if (bioEngPct) bioEngPct.innerText = `(${engPct}%)`;
-            document.getElementById('bar-bio-eng').style.width = engPct + '%';
-            
-            let engBadge = document.getElementById('bio-eng-badge');
-            if (engRatio >= 0.5) {
-                engBadge.innerText = currentLang === 'vi' ? 'CHỦ ĐỘNG CAO' : 'HIGH';
-                engBadge.style.color = 'var(--cyan)';
-            } else if (engRatio >= 0.3) {
-                engBadge.innerText = currentLang === 'vi' ? 'TRUNG BÌNH' : 'MODERATE';
-                engBadge.style.color = 'var(--text-secondary)';
-            } else {
-                engBadge.innerText = currentLang === 'vi' ? 'THỤ ĐỘNG' : 'PASSIVE';
-                engBadge.style.color = 'var(--text-dim)';
-            }
-
-            // 3. Tỉ lệ Theta / Beta (TBR) = Theta / Beta
-            let tbrRatio = w.t / safeBeta;
-            let tbrPct = Math.min(100, Math.round((tbrRatio / 4.0) * 100));
-            document.getElementById('bio-tbr-val').innerText = tbrRatio.toFixed(2);
-            const bioTbrPct = document.getElementById('bio-tbr-pct');
-            if (bioTbrPct) bioTbrPct.innerText = `(${tbrPct}%)`;
-            document.getElementById('bar-bio-tbr').style.width = tbrPct + '%';
-            
-            let tbrBadge = document.getElementById('bio-tbr-badge');
-            if (tbrRatio > 2.5) {
-                tbrBadge.innerText = currentLang === 'vi' ? 'PHÂN TÂM' : 'DROWSY';
-                tbrBadge.style.color = 'var(--rose)';
-            } else if (tbrRatio > 1.5) {
-                tbrBadge.innerText = currentLang === 'vi' ? 'THƯ GIÃN' : 'RELAXED';
-                tbrBadge.style.color = 'var(--amber)';
-            } else {
-                tbrBadge.innerText = currentLang === 'vi' ? 'TỐI ƯU' : 'OPTIMAL';
-                tbrBadge.style.color = 'var(--emerald)';
-            }
-
-            // 4. Mức độ Tỉnh táo = (Beta + Gamma) / (Alpha + Theta)
-            let alertRatio = (safeBeta + w.g) / safeThetaAlpha;
-            let alertPct = Math.min(100, Math.round((alertRatio / 1.5) * 100));
-            document.getElementById('bio-alert-val').innerText = alertRatio.toFixed(2);
-            const bioAlertPct = document.getElementById('bio-alert-pct');
-            if (bioAlertPct) bioAlertPct.innerText = `(${alertPct}%)`;
-            document.getElementById('bar-bio-alert').style.width = alertPct + '%';
-            
-            let alertBadge = document.getElementById('bio-alert-badge');
-            if (alertRatio >= 0.7) {
-                alertBadge.innerText = currentLang === 'vi' ? 'TỈNH TÁO CAO' : 'ALERT';
-                alertBadge.style.color = 'var(--emerald)';
-            } else if (alertRatio >= 0.4) {
-                alertBadge.innerText = currentLang === 'vi' ? 'BÌNH THƯỜNG' : 'NORMAL';
-                alertBadge.style.color = 'var(--cyan)';
-            } else {
-                alertBadge.innerText = currentLang === 'vi' ? 'BUỒN NGỦ' : 'SLEEPY';
-                alertBadge.style.color = 'var(--amber)';
-            }
-
-            // 5. Mức độ Căng thẳng = (Beta + Gamma) / Alpha
-            let stressRatio = (safeBeta + w.g) / safeAlpha;
+            // 2. Ô 2: MỨC ĐỘ CĂNG THẲNG (Stress Level)
+            let stressRatio = (safeBeta + (w.g * 1.2)) / safeAlpha;
             let stressPct = Math.min(100, Math.round((stressRatio / 3.0) * 100));
             document.getElementById('bio-stress-val').innerText = stressRatio.toFixed(2);
-            const bioStressPct = document.getElementById('bio-stress-pct');
-            if (bioStressPct) bioStressPct.innerText = `(${stressPct}%)`;
-            document.getElementById('bar-bio-stress').style.width = stressPct + '%';
-            
-            let stressBadge = document.getElementById('bio-stress-badge');
-            if (stressRatio >= 2.0) {
-                stressBadge.innerText = currentLang === 'vi' ? 'CĂNG THẲNG' : 'HIGH';
-                stressBadge.style.color = 'var(--rose)';
-            } else if (stressRatio >= 1.2) {
-                stressBadge.innerText = currentLang === 'vi' ? 'VỪA PHẢI' : 'MODERATE';
-                stressBadge.style.color = 'var(--amber)';
+            document.getElementById('bio-stress-pct').innerText = `(${stressPct}%)`;
+            const barStressEl = document.getElementById('bar-bio-stress');
+            const badgeStressEl = document.getElementById('bio-stress-badge');
+            barStressEl.style.width = stressPct + '%';
+
+            if (stressRatio >= 2.2) {
+                badgeStressEl.innerText = currentLang === 'vi' ? 'HOẢNG LOẠN / ĐAU' : 'PANIC / PAIN';
+                badgeStressEl.style.color = 'var(--rose)';
+                barStressEl.style.background = 'var(--rose)';
+            } else if (stressRatio >= 1.4) {
+                badgeStressEl.innerText = currentLang === 'vi' ? 'CĂNG THẲNG' : 'HIGH STRESS';
+                badgeStressEl.style.color = 'var(--amber)';
+                barStressEl.style.background = 'var(--amber)';
             } else {
-                stressBadge.innerText = currentLang === 'vi' ? 'THOẢI MÁI' : 'RELAXED';
-                stressBadge.style.color = 'var(--text-secondary)';
+                badgeStressEl.innerText = currentLang === 'vi' ? 'THOẢI MÁI' : 'CALM';
+                badgeStressEl.style.color = 'var(--emerald)';
+                barStressEl.style.background = 'var(--emerald)';
             }
 
-            // Biểu đồ sóng điện não
+            // 3. Ô 3: TRẠNG THÁI GIẤC NGỦ (Sleep State - Delta Band Analysis)
+            let deltaPctOfTotal = Math.round((w.d / totalPower) * 100);
+            const sleepValEl = document.getElementById('bio-sleep-val');
+            const sleepBadgeEl = document.getElementById('bio-sleep-badge');
+            const barSleepEl = document.getElementById('bar-bio-sleep');
+            document.getElementById('bio-sleep-pct').innerText = `(${deltaPctOfTotal}% Delta)`;
+            barSleepEl.style.width = Math.min(100, deltaPctOfTotal * 1.5) + '%';
+
+            if (deltaPctOfTotal >= 60) {
+                sleepValEl.innerText = currentLang === 'vi' ? 'NGỦ SÂU' : 'DEEP SLEEP';
+                sleepValEl.style.color = 'var(--purple)';
+                sleepBadgeEl.innerText = currentLang === 'vi' ? 'GIAI ĐOẠN 3/4' : 'NREM STAGE 3';
+                sleepBadgeEl.style.color = 'var(--purple)';
+                barSleepEl.style.background = 'var(--purple)';
+            } else if (deltaPctOfTotal >= 40) {
+                sleepValEl.innerText = currentLang === 'vi' ? 'NGỦ NÔNG' : 'LIGHT SLEEP';
+                sleepValEl.style.color = 'var(--cyan)';
+                sleepBadgeEl.innerText = currentLang === 'vi' ? 'GIAI ĐOẠN 1/2' : 'NREM STAGE 1';
+                sleepBadgeEl.style.color = 'var(--cyan)';
+                barSleepEl.style.background = 'var(--cyan)';
+            } else {
+                sleepValEl.innerText = currentLang === 'vi' ? 'TỈNH TÁO' : 'AWAKE';
+                sleepValEl.style.color = 'var(--text-primary)';
+                sleepBadgeEl.innerText = currentLang === 'vi' ? 'ĐANG THỨC' : 'WAKEFUL';
+                sleepBadgeEl.style.color = 'var(--emerald)';
+                barSleepEl.style.background = 'var(--emerald)';
+            }
+
+            // 4. Ô 4: CHẤT LƯỢNG TÍN HIỆU (Signal Quality - TGAM Poor Signal 0-200)
+            let sigQualityPct = Math.max(0, Math.round(((200 - sig) / 200) * 100));
+            document.getElementById('bio-signal-val').innerText = `${sigQualityPct}%`;
+            document.getElementById('bio-signal-raw').innerText = `[${sig}/200]`;
+            const barSigEl = document.getElementById('bar-bio-signal');
+            const badgeSigEl = document.getElementById('bio-signal-badge');
+            barSigEl.style.width = sigQualityPct + '%';
+
+            if (sig === 0) {
+                badgeSigEl.innerText = currentLang === 'vi' ? 'TỐT (0)' : 'GOOD (0)';
+                badgeSigEl.style.color = 'var(--emerald)';
+                barSigEl.style.background = 'var(--emerald)';
+            } else if (sig < 100) {
+                badgeSigEl.innerText = currentLang === 'vi' ? 'NHIỄU NHẸ' : 'SLIGHT NOISE';
+                badgeSigEl.style.color = 'var(--amber)';
+                barSigEl.style.background = 'var(--amber)';
+            } else if (sig < 200) {
+                badgeSigEl.innerText = currentLang === 'vi' ? 'NHIỄU CAO' : 'HIGH NOISE';
+                badgeSigEl.style.color = 'var(--rose)';
+                barSigEl.style.background = 'var(--rose)';
+            } else {
+                badgeSigEl.innerText = currentLang === 'vi' ? 'RỚT ĐIỆN CỰC' : 'DISCONNECTED';
+                badgeSigEl.style.color = 'var(--rose)';
+                barSigEl.style.background = 'var(--rose)';
+            }
+
+            // Biểu đồ sóng điện não Oscilloscope
             let cData = eegChart.data.datasets[0].data;
             let eVal = sig === 0 ? (Math.sin(Date.now()/140)*18 + Math.cos(Date.now()/50)*12 + (att/3)) : 0;
             if (sig === 0 && isDemoMode && Math.random() > 0.9) eVal += (Math.random()-0.5)*80;
