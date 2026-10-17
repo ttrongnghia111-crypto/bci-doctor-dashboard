@@ -943,6 +943,7 @@
         let isRestBreakActive = false;
         let restBreakSecondsLeft = 30 * 60;
         let restTimerInterval = null;
+        let tbrHighSince = 0;
 
         function formatTime(isoString) {
             const d = new Date(isoString);
@@ -1076,16 +1077,37 @@ async function syncRestCommandToCloud(action, durationSec = 1800) {
 
 
         // ================= QUẢN LÝ BÁO ĐỘNG KIỆT SỨC =================
-        function triggerFatigueAlert(ratio) {
+        function startRestCountdown(secondsLeft) {
+            if (isRestBreakActive) return;
+            isRestBreakActive = true;
+            restBreakSecondsLeft = secondsLeft;
+            document.getElementById('btn-rest-toggle').style.background = 'var(--amber)';
+
+            restTimerInterval = setInterval(() => {
+                restBreakSecondsLeft--;
+                let m = Math.floor(restBreakSecondsLeft / 60);
+                let s = restBreakSecondsLeft % 60;
+                document.getElementById('btn-rest-toggle').innerText = (currentLang === 'vi' ? `ĐANG NGHỈ: ` : `RESTING: `) + `${m}:${s < 10 ? '0' : ''}${s}`;
+                if (restBreakSecondsLeft <= 0) {
+                    clearInterval(restTimerInterval);
+                    isRestBreakActive = false;
+                    alert(currentLang === 'vi' ? 'Thời gian nghỉ 30 phút đã hoàn tất.' : '30-minute rest break completed.');
+                    dismissFatigueAlert();
+                }
+            }, 1000);
+        }
+
+        function triggerFatigueAlert(ratio, durationSec) {
     const banner = document.getElementById('fatigue-alert-banner');
-    const t = i18n[currentLang];
+    const dur = durationSec || 1800;
     if (banner.style.display !== 'flex') {
         banner.style.display = 'flex';
         speakText(currentLang === 'vi' ? 
             "Cảnh báo lâm sàng: Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
             "Clinical alert: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
         // Gửi lệnh khóa 30 phút xuống ESP32 qua Cloud
-        syncRestCommandToCloud("LOCK_REST", 1800);
+        syncRestCommandToCloud("LOCK_REST", dur);
+        startRestCountdown(dur);
     }
     document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
         `"Hệ thống phát hiện não bộ đang mệt mỏi (TBR: ${ratio.toFixed(2)} ≥ 2.80). Tạm ngưng BCI trong 30 phút để nghỉ ngơi"` :
@@ -1105,31 +1127,12 @@ function dismissFatigueAlert() {
 }
 
 function toggleRestBreak() {
-    const t = i18n[currentLang];
     if (isRestBreakActive) {
-        clearInterval(restTimerInterval);
-        isRestBreakActive = false;
-        document.getElementById('btn-rest-toggle').innerText = t.btn_rest;
-        document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
-        syncRestCommandToCloud("UNLOCK_REST", 0);
+        dismissFatigueAlert();
     } else {
-        isRestBreakActive = true;
-        restBreakSecondsLeft = 30 * 60;
-        document.getElementById('btn-rest-toggle').style.background = 'var(--amber)';
         syncRestCommandToCloud("LOCK_REST", 30 * 60);
-
-        restTimerInterval = setInterval(() => {
-            restBreakSecondsLeft--;
-            let m = Math.floor(restBreakSecondsLeft / 60);
-            let s = restBreakSecondsLeft % 60;
-            document.getElementById('btn-rest-toggle').innerText = (currentLang === 'vi' ? `ĐANG NGHỈ: ` : `RESTING: `) + `${m}:${s < 10 ? '0' : ''}${s}`;
-            if (restBreakSecondsLeft <= 0) {
-                clearInterval(restTimerInterval);
-                isRestBreakActive = false;
-                alert(currentLang === 'vi' ? 'Thời gian nghỉ 30 phút đã hoàn tất.' : '30-minute rest break completed.');
-                dismissFatigueAlert();
-            }
-        }, 1000);
+        startRestCountdown(30 * 60);
+        document.getElementById('fatigue-alert-banner').style.display = 'flex';
     }
 }
 
@@ -1205,19 +1208,29 @@ function toggleRestBreak() {
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'EXHAUSTED';
                 badgeFatigueEl.style.color = 'var(--rose)';
                 barFatigueEl.style.background = 'var(--rose)';
-                triggerFatigueAlert(fatigueRatio);
+                if (isForcedFatigue) {
+                    triggerFatigueAlert(fatigueRatio);
+                } else {
+                    if (tbrHighSince === 0) tbrHighSince = Date.now();
+                    if (Date.now() - tbrHighSince >= 5000) triggerFatigueAlert(fatigueRatio);
+                }
             } else if (fatigueRatio >= 1.8) {
+                tbrHighSince = 0;
                 document.getElementById('bio-fatigue-val').style.color = 'var(--amber)';
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'CẬN MỆT MỎI' : 'WARNING';
                 badgeFatigueEl.style.color = 'var(--amber)';
                 barFatigueEl.style.background = 'var(--amber)';
-                if (!isForcedFatigue) dismissFatigueAlert();
             } else {
+                tbrHighSince = 0;
                 document.getElementById('bio-fatigue-val').style.color = 'var(--emerald)';
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'TỐI ƯU' : 'OPTIMAL';
                 badgeFatigueEl.style.color = 'var(--emerald)';
                 barFatigueEl.style.background = 'var(--emerald)';
-                if (!isForcedFatigue) dismissFatigueAlert();
+            }
+
+            // ESP đang khóa nghỉ (kể cả LOCAL_OFFLINE vừa reconnect) → hiện banner Global
+            if (tData.isFatigueLocked) {
+                triggerFatigueAlert(fatigueRatio, parseInt(tData.fatigueSecLeft, 10) || 1800);
             }
 
             // 2. Ô 2: MỨC ĐỘ CĂNG THẲNG (Stress Level)

@@ -37,6 +37,8 @@ unsigned long fatigueLockStartTime = 0;
 unsigned long fatigueLockDurationMs = 30UL * 60UL * 1000UL;
 String fatigueLockSource = "GLOBAL"; // "GLOBAL" hoặc "LOCAL_OFFLINE"
 int offlineFatigueCounter = 0;       // Bộ lọc chống nhiễu khi tính offline
+volatile bool cloudCommandOk = false; // GET /api/command thành công gần đây
+int cloudCommandFailCount = 0;
 
 // 3. CẤU HÌNH CHÂN PHẦN CỨNG TƯƠNG THÍCH HOÀN TOÀN ESP32-S3
 // UART1: RX/TX cho module cảm biến sóng não NeuroSky TGAM (57600 baud)
@@ -498,6 +500,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div class="wake-hint" style="border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.1);">
              Nháy mắt 6 lần liên tiếp nếu cần CẤP CỨU SOS
         </div>
+        <button type="button" onclick="sendCommand('UNLOCK_FATIGUE')"
+            style="margin-top:22px;padding:12px 28px;font-size:16px;font-weight:700;border:none;border-radius:10px;cursor:pointer;background:var(--warning);color:#111;">
+            TẮT CẢNH BÁO
+        </button>
     </div>
 
     <div id="settings-overlay" class="overlay">
@@ -788,9 +794,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         connectWebSocket();
 
         function enterFatigueLockMode(secondsLeft, source) {
+            const alreadyLocked = isFatigueLocked;
             isFatigueLocked = true;
-            clearInterval(scanInterval);
-            if (isAutoScrolling) toggleAutoScroll();
+            if (!alreadyLocked) {
+                clearInterval(scanInterval);
+                if (isAutoScrolling) toggleAutoScroll();
+            }
 
             document.getElementById('fatigue-lock-overlay').style.display = 'flex';
             let m = Math.floor(secondsLeft / 60);
@@ -801,7 +810,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 "Hệ thống tự động phát hiện não bộ quá tải (Chế độ cục bộ)" : 
                 "Chỉ định nghỉ ngơi từ Trung tâm điều dưỡng (Cloud Global)";
 
-            speakVoice("Não bộ mệt mỏi. Hệ thống tạm khóa 30 phút để nghỉ ngơi.", true);
+            if (!alreadyLocked) {
+                speakVoice("Não bộ mệt mỏi. Hệ thống tạm khóa 30 phút để nghỉ ngơi.", true);
+            }
         }
 
         function exitFatigueLockMode() {
@@ -810,30 +821,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             startScanning();
             speakVoice("Thời gian nghỉ kết thúc. Hệ thống đã mở lại.", true);
         }
-            ws.onmessage = (event) => {
-                const data = event.data;
-                if (data.startsWith("BLINK:")) registerBlink(); 
-                else if (data.startsWith("TGAM:")) {
-                    let parts = data.substring(5).split(',');
-                    if (parts.length >= 3) updateTGAMDisplay(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
-                } 
-                else if (data.startsWith("INA:")) {
-                    let parts = data.substring(4).split(',');
-                    if (parts.length >= 4) {
-                        document.getElementById('bat-val').innerText = parts[3] + '%';
-                        const elMini = document.getElementById('bat-mini');
-                        if (elMini) elMini.innerText = parts[3] + '%';
-                    }
-                }
-                else if (data.startsWith("RELAY:")) {
-                    let parts = data.substring(6).split(',');
-                    updateRelayUI(1, parts[0] === '1'); updateRelayUI(2, parts[1] === '1');
-                } 
-                else if (data === "SLEEPING") enterSleepMode();
-                else if (data === "WAKEUP") exitSleepMode();
-            };
-        }
-        connectWebSocket();
 
         function updateClock() {
             const now = new Date();
@@ -1385,20 +1372,24 @@ else if (text.includes("GIAO TIẾP NHANH")) text = "Mở giao tiếp nhanh";
         document.getElementById('vol-slider').oninput = function() { document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%'; };
 
         window.addEventListener('keydown', (e) => { 
-    if (e.code === 'Space') { 
-        e.preventDefault(); 
-        e.stopPropagation();
-        if (document.activeElement) document.activeElement.blur(); 
-        
-        if (isSleeping) {
-            sendCommand('W'); 
-            exitSleepMode();
-        } else {
-            // Chỉ gửi lệnh xuống ESP32, để ESP32 báo ngược lại thì mới đếm
-            sendCommand('SIMULATE_BLINK'); 
-        }
-    } 
-}, true);
+            if (e.code === 'Space') { 
+                e.preventDefault(); 
+                e.stopPropagation();
+                if (document.activeElement) document.activeElement.blur(); 
+                
+                if (isSleeping) {
+                    sendCommand('W'); 
+                    exitSleepMode();
+                } else {
+                    sendCommand('SIMULATE_BLINK'); 
+                }
+            } 
+            // BẤM PHÍM F ĐỂ TEST KHÓA KIỆT SỨC 30 PHÚT NGAY LẬP TỨC
+            else if (e.code === 'KeyF') {
+                e.preventDefault();
+                sendCommand('SIMULATE_FATIGUE');
+            }
+        }, true);
         // Khởi động giao diện & Cây quét
         updatePredictiveText();
         
@@ -1417,6 +1408,7 @@ else if (text.includes("GIAO TIẾP NHANH")) text = "Mở giao tiếp nhanh";
 // =========================================================================
 String pendingCloudSentence = "";
 bool pendingTelemetry = false;
+String pendingCloudCommand = "";
 
 // =========================================================================
 // TASK FREERTOS: XỬ LÝ GỬI DỮ LIỆU LÊN CLOUD RENDER (CHẠY NGẦM Ở CORE 0)
@@ -1436,13 +1428,37 @@ void cloudSyncTask(void * parameter) {
       int httpCode = cmdHttp.GET();
       if (httpCode == 200) {
         String resp = cmdHttp.getString();
+        resp.trim();
+        Serial.printf("[CLOUD CMD] HTTP 200: %s\n", resp.c_str());
+        cloudCommandOk = true;
+        cloudCommandFailCount = 0;
         if (resp.indexOf("LOCK_REST") >= 0) {
           if (!isFatigueLocked) triggerLocalFatigueLock(1800, "GLOBAL");
         } else if (resp.indexOf("UNLOCK_REST") >= 0) {
           if (isFatigueLocked) releaseLocalFatigueLock();
         }
+      } else {
+        cloudCommandFailCount++;
+        if (cloudCommandFailCount >= 2) cloudCommandOk = false;
+        Serial.printf("[CLOUD CMD] GET lỗi HTTP %d (fail %d)\n", httpCode, cloudCommandFailCount);
       }
       cmdHttp.end();
+    }
+
+    // 1b. Gửi lệnh mở/khóa từ Local lên Cloud (tránh latch LOCK_REST khóa lại)
+    if (pendingCloudCommand != "") {
+      if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient cmdPost;
+        cmdPost.begin(secureClient, CLOUD_COMMAND_URL);
+        cmdPost.addHeader("Content-Type", "application/json");
+        cmdPost.setTimeout(2500);
+        char cmdJson[80];
+        snprintf(cmdJson, sizeof(cmdJson), "{\"command\":\"%s\"}", pendingCloudCommand.c_str());
+        int postCode = cmdPost.POST(cmdJson);
+        Serial.printf("[CLOUD CMD] POST %s -> HTTP %d\n", pendingCloudCommand.c_str(), postCode);
+        cmdPost.end();
+      }
+      pendingCloudCommand = "";
     }
 
     // 2. Đồng bộ câu giao tiếp
@@ -1476,8 +1492,18 @@ void cloudSyncTask(void * parameter) {
         http.addHeader("Content-Type", "application/json");
         http.setTimeout(2500);
 
+        unsigned long fatigueSecLeft = 0;
+        if (isFatigueLocked) {
+          unsigned long elapsed = millis() - fatigueLockStartTime;
+          if (elapsed < fatigueLockDurationMs) {
+            fatigueSecLeft = (fatigueLockDurationMs - elapsed) / 1000;
+          }
+        }
+
         String payload = "{\"isSleeping\":" + String(isSleeping ? "true" : "false") + "," +
                          "\"signalQuality\":" + String(signalQuality) + "," +
+                         "\"isFatigueLocked\":" + String(isFatigueLocked ? "true" : "false") + "," +
+                         "\"fatigueSecLeft\":" + String(fatigueSecLeft) + "," +
                          "\"battery\":" + String(batteryPercent) + "," +
                          "\"voltage\":" + String(inaBusVoltage, 2) + "," +
                          "\"current\":" + String(inaCurrent_mA, 1) + "," +
@@ -1592,7 +1618,19 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
         syncTelemetryToCloud(); 
       }
+      // Phím F trên Web Local: giả lập kiệt sức để test khóa 30 phút (không cần TGAM)
+      else if (msg == "SIMULATE_FATIGUE") {
+        Serial.println("[TEST] Kích hoạt giả lập não bộ kiệt sức để kiểm thử!");
+        triggerLocalFatigueLock(1800, "LOCAL_TEST");
+      }
+      else if (msg == "UNLOCK_FATIGUE") {
+        Serial.println("[FATIGUE] Nút TẮT CẢNH BÁO trên Local — mở khóa nghỉ.");
+        releaseLocalFatigueLock();
+        pendingCloudCommand = "UNLOCK_REST";
+      }
       break;
+
+      
     }
     default:
       break;
@@ -1798,11 +1836,12 @@ void loop() {
     }
   }
 
-  // 2. Thuật toán Offline tự động khi MẤT INTERNET (Chuẩn nhịp 1 giây thực tế)
+  // 2. Thuật toán TBR cục bộ khi MẤT INTERNET hoặc Cloud không kéo được lệnh
   static unsigned long lastOfflineCheck = 0;
   bool isOnline = (WiFi.status() == WL_CONNECTED);
+  bool cloudUnreachable = !isOnline || !cloudCommandOk;
 
-  if (!isOnline && !isFatigueLocked && signalQuality == 0) {
+  if (cloudUnreachable && !isFatigueLocked && signalQuality == 0) {
     // Chỉ tính toán mỗi 1 giây 1 lần, không chạy theo vòng lặp 10ms
     if (millis() - lastOfflineCheck >= 1000) {
       lastOfflineCheck = millis();
@@ -1822,8 +1861,8 @@ void loop() {
         if (offlineFatigueCounter > 0) offlineFatigueCounter--;
       }
     }
-  } else if (isOnline) {
-    offlineFatigueCounter = 0; // Khi có mạng, nhường toàn quyền phân tích cho Global
+  } else if (!cloudUnreachable) {
+    offlineFatigueCounter = 0; // Cloud OK: nhường toàn quyền khóa/mở cho Global
   }
 
   static unsigned long lastSensorBroadcast = 0;

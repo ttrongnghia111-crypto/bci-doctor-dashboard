@@ -94,6 +94,21 @@ app.get('/api/data', async (req, res) => {
     }
 });
 
+// Biến lưu trạng thái lệnh điều khiển (latch: ESP32 GET mỗi 3s)
+let latestCommand = "NONE";
+
+// Nhận lệnh từ Web Global gửi lên
+app.post('/api/command', (req, res) => {
+    latestCommand = req.body.command || "NONE";
+    console.log("-> Nhận lệnh từ Global:", latestCommand);
+    res.json({ status: "success", command: latestCommand });
+});
+
+// ESP32 gọi lên lấy lệnh về
+app.get('/api/command', (req, res) => {
+    res.send(latestCommand);
+});
+
 // ==========================================
 // 5. RENDER GIAO DIỆN WEB BÁC SĨ
 // ==========================================
