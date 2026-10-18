@@ -110,7 +110,7 @@ void triggerLocalFatigueLock(unsigned long durationSec, String source) {
 void releaseLocalFatigueLock() {
   if (isFatigueLocked) {
     isFatigueLocked = false;
-    ignoreLockUntil = millis() + 10000;
+    ignoreLockUntil = millis() + 30000; // Tăng lên 30 giây để không bị lệnh cũ dội ngược lại
     webSocket.broadcastTXT("FATIGUE_UNLOCK");
     Serial.println("[FATIGUE] Đã hết 30 phút nghỉ ngơi hoặc có lệnh mở khóa từ Bác Sĩ.");
   }
@@ -1453,9 +1453,15 @@ void cloudSyncTask(void * parameter) {
         cloudCommandOk = true;
         cloudCommandFailCount = 0;
         if (resp.indexOf("LOCK_REST") >= 0) {
-          if (!isFatigueLocked && millis() > ignoreLockUntil) triggerLocalFatigueLock(1800, "GLOBAL");
+          if (!isFatigueLocked && millis() > ignoreLockUntil) {
+            triggerLocalFatigueLock(1800, "GLOBAL");
+            pendingCloudCommand = "IDLE"; // Đã nhận khóa xong -> xóa ngay lệnh trên Cloud!
+          }
         } else if (resp.indexOf("UNLOCK_REST") >= 0) {
-          if (isFatigueLocked) releaseLocalFatigueLock();
+          if (isFatigueLocked) {
+            releaseLocalFatigueLock();
+            pendingCloudCommand = "IDLE"; // Đã nhận mở xong -> xóa ngay lệnh trên Cloud!
+          }
         }
       } else {
         cloudCommandFailCount++;
@@ -1624,6 +1630,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         Serial.println("[FATIGUE] Nút TẮT CẢNH BÁO trên Local — mở khóa nghỉ.");
         releaseLocalFatigueLock();
         pendingCloudCommand = "UNLOCK_REST";
+        syncTelemetryToCloud(); // Bắn gói Telemetry lên Cloud ngay lập tức, không để Cloud chờ 25 giây
       }
       break;
 
