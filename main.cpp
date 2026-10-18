@@ -1611,18 +1611,9 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         syncSentenceToCloud("SOS - CẤP CỨU KHẨN CẤP");
       }
       else if (msg == "SIMULATE_BLINK") {
-        signalQuality = 0;
-        attention = random(60, 100);
-        meditation = random(60, 100);
-        delta = random(100000, 500000);
-        theta = random(50000, 100000);
-        lowAlpha = random(10000, 50000);
-        lowBeta = random(10000, 30000);
-        lowGamma = random(1000, 10000);
-        blinkStrength = random(50, 100);
-        
+        blinkStrength = random(60, 100);
         webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
-        syncTelemetryToCloud(); 
+        // Không gán đè các biến delta, theta để tránh làm kẹt dữ liệu giả trên Cloud
       }
       // Phím F trên Web Local: giả lập kiệt sức để test khóa 30 phút (không cần TGAM)
       else if (msg == "SIMULATE_FATIGUE") {

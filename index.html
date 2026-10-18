@@ -1063,6 +1063,15 @@
             document.getElementById('btn-demo').classList.toggle('active'); 
             const t = i18n[currentLang];
             document.getElementById('btn-demo').innerText = isDemoMode ? t.demo_btn_on : t.demo_btn_off; 
+            
+            // NẾU VỪA TẮT DEMO -> XÓA SẠCH VỀ 0 NGAY LẬP TỨC
+            if (!isDemoMode) {
+                eegChart.data.datasets[0].data = Array(60).fill(0);
+                eegChart.update('none');
+                radarChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+                radarChart.update('none');
+                updateUI({ signalQuality: 200, attention: 0, meditation: 0, delta: 0, theta: 0, lowAlpha: 0, lowBeta: 0, lowGamma: 0 });
+            }
         }
 
         function forceFatigueDemo() {
@@ -1172,15 +1181,19 @@ function toggleRestBreak() {
         // ================= CẬP NHẬT GIAO DIỆN & TÍNH TOÁN DỮ LIỆU ĐIỆN NÃO =================
         function updateUI(tData) {
             let sig = isDemoMode ? 0 : (tData.signalQuality !== undefined ? tData.signalQuality : 200);
-            let att = isDemoMode ? Math.floor(Math.random()*25)+65 : (tData.attention||0);
-            let med = isDemoMode ? Math.floor(Math.random()*30)+55 : (tData.meditation||0);
+            
+            // NẾU TẮT DEMO VÀ RỚT ĐIỆN CỰC (HOẶC MẤT TÍN HIỆU) -> AUTO = 0
+            let hasRealSignal = !isDemoMode && (sig === 0);
+
+            let att = isDemoMode ? Math.floor(Math.random()*25)+65 : (hasRealSignal ? (tData.attention||0) : 0);
+            let med = isDemoMode ? Math.floor(Math.random()*30)+55 : (hasRealSignal ? (tData.meditation||0) : 0);
             
             let w = {
-                d: isDemoMode ? Math.floor(Math.random()*150000)+50000 : (tData.delta||0),
-                t: isDemoMode ? (isForcedFatigue ? 260000 : Math.floor(Math.random()*80000)+20000) : (tData.theta||0),
-                a: isDemoMode ? (isForcedFatigue ? 190000 : Math.floor(Math.random()*60000)+10000) : (tData.lowAlpha||0),
-                b: isDemoMode ? (isForcedFatigue ? 32000 : Math.floor(Math.random()*70000)+25000) : (tData.lowBeta||0),
-                g: isDemoMode ? (isForcedFatigue ? 20000 : Math.floor(Math.random()*40000)+5000) : (tData.lowGamma||0)
+                d: isDemoMode ? Math.floor(Math.random()*150000)+50000 : (hasRealSignal ? (tData.delta||0) : 0),
+                t: isDemoMode ? (isForcedFatigue ? 260000 : Math.floor(Math.random()*80000)+20000) : (hasRealSignal ? (tData.theta||0) : 0),
+                a: isDemoMode ? (isForcedFatigue ? 190000 : Math.floor(Math.random()*60000)+10000) : (hasRealSignal ? (tData.lowAlpha||0) : 0),
+                b: isDemoMode ? (isForcedFatigue ? 32000 : Math.floor(Math.random()*70000)+25000) : (hasRealSignal ? (tData.lowBeta||0) : 0),
+                g: isDemoMode ? (isForcedFatigue ? 20000 : Math.floor(Math.random()*40000)+5000) : (hasRealSignal ? (tData.lowGamma||0) : 0)
             };
 
             let bat = isDemoMode ? 100 : (tData.battery!==undefined ? tData.battery : 0);
@@ -1224,12 +1237,13 @@ function toggleRestBreak() {
             document.getElementById('val-gamma').innerText = `${w.g.toLocaleString()} (${p_g}%)`;
 
             // ================= HÀNG 2: THUẬT TOÁN 4 CHỈ SỐ CHUYÊN GIA =================
+            let isZeroData = (w.d === 0 && w.t === 0 && w.b === 0);
             let safeBeta = Math.max(10, w.b);
             let safeAlpha = Math.max(10, w.a);
 
-            // 1. Ô 1: TỶ LỆ KIỆT SỨC (Fatigue Index / TBR)
-            let fatigueRatio = (w.t + (w.a * 0.5)) / safeBeta;
-            let fatiguePct = Math.min(100, Math.round((fatigueRatio / 3.5) * 100));
+            // 1. Ô 1: TỶ LỆ KIỆT SỨC (Fatigue Index / TBR) - NẾU KHÔNG CÓ SÓNG THÌ BẰNG 0
+            let fatigueRatio = isZeroData ? 0.00 : ((w.t + (w.a * 0.5)) / safeBeta);
+            let fatiguePct = isZeroData ? 0 : Math.min(100, Math.round((fatigueRatio / 3.5) * 100));
             document.getElementById('bio-fatigue-val').innerText = fatigueRatio.toFixed(2);
             document.getElementById('bio-fatigue-pct').innerText = `(${fatiguePct}%)`;
             const barFatigueEl = document.getElementById('bar-bio-fatigue');
@@ -1355,19 +1369,22 @@ function toggleRestBreak() {
                 barSigEl.style.background = 'var(--rose)';
             }
 
-            // Biểu đồ sóng điện não Oscilloscope
+            // Biểu đồ sóng điện não Oscilloscope: CHỈ VẼ SÓNG KHI BẬT DEMO
             let cData = eegChart.data.datasets[0].data;
-            let eVal = sig === 0 ? (Math.sin(Date.now()/140)*18 + Math.cos(Date.now()/50)*12 + (att/3)) : 0;
-            if (sig === 0 && isDemoMode && Math.random() > 0.9) eVal += (Math.random()-0.5)*80;
+            let eVal = 0;
+            if (isDemoMode && sig === 0) {
+                eVal = Math.sin(Date.now()/140)*18 + Math.cos(Date.now()/50)*12 + (att/3);
+                if (Math.random() > 0.9) eVal += (Math.random()-0.5)*80;
+            }
             cData.push(eVal); 
             cData.shift(); 
             eegChart.update('none');
 
-            // Biểu đồ radar
-            if (sig === 0) {
+            // Biểu đồ radar: NẾU TẮT DEMO VÀ KHÔNG CÓ SÓNG THẬT -> VỀ TÂM BẰNG 0
+            if (isDemoMode || (hasRealSignal && totalPower > 0)) {
                 radarChart.data.datasets[0].data = [p_d, p_t, p_a, p_b, p_g];
             } else {
-                radarChart.data.datasets[0].data = [0,0,0,0,0];
+                radarChart.data.datasets[0].data = [0, 0, 0, 0, 0];
             }
             radarChart.update('none');
         }
