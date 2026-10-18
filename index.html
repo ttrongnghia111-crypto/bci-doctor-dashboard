@@ -501,6 +501,12 @@
                                 <option value="pain">Đau / Khó chịu</option>
                                 <option value="iot">Lệnh thiết bị</option>
                             </select>
+                            <select id="time-filter" class="select-filter" onchange="applyFilters()">
+                                <option value="all">Tất cả thời gian</option>
+                                <option value="day">Hôm nay</option>
+                                <option value="week">Tuần này</option>
+                                <option value="month">Tháng này</option>
+                            </select>
                         </div>
                         <div class="export-group">
                             <button class="btn-export" id="btn-export-csv" onclick="exportCSV()">XUẤT CSV</button>
@@ -1011,9 +1017,29 @@
         }
 
         function applyFilters() {
-            let filtered = allLogs.filter(l => document.getElementById('category-filter').value === 'all' || identifyCategory(l.sentence) === document.getElementById('category-filter').value);
+            let catFilter = document.getElementById('category-filter').value;
+            let timeFilter = document.getElementById('time-filter') ? document.getElementById('time-filter').value : 'all';
             let search = document.getElementById('search-input').value.toLowerCase();
-            if (search) filtered = filtered.filter(l => l.sentence.toLowerCase().includes(search));
+            let now = new Date();
+
+            let filtered = allLogs.filter(l => {
+                let matchCat = catFilter === 'all' || identifyCategory(l.sentence) === catFilter;
+                let matchSearch = !search || l.sentence.toLowerCase().includes(search);
+
+                // Lọc theo mốc thời gian
+                let logTime = new Date(l.timestamp);
+                let matchTime = true;
+                if (timeFilter === 'day') {
+                    matchTime = logTime.toDateString() === now.toDateString();
+                } else if (timeFilter === 'week') {
+                    let diffTime = Math.abs(now - logTime);
+                    matchTime = diffTime <= (7 * 24 * 60 * 60 * 1000);
+                } else if (timeFilter === 'month') {
+                    matchTime = logTime.getMonth() === now.getMonth() && logTime.getFullYear() === now.getFullYear();
+                }
+
+                return matchCat && matchSearch && matchTime;
+            });
 
             document.getElementById('count-badge').innerText = filtered.length + (currentLang === 'vi' ? ' MỤC' : ' ITEMS');
             updateCharts(filtered);
@@ -1208,9 +1234,10 @@ function toggleRestBreak() {
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'EXHAUSTED';
                 badgeFatigueEl.style.color = 'var(--rose)';
                 barFatigueEl.style.background = 'var(--rose)';
+                // CHỈ KHÓA KHI BẤM NÚT THỬ NGHIỆM HOẶC DÙNG MẠCH THẬT (KHÔNG KHÓA KHI ĐANG MÔ PHỎNG)
                 if (isForcedFatigue) {
                     triggerFatigueAlert(fatigueRatio);
-                } else {
+                } else if (!isDemoMode) {
                     if (tbrHighSince === 0) tbrHighSince = Date.now();
                     if (Date.now() - tbrHighSince >= 5000) triggerFatigueAlert(fatigueRatio);
                 }

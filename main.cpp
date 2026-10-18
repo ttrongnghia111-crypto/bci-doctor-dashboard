@@ -39,6 +39,9 @@ String fatigueLockSource = "GLOBAL"; // "GLOBAL" hoặc "LOCAL_OFFLINE"
 int offlineFatigueCounter = 0;       // Bộ lọc chống nhiễu khi tính offline
 volatile bool cloudCommandOk = false; // GET /api/command thành công gần đây
 int cloudCommandFailCount = 0;
+unsigned long ignoreLockUntil = 0;
+
+// 3. CẤU HÌNH CHÂN PHẦN CỨNG TƯƠNG THÍCH HOÀN TOÀN ESP32-S3
 
 // 3. CẤU HÌNH CHÂN PHẦN CỨNG TƯƠNG THÍCH HOÀN TOÀN ESP32-S3
 // UART1: RX/TX cho module cảm biến sóng não NeuroSky TGAM (57600 baud)
@@ -107,6 +110,7 @@ void triggerLocalFatigueLock(unsigned long durationSec, String source) {
 void releaseLocalFatigueLock() {
   if (isFatigueLocked) {
     isFatigueLocked = false;
+    ignoreLockUntil = millis() + 10000;
     webSocket.broadcastTXT("FATIGUE_UNLOCK");
     Serial.println("[FATIGUE] Đã hết 30 phút nghỉ ngơi hoặc có lệnh mở khóa từ Bác Sĩ.");
   }
@@ -1419,33 +1423,7 @@ void cloudSyncTask(void * parameter) {
   for(;;) {
     vTaskDelay(pdMS_TO_TICKS(100));
 
-    // 1. CHỦ ĐỘNG KÉO LỆNH TỪ CLOUD (Mỗi 3 giây khi có Internet)
-    if (WiFi.status() == WL_CONNECTED && (millis() - lastCommandCheck > 3000)) {
-      lastCommandCheck = millis();
-      HTTPClient cmdHttp;
-      cmdHttp.begin(secureClient, CLOUD_COMMAND_URL);
-      cmdHttp.setTimeout(2000);
-      int httpCode = cmdHttp.GET();
-      if (httpCode == 200) {
-        String resp = cmdHttp.getString();
-        resp.trim();
-        Serial.printf("[CLOUD CMD] HTTP 200: %s\n", resp.c_str());
-        cloudCommandOk = true;
-        cloudCommandFailCount = 0;
-        if (resp.indexOf("LOCK_REST") >= 0) {
-          if (!isFatigueLocked) triggerLocalFatigueLock(1800, "GLOBAL");
-        } else if (resp.indexOf("UNLOCK_REST") >= 0) {
-          if (isFatigueLocked) releaseLocalFatigueLock();
-        }
-      } else {
-        cloudCommandFailCount++;
-        if (cloudCommandFailCount >= 2) cloudCommandOk = false;
-        Serial.printf("[CLOUD CMD] GET lỗi HTTP %d (fail %d)\n", httpCode, cloudCommandFailCount);
-      }
-      cmdHttp.end();
-    }
-
-    // 1b. Gửi lệnh mở/khóa từ Local lên Cloud (tránh latch LOCK_REST khóa lại)
+    // 1b. Gửi lệnh mở/khóa từ Local lên Cloud trước (tránh latch LOCK_REST khóa lại)
     if (pendingCloudCommand != "") {
       if (WiFi.status() == WL_CONNECTED) {
         HTTPClient cmdPost;
@@ -1460,6 +1438,34 @@ void cloudSyncTask(void * parameter) {
       }
       pendingCloudCommand = "";
     }
+
+    // 1. CHỦ ĐỘNG KÉO LỆNH TỪ CLOUD (Mỗi 3 giây khi có Internet)
+    if (WiFi.status() == WL_CONNECTED && (millis() - lastCommandCheck > 3000)) {
+      lastCommandCheck = millis();
+      HTTPClient cmdHttp;
+      cmdHttp.begin(secureClient, CLOUD_COMMAND_URL);
+      cmdHttp.setTimeout(2000);
+      int httpCode = cmdHttp.GET();
+      if (httpCode == 200) {
+        String resp = cmdHttp.getString();
+        resp.trim();
+        Serial.printf("[CLOUD CMD] HTTP 200: %s\n", resp.c_str());
+        cloudCommandOk = true;
+        cloudCommandFailCount = 0;
+        if (resp.indexOf("LOCK_REST") >= 0) {
+          if (!isFatigueLocked && millis() > ignoreLockUntil) triggerLocalFatigueLock(1800, "GLOBAL");
+        } else if (resp.indexOf("UNLOCK_REST") >= 0) {
+          if (isFatigueLocked) releaseLocalFatigueLock();
+        }
+      } else {
+        cloudCommandFailCount++;
+        if (cloudCommandFailCount >= 2) cloudCommandOk = false;
+        Serial.printf("[CLOUD CMD] GET lỗi HTTP %d (fail %d)\n", httpCode, cloudCommandFailCount);
+      }
+      cmdHttp.end();
+    }
+
+    // 2. Đồng bộ câu giao tiếp
 
     // 2. Đồng bộ câu giao tiếp
     if (pendingCloudSentence != "") {
@@ -1836,34 +1842,8 @@ void loop() {
     }
   }
 
-  // 2. Thuật toán TBR cục bộ khi MẤT INTERNET hoặc Cloud không kéo được lệnh
-  static unsigned long lastOfflineCheck = 0;
-  bool isOnline = (WiFi.status() == WL_CONNECTED);
-  bool cloudUnreachable = !isOnline || !cloudCommandOk;
-
-  if (cloudUnreachable && !isFatigueLocked && signalQuality == 0) {
-    // Chỉ tính toán mỗi 1 giây 1 lần, không chạy theo vòng lặp 10ms
-    if (millis() - lastOfflineCheck >= 1000) {
-      lastOfflineCheck = millis();
-
-      float safeBeta = (lowBeta > 10) ? (float)lowBeta : 10.0f;
-      float fatigueRatio = (theta + (lowAlpha * 0.5f)) / safeBeta;
-
-      // Nếu TBR >= 2.80 liên tục đủ 5 giây thực tế
-      if (fatigueRatio >= 2.80f) {
-        offlineFatigueCounter++;
-        Serial.printf("[OFFLINE TBR] Não mệt mỏi: %.2f (Giây thứ %d/5)\n", fatigueRatio, offlineFatigueCounter);
-        if (offlineFatigueCounter >= 5) {
-          triggerLocalFatigueLock(1800, "LOCAL_OFFLINE");
-          offlineFatigueCounter = 0;
-        }
-      } else {
-        if (offlineFatigueCounter > 0) offlineFatigueCounter--;
-      }
-    }
-  } else if (!cloudUnreachable) {
-    offlineFatigueCounter = 0; // Cloud OK: nhường toàn quyền khóa/mở cho Global
-  }
+  // 2. ĐÃ VÔ HIỆU HÓA TBR LOCAL: Local không được tự ý khóa máy khi offline,
+  // toàn bộ quyền ra lệnh khóa/mở 30 phút hoàn toàn do Bác sĩ trên Cloud Global điều khiển.
 
   static unsigned long lastSensorBroadcast = 0;
   if (millis() - lastSensorBroadcast > 1000) {
