@@ -1140,18 +1140,25 @@ async function syncRestCommandToCloud(action, durationSec = 1800) {
         `"System detected brain fatigue (TBR: ${ratio.toFixed(2)} ≥ 2.80). Pause BCI for 30 minutes to rest"`;
 }
 
+let userDismissedLockUntil = 0; // Biến cờ ngăn web tự bật lại sau khi người dùng bấm tắt
+
 function dismissFatigueAlert() {
     document.getElementById('fatigue-alert-banner').style.display = 'none';
+    userDismissedLockUntil = Date.now() + 20000; // Chặn mọi lệnh tự động bật lại trong 20 giây
+    tbrHighSince = 0;
+    isForcedFatigue = false;
+
     if (isRestBreakActive) {
         clearInterval(restTimerInterval);
         isRestBreakActive = false;
         document.getElementById('btn-rest-toggle').innerText = i18n[currentLang].btn_rest;
         document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
     }
-    // Gửi lệnh mở khóa xuống ESP32
+    
+    // Gửi lệnh mở khóa dứt điểm xuống Cloud Render cho ESP32
     syncRestCommandToCloud("UNLOCK_REST", 0);
+    console.log("[ALARM] Bác sĩ đã xác nhận tắt báo động. Đã gửi UNLOCK_REST.");
 }
-
 function toggleRestBreak() {
     if (isRestBreakActive) {
         dismissFatigueAlert();
@@ -1234,12 +1241,16 @@ function toggleRestBreak() {
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'EXHAUSTED';
                 badgeFatigueEl.style.color = 'var(--rose)';
                 barFatigueEl.style.background = 'var(--rose)';
-                // CHỈ KHÓA KHI BẤM NÚT THỬ NGHIỆM HOẶC DÙNG MẠCH THẬT (KHÔNG KHÓA KHI ĐANG MÔ PHỎNG)
-                if (isForcedFatigue) {
-                    triggerFatigueAlert(fatigueRatio);
-                } else if (!isDemoMode) {
-                    if (tbrHighSince === 0) tbrHighSince = Date.now();
-                    if (Date.now() - tbrHighSince >= 5000) triggerFatigueAlert(fatigueRatio);
+                
+                // Chỉ kích hoạt nếu KHÔNG bị người dùng tắt gần đây và KHÔNG ở chế độ Demo
+                if (Date.now() > userDismissedLockUntil) {
+                    if (isForcedFatigue) {
+                        triggerFatigueAlert(fatigueRatio);
+                    } else if (!isDemoMode) {
+                        if (tbrHighSince === 0) tbrHighSince = Date.now();
+                        // Phải vượt 2.8 liên tục 8 giây thực tế mới báo
+                        if (Date.now() - tbrHighSince >= 8000) triggerFatigueAlert(fatigueRatio);
+                    }
                 }
             } else if (fatigueRatio >= 1.8) {
                 tbrHighSince = 0;
@@ -1255,11 +1266,18 @@ function toggleRestBreak() {
                 barFatigueEl.style.background = 'var(--emerald)';
             }
 
-            // ESP đang khóa nghỉ (kể cả LOCAL_OFFLINE vừa reconnect) → hiện banner Global
-            if (tData.isFatigueLocked) {
-                triggerFatigueAlert(fatigueRatio, parseInt(tData.fatigueSecLeft, 10) || 1800);
+            // ĐỒNG BỘ HIỂN THỊ KHI ESP32 ĐANG KHÓA (KHÔNG GỬI ĐÈ LỆNH LÊN CLOUD)
+            if (tData.isFatigueLocked && Date.now() > userDismissedLockUntil) {
+                const banner = document.getElementById('fatigue-alert-banner');
+                if (banner.style.display !== 'flex') {
+                    banner.style.display = 'flex';
+                    let secLeft = parseInt(tData.fatigueSecLeft, 10) || 1800;
+                    startRestCountdown(secLeft);
+                    document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
+                        `"Hệ thống ghi nhận não bộ đã kiệt sức. Thiết bị đang trong chế độ nghỉ 30 phút"` :
+                        `"System confirmed brain fatigue. BCI is resting for 30 minutes"`;
+                }
             }
-
             // 2. Ô 2: MỨC ĐỘ CĂNG THẲNG (Stress Level)
             let stressRatio = (safeBeta + (w.g * 1.2)) / safeAlpha;
             let stressPct = Math.min(100, Math.round((stressRatio / 3.0) * 100));
