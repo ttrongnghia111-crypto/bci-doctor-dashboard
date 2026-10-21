@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Giám Sát Y Sinh BCI</title>
+    <title>Hệ Thống Giám Sát Y Sinh Điện Cơ EMG</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -268,7 +268,7 @@
         <div class="dept-brand">
             <div class="brand-indicator"></div>
             <div class="brand-text">
-                <h1 id="txt-brand-title">Hệ Thống Giám Sát Y Sinh BCI</h1>
+                <h1 id="txt-brand-title">Hệ Thống Giám Sát Y Sinh Điện Cơ (EMG)</h1>
                 <p id="txt-brand-sub">GIÁM SÁT LÂM SÀNG THỜI GIAN THỰC • PHÒNG ĐIỀU TRỊ TÍCH CỰC</p>
             </div>
         </div>
@@ -293,8 +293,8 @@
     <!-- BÁO ĐỘNG LÂM SÀNG KIỆT SỨC NÃO BỘ -->
     <div id="fatigue-alert-banner" class="fatigue-alert-banner">
         <div class="fatigue-alert-left">
-            <div class="fatigue-alert-tag" id="txt-alarm-tag">CẢNH BÁO LÂM SÀNG: NÃO BỘ ĐẠT NGƯỠNG KIỆT SỨC</div>
-            <div class="fatigue-alert-msg" id="fatigue-banner-msg">"Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi"</div>
+            <div class="fatigue-alert-tag" id="txt-alarm-tag">CẢNH BÁO LÂM SÀNG: CƠ MẮT & THẦN KINH ĐẠT NGƯỠNG MỎI</div>
+            <div class="fatigue-alert-msg" id="fatigue-banner-msg">"Hệ thống phát hiện cơ mắt suy giảm biên độ (mỏi cơ). Tạm khóa giao tiếp 30 phút để nghỉ ngơi"</div>
             <div class="fatigue-alert-nurse" id="txt-alarm-nurse">Trạng thái: Đã gửi tín hiệu khẩn cấp đến trung tâm điều dưỡng buồng bệnh.</div>
         </div>
         <div class="fatigue-alert-actions">
@@ -322,7 +322,7 @@
             <!-- MỨC TẬP TRUNG (TGAM NATIVE) -->
             <div class="panel metric-card">
                 <div class="metric-header">
-                    <span id="lbl-att-title">Mức Tập Trung</span>
+                    <span id="lbl-att-title">Cường Độ Co Cơ (EMG)</span>
                     <span id="att-status" style="color:var(--cyan)">BÌNH THƯỜNG</span>
                 </div>
                 <div class="metric-val-row"><span class="metric-value" style="color:var(--cyan)" id="avg-att">0</span><span class="metric-unit">/100</span></div>
@@ -332,7 +332,7 @@
             <!-- MỨC THƯ GIÃN (TGAM NATIVE) -->
             <div class="panel metric-card">
                 <div class="metric-header">
-                    <span id="lbl-med-title">Mức Thư Giãn</span>
+                    <span id="lbl-med-title">Mức Độ Tự Chủ & Thích Nghi</span>
                     <span id="med-status" style="color:var(--emerald)">ỔN ĐỊNH</span>
                 </div>
                 <div class="metric-val-row"><span class="metric-value" style="color:var(--emerald)" id="avg-med">0</span><span class="metric-unit">/100</span></div>
@@ -361,15 +361,15 @@
                     <span style="display:inline-block; width:8px; height:8px; background:var(--cyan); border-radius:50%;"></span>
                     <span id="lbl-bio-section-title">CÁC CHỈ SỐ CHUYÊN GIA • EXPERT SYSTEM</span>
                 </div>
-                <div style="font-size:11px; font-family:monospace; color:var(--text-dim);" id="lbl-bio-section-sub">THUẬT TOÁN ĐÁNH GIÁ SÓNG ĐIỆN NÃO CHUYÊN SÂU</div>
+                <div style="font-size:11px; font-family:monospace; color:var(--text-dim);" id="lbl-bio-section-sub">THUẬT TOÁN PHÂN TÍCH HÀNH VI NHÁY MẮT & ĐƯỜNG BAO ĐIỆN CƠ (EMG ANALYTICS)</div>
             </div>
             
             <div class="biomarkers-grid">
-                <!-- Ô 1: TỶ LỆ KIỆT SỨC (FATIGUE INDEX) -->
+                <!-- Ô 1: CHỈ SỐ MỎI CƠ (FATIGUE) (FATIGUE INDEX) -->
                 <div class="bio-box">
                     <div>
                         <div class="bio-top">
-                            <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-fatigue">TỶ LỆ KIỆT SỨC</span>
+                            <span style="font-weight:700; color:var(--text-primary);" id="lbl-bio-fatigue">CHỈ SỐ MỎI CƠ (FATIGUE)</span>
                             <span class="bio-status-badge" id="bio-fatigue-badge" style="color:var(--emerald)">TỐI ƯU</span>
                         </div>
                         <div class="bio-main-val">
@@ -378,7 +378,7 @@
                         </div>
                         <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-fatigue" style="width:31%; background:var(--emerald)"></div></div>
                     </div>
-                    <div class="bio-desc" id="desc-bio-fatigue">Dựa trên dải Theta & Beta (TBR Index)</div>
+                    <div class="bio-desc" id="desc-bio-fatigue">Độ sụt giảm biên độ đỉnh & độ trễ phản xạ cơ</div>
                 </div>
 
                 <!-- Ô 2: MỨC ĐỘ CĂNG THẲNG (STRESS LEVEL) -->
@@ -394,7 +394,7 @@
                         </div>
                         <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-stress" style="width:32%; background:var(--text-secondary)"></div></div>
                     </div>
-                    <div class="bio-desc" id="desc-bio-stress">Phát hiện hoảng loạn & đau đớn qua High-Beta</div>
+                    <div class="bio-desc" id="desc-bio-stress">Phát hiện xung co cơ dồn dập & gồng cơ mặt (>1s)</div>
                 </div>
 
                 <!-- Ô 3: TRẠNG THÁI GIẤC NGỦ (SLEEP STATE) -->
@@ -410,7 +410,7 @@
                         </div>
                         <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-sleep" style="width:18%; background:var(--cyan)"></div></div>
                     </div>
-                    <div class="bio-desc" id="desc-bio-sleep">Khai thác dải Delta (0.5 - 4 Hz) cho ICU</div>
+                    <div class="bio-desc" id="desc-bio-sleep">Theo dõi thời gian cơ nghỉ tĩnh (Idle Time 15p)</div>
                 </div>
 
                 <!-- Ô 4: CHẤT LƯỢNG TÍN HIỆU (SIGNAL QUALITY) -->
@@ -426,38 +426,38 @@
                         </div>
                         <div class="progress-bar-bg"><div class="progress-bar-fill" id="bar-bio-signal" style="width:100%; background:var(--emerald)"></div></div>
                     </div>
-                    <div class="bio-desc" id="desc-bio-signal">Tiếp xúc trán Fp1 & Tham chiếu A1/A2</div>
+                    <div class="bio-desc" id="desc-bio-signal">Tiếp xúc 3 điện cực băng đô: MID - END - REF</div>
                 </div>
             </div>
         </section>
 
-        <!-- HÀNG 3: BIỂU ĐỒ SÓNG ĐIỆN NÃO THỜI GIAN THỰC & PHÂN BỔ RADAR -->
+        <!-- HÀNG 3: BIỂU ĐỒ XUNG ĐIỆN CƠ THỜI GIAN THỰC (RAW EMG & ENVELOPE) & PHÂN BỔ RADAR -->
         <section class="row-eeg">
             <div class="eeg-section">
                 <div class="section-title">
-                    <span id="lbl-eeg-title">SÓNG ĐIỆN NÃO THỜI GIAN THỰC</span>
+                    <span id="lbl-eeg-title">XUNG ĐIỆN CƠ THỜI GIAN THỰC (RAW EMG & ENVELOPE)</span>
                     <span id="signal-text" style="color: var(--rose); font-size: 11px;">MẤT TÍN HIỆU ĐIỆN CỰC (200)</span>
                 </div>
                 <div class="chart-container-eeg">
                     <div id="no-signal-overlay">
                         <div style="color: var(--rose); font-family: monospace; font-weight: 700; font-size: 15px;" id="lbl-no-sig-title">CHƯA NHẬN TÍN HIỆU ĐIỆN CỰC</div>
-                        <div style="color: var(--text-dim); font-size: 12px; font-family: monospace;" id="lbl-no-sig-desc">Kiểm tra tiếp xúc điện cực trán (Fp1) và điểm tham chiếu (A1/A2)</div>
+                        <div style="color: var(--text-dim); font-size: 12px; font-family: monospace;" id="lbl-no-sig-desc">Kiểm tra tiếp xúc 3 điện cực băng đô trán: Chính (MID), Đối chiếu (END) và Tham chiếu (REF)</div>
                     </div>
                     <canvas id="eegChart"></canvas>
                 </div>
             </div>
             
             <div class="radar-panel">
-                <div class="section-title"><span id="lbl-radar-title">PHÂN BỔ TẦN SỐ SÓNG NÃO</span></div>
+                <div class="section-title"><span id="lbl-radar-title">ĐẶC TRƯNG TÍN HIỆU ĐIỆN CƠ (EMG)</span></div>
                 <div class="chart-container-radar">
                     <canvas id="radarChart"></canvas>
                 </div>
                 <div class="mini-wave-list">
-                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Delta (0.5 - 4 Hz)</div><span class="wave-val" id="val-delta">0</span></div>
-                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Theta (4 - 8 Hz)</div><span class="wave-val" id="val-theta">0</span></div>
-                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Alpha (8 - 13 Hz)</div><span class="wave-val" id="val-alpha">0</span></div>
-                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Beta (13 - 30 Hz)</div><span class="wave-val" id="val-beta">0</span></div>
-                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Gamma (> 30 Hz)</div><span class="wave-val" id="val-gamma">0</span></div>
+                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Biên độ đỉnh (Peak mV)</div><span class="wave-val" id="val-delta">0</span></div>
+                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Độ rộng xung (Pulse ms)</div><span class="wave-val" id="val-theta">0</span></div>
+                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Độ nhạy thích ứng (Adapt)</div><span class="wave-val" id="val-alpha">0</span></div>
+                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Lực co cơ (Strength)</div><span class="wave-val" id="val-beta">0</span></div>
+                    <div class="mini-wave-row"><div class="wave-label"><span class="w-dot"></span>Độ ổn định nền (Stability)</div><span class="wave-val" id="val-gamma">0</span></div>
                 </div>
             </div>
         </section>
@@ -536,7 +536,7 @@
         </section>
         
         <div style="height: 30px; width: 100%; text-align: center; color: var(--text-dim); font-size: 11px; font-family: monospace; padding-top: 6px;" id="lbl-footer">
-            HỆ THỐNG GIÁM SÁT Y SINH ĐIỆN NÃO BCI • KHOA HỒI SỨC THẦN KINH
+            HỆ THỐNG GIÁM SÁT Y SINH ĐIỆN CƠ (EMG-HMI) • KHOA HỒI SỨC TÍCH CỰC & PHỤC HỒI CHỨC NĂNG
         </div>
     </div>
 
@@ -635,7 +635,7 @@
 
         const i18n = {
             vi: {
-                brand_title: 'Hệ Thống Giám Sát Y Sinh BCI',
+                brand_title: 'Hệ Thống Giám Sát Y Sinh Điện Cơ (EMG)',
                 brand_sub: 'GIÁM SÁT LÂM SÀNG THỜI GIAN THỰC • PHÒNG ĐIỀU TRỊ TÍCH CỰC',
                 btn_lang: 'NGÔN NGỮ: TIẾNG VIỆT',
                 btn_theme_light: '☀️ CHẾ ĐỘ SÁNG',
@@ -647,35 +647,35 @@
                 demo_btn_on: 'ĐANG MÔ PHỎNG',
                 fatigue_test_off: 'THỬ NGHIỆM BÁO ĐỘNG',
                 fatigue_test_on: 'ĐANG TEST BÁO ĐỘNG',
-                alarm_tag: 'CẢNH BÁO LÂM SÀNG: NÃO BỘ ĐẠT NGƯỠNG KIỆT SỨC',
-                alarm_msg: '"Hệ thống phát hiện não bộ đang mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi"',
+                alarm_tag: 'CẢNH BÁO LÂM SÀNG: CƠ MẮT & THẦN KINH ĐẠT NGƯỠNG MỎI',
+                alarm_msg: '"Hệ thống phát hiện cơ mắt suy giảm biên độ (mỏi cơ). Tạm khóa giao tiếp 30 phút để nghỉ ngơi"',
                 alarm_nurse: 'Trạng thái: Đã gửi tín hiệu khẩn cấp đến trung tâm điều dưỡng buồng bệnh.',
                 btn_rest: 'NGHỈ 30 PHÚT',
                 btn_dismiss: 'XÁC NHẬN BÁO ĐỘNG',
                 btn_profile: 'ĐỔI HỒ SƠ',
                 lbl_diag: 'Chẩn đoán:',
-                lbl_att: 'Mức Tập Trung',
-                lbl_med: 'Mức Thư Giãn',
+                lbl_att: 'Cường Độ Co Cơ (EMG)',
+                lbl_med: 'Mức Độ Tự Chủ & Thích Nghi',
                 lbl_pwr: 'Nguồn Điện & Pin',
                 
                 bio_section_title: 'CÁC CHỈ SỐ CHUYÊN GIA • EXPERT SYSTEM',
-                bio_section_sub: 'THUẬT TOÁN ĐÁNH GIÁ SÓNG ĐIỆN NÃO CHUYÊN SÂU',
-                bio_fatigue: 'TỶ LỆ KIỆT SỨC',
+                bio_section_sub: 'THUẬT TOÁN PHÂN TÍCH HÀNH VI NHÁY MẮT & ĐƯỜNG BAO ĐIỆN CƠ (EMG ANALYTICS)',
+                bio_fatigue: 'CHỈ SỐ MỎI CƠ (FATIGUE)',
                 bio_stress: 'MỨC ĐỘ CĂNG THẲNG',
                 bio_sleep: 'TRẠNG THÁI GIẤC NGỦ',
                 bio_signal: 'CHẤT LƯỢNG TÍN HIỆU',
                 
-                desc_bio_fatigue: 'Dựa trên dải Theta & Beta (TBR Index)',
-                desc_bio_stress: 'Phát hiện hoảng loạn & đau đớn qua High-Beta',
-                desc_bio_sleep: 'Khai thác dải Delta (0.5 - 4 Hz) cho ICU',
-                desc_bio_signal: 'Tiếp xúc trán Fp1 & Tham chiếu A1/A2',
+                desc_bio_fatigue: 'Độ sụt giảm biên độ đỉnh & độ trễ phản xạ cơ',
+                desc_bio_stress: 'Phát hiện xung co cơ dồn dập & gồng cơ mặt (>1s)',
+                desc_bio_sleep: 'Theo dõi thời gian cơ nghỉ tĩnh (Idle Time 15p)',
+                desc_bio_signal: 'Tiếp xúc 3 điện cực băng đô: MID - END - REF',
 
-                eeg_title: 'SÓNG ĐIỆN NÃO THỜI GIAN THỰC',
+                eeg_title: 'XUNG ĐIỆN CƠ THỜI GIAN THỰC (RAW EMG & ENVELOPE)',
                 sig_good: 'TÍN HIỆU TỐT (0)',
                 sig_lost: 'MẤT TÍN HIỆU ĐIỆN CỰC',
                 eeg_no_sig_title: 'CHƯA NHẬN TÍN HIỆU ĐIỆN CỰC',
-                eeg_no_sig_desc: 'Kiểm tra tiếp xúc điện cực trán (Fp1) và điểm tham chiếu (A1/A2)',
-                radar_title: 'PHÂN BỔ TẦN SỐ SÓNG NÃO',
+                eeg_no_sig_desc: 'Kiểm tra tiếp xúc 3 điện cực băng đô trán: Chính (MID), Đối chiếu (END) và Tham chiếu (REF)',
+                radar_title: 'ĐẶC TRƯNG TÍN HIỆU ĐIỆN CƠ (EMG)',
                 dist_title: 'PHÂN BỔ TẦN SUẤT NHU CẦU',
                 dist_water: 'Nước / Uống',
                 dist_food: 'Cơm / Ăn',
@@ -702,10 +702,10 @@
                 th_action: 'Thao Tác',
                 btn_speak: 'ĐỌC LẠI',
                 waiting_logs: 'Hệ thống đang chờ dữ liệu giao tiếp...',
-                footer: 'HỆ THỐNG GIÁM SÁT Y SINH ĐIỆN NÃO BCI • KHOA HỒI SỨC THẦN KINH'
+                footer: 'HỆ THỐNG GIÁM SÁT Y SINH ĐIỆN CƠ (EMG-HMI) • KHOA HỒI SỨC TÍCH CỰC & PHỤC HỒI CHỨC NĂNG'
             },
             en: {
-                brand_title: 'BCI Clinical Monitoring System',
+                brand_title: 'EMG Biomedical Monitoring System',
                 brand_sub: 'REAL-TIME TELEMETRY MONITOR • NEUROLOGICAL ICU',
                 btn_lang: 'LANGUAGE: ENGLISH',
                 btn_theme_light: '☀️ LIGHT MODE',
@@ -717,35 +717,35 @@
                 demo_btn_on: 'SIMULATION ACTIVE',
                 fatigue_test_off: 'TEST ALARM',
                 fatigue_test_on: 'ALARM TESTING',
-                alarm_tag: 'CLINICAL ALARM: BRAIN REACHED FATIGUE THRESHOLD',
+                alarm_tag: 'CLINICAL ALARM: MUSCLE & COGNITIVE FATIGUE THRESHOLD',
                 alarm_msg: '"System detected brain fatigue. Pause BCI for 30 minutes to rest"',
                 alarm_nurse: 'Status: Emergency alert transmitted to nurse station.',
                 btn_rest: 'REST 30 MIN',
                 btn_dismiss: 'ACKNOWLEDGE ALARM',
                 btn_profile: 'SWITCH PATIENT',
                 lbl_diag: 'Diagnosis:',
-                lbl_att: 'Attention Level',
-                lbl_med: 'Meditation Level',
+                lbl_att: 'Contraction Strength',
+                lbl_med: 'Autonomy & Adaptation',
                 lbl_pwr: 'Power & Battery',
                 
                 bio_section_title: 'EXPERT SYSTEM BIOMARKERS',
-                bio_section_sub: 'PROPRIETARY CLINICAL EEG SPECTRAL ALGORITHMS',
+                bio_section_sub: 'REAL-TIME EMG ENVELOPE & BLINK PATTERN ANALYTICS',
                 bio_fatigue: 'FATIGUE INDEX',
                 bio_stress: 'STRESS LEVEL',
                 bio_sleep: 'SLEEP STATE',
                 bio_signal: 'SIGNAL QUALITY',
                 
-                desc_bio_fatigue: 'Based on Theta & Beta bands (TBR Index)',
-                desc_bio_stress: 'Panic & pain detection via High-Beta',
-                desc_bio_sleep: 'Delta band exploitation (0.5 - 4 Hz) for ICU',
-                desc_bio_signal: 'Forehead Fp1 & Reference A1/A2 contact',
+                desc_bio_fatigue: 'Peak amplitude drop & reaction latency',
+                desc_bio_stress: 'Rapid irregular bursts & sustained muscle tension',
+                desc_bio_sleep: 'Muscle silence & idle duration tracking (15m)',
+                desc_bio_signal: '3-electrode headband contact: MID - END - REF',
 
-                eeg_title: 'REAL-TIME EEG TRACE',
+                eeg_title: 'REAL-TIME EMG WAVEFORM & ENVELOPE',
                 sig_good: 'SIGNAL GOOD (0)',
                 sig_lost: 'ELECTRODE DISCONNECTED',
                 eeg_no_sig_title: 'NO ELECTRODE SIGNAL DETECTED',
-                eeg_no_sig_desc: 'Check electrode contact at forehead (Fp1) and reference (A1/A2)',
-                radar_title: 'BRAINWAVE SPECTRUM',
+                eeg_no_sig_desc: 'Check 3-electrode headband contact: Active (MID), Differential (END), and Reference (REF)',
+                radar_title: 'EMG SIGNAL PROFILE',
                 dist_title: 'NEED FREQUENCY DISTRIBUTION',
                 dist_water: 'Water / Drink',
                 dist_food: 'Food / Meal',
@@ -937,7 +937,7 @@
         const radarChart = new Chart(document.getElementById('radarChart').getContext('2d'), {
             type: 'radar',
             data: {
-                labels: ['Delta', 'Theta', 'Alpha', 'Beta', 'Gamma'],
+                labels: ['Biên độ', 'Độ rộng', 'Thích ứng', 'Lực co', 'Ổn định'],
                 datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: 'rgba(56, 189, 248, 0.12)', borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 2, pointBackgroundColor: '#38bdf8' }]
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: 'rgba(255,255,255,0.06)' }, grid: { color: 'rgba(255,255,255,0.06)' }, pointLabels: { color: '#94a3b8', font: { size: 11, weight: '600' } }, ticks: { display: false, min: 0, max: 100 } } }, plugins: { legend: { display: false } } }
@@ -1249,7 +1249,7 @@ function toggleRestBreak() {
             let safeBeta = Math.max(10, w.b);
             let safeAlpha = Math.max(10, w.a);
 
-            // 1. Ô 1: TỶ LỆ KIỆT SỨC (Fatigue Index / TBR) - NẾU KHÔNG CÓ SÓNG THÌ BẰNG 0
+            // 1. Ô 1: CHỈ SỐ MỎI CƠ (FATIGUE) (Fatigue Index / TBR) - NẾU KHÔNG CÓ SÓNG THÌ BẰNG 0
             let fatigueRatio = isZeroData ? 0.00 : ((w.t + (w.a * 0.5)) / safeBeta);
             let fatiguePct = isZeroData ? 0 : Math.min(100, Math.round((fatigueRatio / 3.5) * 100));
             document.getElementById('bio-fatigue-val').innerText = fatigueRatio.toFixed(2);

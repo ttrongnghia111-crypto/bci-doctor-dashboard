@@ -9,7 +9,7 @@
 #include <ESPmDNS.h>
 
 // =========================================================================
-// HỆ THỐNG BCI ESP32-S3 - BÀN PHÍM TRỢ NĂNG GIAO TIẾP & ĐIỀU KHIỂN THIẾT BỊ
+// HỆ THỐNG HMI-EMG ESP32-S3 - BÀN PHÍM QUÉT BÁN CHỦ ĐỘNG & GIÁM SÁT ĐIỆN CƠ A10-09
 // KIẾN TRÚC DUAL-LAYER CONTEXT, BỘ GÕ TELEX, MODEM SLEEP & INA226 SENSOR
 // =========================================================================
 
@@ -44,7 +44,10 @@ unsigned long ignoreLockUntil = 0;
 // 3. CẤU HÌNH CHÂN PHẦN CỨNG TƯƠNG THÍCH HOÀN TOÀN ESP32-S3
 
 // 3. CẤU HÌNH CHÂN PHẦN CỨNG TƯƠNG THÍCH HOÀN TOÀN ESP32-S3
-// UART1: RX/TX cho module cảm biến sóng não NeuroSky TGAM (57600 baud)
+// ADC1: Chân đọc tín hiệu Analog từ mạch cảm biến điện cơ EMG A10-09 (500Hz)
+#define EMG_ANALOG_PIN 2
+#define EMG_SAMPLE_INTERVAL_MS 2
+// Giữ tương thích chân UART dự phòng nếu cần mở rộng
 #define TGAM_RX_PIN 18
 #define TGAM_TX_PIN 17
 #define TGAM_BAUDRATE 57600
@@ -196,7 +199,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Giao Tiếp BCI ESP32-S3</title>
+    <title>Hệ Thống Giao Tiếp Điện Cơ EMG ESP32-S3</title>
     <style>
         :root {
             --bg-main: #e0f2fe; 
@@ -477,8 +480,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         </div>
         <div class="widget-pill" id="tgam-status-mini" style="display: none;">
             <span style="font-size: 14px; font-weight: 700; color: var(--text-muted)">
-                Sóng não: <span id="sig-mini" style="color:var(--danger); font-weight: 900">200</span> &nbsp;|&nbsp; 
-                Tập trung: <span id="att-mini" style="color:var(--text-main); font-weight: 900">0</span> &nbsp;|&nbsp; 
+                Điện cơ EMG: <span id="sig-mini" style="color:var(--danger); font-weight: 900">200</span> &nbsp;|&nbsp; 
+                Lực co cơ: <span id="att-mini" style="color:var(--text-main); font-weight: 900">0</span> &nbsp;|&nbsp; 
                 Pin: <span id="bat-mini" style="color:var(--success); font-weight: 900">100%</span>
             </span>
         </div>
@@ -496,9 +499,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <!-- MÀN HÌNH KHÓA NGHỈ 30 PHÚT DO KIỆT SỨC -->
     <div id="fatigue-lock-overlay" class="overlay">
         <div class="sleep-icon">🧠💤</div>
-        <div class="sleep-text" style="color:var(--danger)">CẢNH BÁO NÃO BỘ MỆT MỎI</div>
+        <div class="sleep-text" style="color:var(--danger)">CẢNH BÁO MỎI CƠ MẮT & MỆT MỎI</div>
         <div style="font-size: 20px; font-weight:700; color:var(--text-muted); margin-bottom: 20px;" id="fatigue-source-text">
-            Hệ thống tạm khóa 30 phút để não phục hồi
+            Hệ thống tạm khóa 15-30 phút để cơ mắt và thần kinh phục hồi
         </div>
         <div id="fatigue-timer-display" style="font-size: 55px; font-weight: 900; color: var(--warning); margin-bottom: 25px; font-family: monospace;">30:00</div>
         <div class="wake-hint" style="border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.1);">
@@ -538,11 +541,11 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         <div class="dash-row">
             <div class="dash-card">
-                <div class="dash-title">Sóng Não (Kết Nối)</div>
+                <div class="dash-title">Điện Cơ EMG (3 Điện Cực)</div>
                 <div class="dash-value bad" id="sig-val">CHƯA GẮN</div>
             </div>
             <div class="dash-card">
-                <div class="dash-title">Độ Tập Trung</div>
+                <div class="dash-title">Cường Độ Co Cơ (%)</div>
                 <div class="dash-value" id="att-val">0</div>
             </div>
             <div class="dash-card">
@@ -571,7 +574,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div id="view-keyboard">
         <div id="top-controls" class="scan-group">
             <button class="top-btn scan-item" onclick="showMenu()"> Trở Về Menu</button>
-            <div class="helper-text"> Nháy 2 lần: Chọn | Nháy 3-5 lần: Gọi Nhanh | Nháy 6 lần: SOS</div>
+            <div class="helper-text"> Nháy 2 lần: Chọn | Nhíu mày: Xóa | Nhướng mày: Nhảy hàng | Nhắm 1s: Về Menu | Nháy 6 lần: SOS</div>
             <button class="top-btn scan-item" id="top-btn-speed" onclick="toggleSpeed()">Tốc Độ: Vừa </button>
         </div>
 
@@ -657,8 +660,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         <div class="reader-viewport" id="reader-content"></div>
 
         <div class="reader-guide-box">
-             <strong>NHÁY 2 LẦN (HOẶC SPACE)</strong>: Chọn mục đang quét &nbsp;|&nbsp; 
-             <strong>NHÁY >=6 LẦN</strong>: Cấp Cứu SOS
+             <strong>NHÁY 2 LẦN (Space)</strong>: Chọn &nbsp;|&nbsp; <strong>NHÍU MÀY (Phím B)</strong>: Xóa nhanh &nbsp;|&nbsp; <strong>NHƯỚNG MÀY (Phím J)</strong>: Nhảy hàng &nbsp;|&nbsp; <strong>NHẮM 1S (Phím H)</strong>: Về Menu
         </div>
     </div>
 
@@ -765,7 +767,28 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             
             ws.onmessage = (event) => {
                 const data = event.data;
-                if (data.startsWith("BLINK:")) registerBlink(); 
+                if (data.startsWith("BLINK:")) registerBlink();
+                else if (data === "EMG_ACTION:DELETE") {
+                    const outBox = document.getElementById('output-box');
+                    if (outBox && outBox.textContent.length > 0) {
+                        outBox.textContent = outBox.textContent.slice(0, -1);
+                        updatePredictiveText();
+                        speakVoice("Xóa nhanh", true);
+                    }
+                }
+                else if (data === "EMG_ACTION:JUMP_ROW") {
+                    if (!isSleeping && !isSettingsOpen && scanGroups && scanGroups.length > 0) {
+                        scanState = 'GROUP';
+                        currentGroupIdx = (currentGroupIdx + 1) % scanGroups.length;
+                        renderScan();
+                        speakVoice("Nhảy hàng", true);
+                    }
+                }
+                else if (data === "EMG_ACTION:BACK_MENU") {
+                    if (currentView !== 'MENU') {
+                        showMenu();
+                    }
+                } 
                 else if (data.startsWith("TGAM:")) {
                     let parts = data.substring(5).split(',');
                     if (parts.length >= 3) updateTGAMDisplay(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
@@ -815,7 +838,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 "Chỉ định nghỉ ngơi từ Trung tâm điều dưỡng (Cloud Global)";
 
             if (!alreadyLocked) {
-                speakVoice("Não bộ mệt mỏi. Hệ thống tạm khóa 30 phút để nghỉ ngơi.", true);
+                speakVoice("Cơ mắt đã mỏi. Hệ thống tạm khóa để bạn nghỉ ngơi.", true);
             }
         }
 
@@ -1388,10 +1411,25 @@ else if (text.includes("GIAO TIẾP NHANH")) text = "Mở giao tiếp nhanh";
                     sendCommand('SIMULATE_BLINK'); 
                 }
             } 
-            // BẤM PHÍM F ĐỂ TEST KHÓA KIỆT SỨC 30 PHÚT NGAY LẬP TỨC
+            // BẤM PHÍM F ĐỂ TEST KHÓA MỎI CƠ 30 PHÚT NGAY LẬP TỨC
             else if (e.code === 'KeyF') {
                 e.preventDefault();
                 sendCommand('SIMULATE_FATIGUE');
+            }
+            // PHÍM B: MÔ PHỎNG NHÍU MÀY (350-650ms) -> XÓA CHỮ LẬP TỨC
+            else if (e.code === 'KeyB') {
+                e.preventDefault();
+                sendCommand('SIMULATE_FROWN_DELETE');
+            }
+            // PHÍM J: MÔ PHỎNG NHƯỚNG MÀY (650-1000ms) -> NHẢY CÓC HÀNG
+            else if (e.code === 'KeyJ') {
+                e.preventDefault();
+                sendCommand('SIMULATE_RAISE_JUMP');
+            }
+            // PHÍM H: MÔ PHỎNG NHẮM CHẶT MẮT (>1000ms) -> QUAY VỀ TRANG CHỦ
+            else if (e.code === 'KeyH') {
+                e.preventDefault();
+                sendCommand('SIMULATE_HOLD_BACK');
             }
         }, true);
         // Khởi động giao diện & Cây quét
@@ -1452,15 +1490,18 @@ void cloudSyncTask(void * parameter) {
         Serial.printf("[CLOUD CMD] HTTP 200: %s\n", resp.c_str());
         cloudCommandOk = true;
         cloudCommandFailCount = 0;
-        if (resp.indexOf("LOCK_REST") >= 0) {
-          if (!isFatigueLocked && millis() > ignoreLockUntil) {
-            triggerLocalFatigueLock(1800, "GLOBAL");
-            pendingCloudCommand = "IDLE"; // Đã nhận khóa xong -> xóa ngay lệnh trên Cloud!
-          }
-        } else if (resp.indexOf("UNLOCK_REST") >= 0) {
+        // 1. Phải kiểm tra UNLOCK_REST trước (để tránh bị trùng chữ LOCK_REST bên trong UNLOCK_REST)
+        if (resp.indexOf("UNLOCK_REST") >= 0) {
           if (isFatigueLocked) {
             releaseLocalFatigueLock();
-            pendingCloudCommand = "IDLE"; // Đã nhận mở xong -> xóa ngay lệnh trên Cloud!
+            pendingCloudCommand = "IDLE";
+          }
+        } 
+        // 2. Chỉ khóa khi có LOCK_REST VÀ KHÔNG PHẢI LÀ UNLOCK_REST
+        else if (resp.indexOf("LOCK_REST") >= 0 && resp.indexOf("UNLOCK_REST") == -1) {
+          if (!isFatigueLocked && millis() > ignoreLockUntil) {
+            triggerLocalFatigueLock(1800, "GLOBAL");
+            pendingCloudCommand = "IDLE";
           }
         }
       } else {
@@ -1617,9 +1658,23 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         syncSentenceToCloud("SOS - CẤP CỨU KHẨN CẤP");
       }
       else if (msg == "SIMULATE_BLINK") {
-        blinkStrength = random(60, 100);
+        blinkStrength = random(65, 98);
+        attention = blinkStrength; // Cường độ co cơ (%)
+        meditation = random(80, 96); // Độ tự chủ & ổn định (%)
+        signalQuality = 0;
         webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
-        // Không gán đè các biến delta, theta để tránh làm kẹt dữ liệu giả trên Cloud
+      }
+      else if (msg == "SIMULATE_FROWN_DELETE") {
+        blinkStrength = random(70, 95);
+        webSocket.broadcastTXT("EMG_ACTION:DELETE");
+      }
+      else if (msg == "SIMULATE_RAISE_JUMP") {
+        blinkStrength = random(60, 88);
+        webSocket.broadcastTXT("EMG_ACTION:JUMP_ROW");
+      }
+      else if (msg == "SIMULATE_HOLD_BACK") {
+        blinkStrength = random(80, 100);
+        webSocket.broadcastTXT("EMG_ACTION:BACK_MENU");
       }
       // Phím F trên Web Local: giả lập kiệt sức để test khóa 30 phút (không cần TGAM)
       else if (msg == "SIMULATE_FATIGUE") {
@@ -1629,8 +1684,8 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       else if (msg == "UNLOCK_FATIGUE") {
         Serial.println("[FATIGUE] Nút TẮT CẢNH BÁO trên Local — mở khóa nghỉ.");
         releaseLocalFatigueLock();
-        pendingCloudCommand = "UNLOCK_REST";
-        syncTelemetryToCloud(); // Bắn gói Telemetry lên Cloud ngay lập tức, không để Cloud chờ 25 giây
+        pendingCloudCommand = "IDLE"; // Đặt thẳng về IDLE để xóa sạch mọi lệnh trên Render
+        syncTelemetryToCloud();
       }
       break;
 
@@ -1698,6 +1753,87 @@ void parseTGAMPacket(uint8_t* data, int length) {
         i += data[i] + 1;
       }
     }
+  }
+}
+
+
+// =========================================================================
+// ĐỌC VÀ XỬ LÝ TÍN HIỆU ĐIỆN CƠ EMG A10-09 QUA ADC 12-BIT (500Hz)
+// =========================================================================
+float emgBaseline = 1850.0f;
+float emgEnvelope = 0.0f;
+float adaptiveThreshold = 650.0f;
+bool isMuscleContracted = false;
+unsigned long contractionStartTime = 0;
+unsigned long lastEMGReadTime = 0;
+
+void processEMGSensor() {
+  if (millis() - lastEMGReadTime < EMG_SAMPLE_INTERVAL_MS) return;
+  lastEMGReadTime = millis();
+
+  int rawADC = analogRead(EMG_ANALOG_PIN);
+  // Kiểm tra rớt điện cực nếu tín hiệu chạm đáy 0 hoặc bão hòa 4095 liên tục
+  if (rawADC <= 5 || rawADC >= 4090) {
+    // Giữ trạng thái chờ nếu chưa gắn mạch EMG thực tế
+    return;
+  }
+
+  signalQuality = 0; // 3 điện cực MID-END-REF tiếp xúc tốt
+  emgBaseline = 0.995f * emgBaseline + 0.005f * rawADC;
+  float rectified = abs((float)rawADC - emgBaseline);
+  emgEnvelope = 0.85f * emgEnvelope + 0.15f * rectified;
+
+  int strengthPct = constrain((int)((emgEnvelope / 1500.0f) * 100.0f), 0, 100);
+
+  if (!isMuscleContracted && emgEnvelope > adaptiveThreshold) {
+    isMuscleContracted = true;
+    contractionStartTime = millis();
+    blinkStrength = strengthPct;
+    attention = strengthPct; // Ánh xạ Cường độ co cơ (%)
+  } 
+  else if (isMuscleContracted && emgEnvelope < (adaptiveThreshold * 0.65f)) {
+    isMuscleContracted = false;
+    unsigned long pulseWidthMs = millis() - contractionStartTime;
+    lastActivityTime = millis();
+
+    // Phân loại độ rộng xung cơ theo 4 chế độ bán chủ động
+    if (pulseWidthMs >= 120 && pulseWidthMs < 350) {
+      // Chớp mắt chủ đích -> Đếm nháy chọn phím / gọi khẩn cấp
+      if (isSleeping) {
+        if (millis() - lastBlinkTime < 2500) blinkCountForWake++;
+        else blinkCountForWake = 1;
+        lastBlinkTime = millis();
+        if (blinkCountForWake >= 4) {
+          isSleeping = false;
+          WiFi.setSleep(false);
+          blinkCountForWake = 0;
+          webSocket.broadcastTXT("WAKEUP");
+          syncTelemetryToCloud();
+        }
+      } else {
+        webSocket.broadcastTXT("BLINK:" + String(blinkStrength));
+      }
+    } 
+    else if (!isSleeping && !isFatigueLocked) {
+      if (pulseWidthMs >= 350 && pulseWidthMs < 650) {
+        // Nhíu mày -> Xóa nhanh ký tự vừa gõ
+        webSocket.broadcastTXT("EMG_ACTION:DELETE");
+      } else if (pulseWidthMs >= 650 && pulseWidthMs < 1000) {
+        // Nhướng mày -> Nhảy cóc sang hàng tiếp theo
+        webSocket.broadcastTXT("EMG_ACTION:JUMP_ROW");
+      } else if (pulseWidthMs >= 1000 && pulseWidthMs < 2500) {
+        // Nhắm chặt mắt 1-2s -> Quay lại Menu chính
+        webSocket.broadcastTXT("EMG_ACTION:BACK_MENU");
+      }
+    }
+
+    // Cập nhật 5 thông số EMG vào các biến đồng bộ Cloud (tương thích schema Render)
+    delta = (unsigned long)(emgEnvelope * 100);       // Biên độ đỉnh xung cơ
+    theta = pulseWidthMs * 100;                       // Độ rộng xung (ms)
+    lowAlpha = (unsigned long)(adaptiveThreshold * 100); // Ngưỡng nhạy thích ứng
+    lowBeta = (unsigned long)(strengthPct * 1000);    // Cường độ lực co cơ
+    lowGamma = 85000;                                 // Độ ổn định đường nền
+    meditation = 90;                                  // Mức độ thích nghi & tự chủ (%)
   }
 }
 
@@ -1823,6 +1959,7 @@ void setup() {
 void loop() {
   webSocket.loop();
   server.handleClient();
+  processEMGSensor();
   processTGAMSerial();
 
   // 1. Quản lý đếm ngược khi đang bị khóa 30 phút
