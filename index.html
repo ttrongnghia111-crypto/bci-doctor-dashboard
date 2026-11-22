@@ -824,6 +824,7 @@
             document.getElementById('lbl-dist-rest').innerText = t.dist_rest;
             document.getElementById('lbl-dist-iot').innerText = t.dist_iot;
             document.getElementById('lbl-hourly-title').innerText = t.hourly_title;
+            document.getElementById('peak-text').innerText = t.peak_text_prefix + t.peak_none;
             document.getElementById('lbl-history-title').innerText = t.history_title;
             document.getElementById('search-input').placeholder = t.search_ph;
 
@@ -1092,23 +1093,23 @@
         }
 
         // ================= GỬI LỆNH KHÓA/MỞ NGHỈ NGƠI XUỐNG CLOUD CHO ESP32 =================
-async function syncRestCommandToCloud(action, durationSec = 1800) {
-    try {
-        // Trỏ thẳng về đúng server Render của hệ thống
-        await fetch('https://bci-api-server.onrender.com/api/command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                command: action,          // "LOCK_REST" hoặc "UNLOCK_REST"
-                duration: durationSec,    // Mặc định 1800s (30 phút)
-                timestamp: Date.now()
-            })
-        });
-        console.log(`[CLOUD CMD] Đã gửi lệnh: ${action} (${durationSec}s)`);
-    } catch (err) {
-        console.warn("[CLOUD CMD] Không thể gửi lệnh tới Cloud Server:", err);
-    }
-}
+        async function syncRestCommandToCloud(action, durationSec = 1800) {
+            try {
+                // Trỏ thẳng về đúng server Render của hệ thống
+                await fetch('https://bci-api-server.onrender.com/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        command: action,          // "LOCK_REST" hoặc "UNLOCK_REST"
+                        duration: durationSec,    // Mặc định 1800s (30 phút)
+                        timestamp: Date.now()
+                    })
+                });
+                console.log(`[CLOUD CMD] Đã gửi lệnh: ${action} (${durationSec}s)`);
+            } catch (err) {
+                console.warn("[CLOUD CMD] Không thể gửi lệnh tới Cloud Server:", err);
+            }
+        }
 
 
         // ================= QUẢN LÝ BÁO ĐỘNG KIỆT SỨC =================
@@ -1133,58 +1134,58 @@ async function syncRestCommandToCloud(action, durationSec = 1800) {
         }
 
         function triggerFatigueAlert(ratio, durationSec) {
-    const banner = document.getElementById('fatigue-alert-banner');
-    const dur = durationSec || 1800;
-    banner.style.display = 'flex';
-    speakText(currentLang === 'vi' ? 
-        "Cảnh báo lâm sàng: Não bộ mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
-        "Clinical alert: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
-    
-    // CHỈ GỬI LỆNH KHÓA KHI ĐƯỢC GỌI CHỦ ĐỘNG
-    syncRestCommandToCloud("LOCK_REST", dur);
-    startRestCountdown(dur);
-    document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
-        `"Thử nghiệm cảnh báo não bộ mệt mỏi. Đã kích hoạt chế độ nghỉ 30 phút"` :
-        `"Testing brain fatigue alert. Activated 30-minute rest break"`;
-}
+            const banner = document.getElementById('fatigue-alert-banner');
+            const dur = durationSec || 1800;
+            banner.style.display = 'flex';
+            speakText(currentLang === 'vi' ? 
+                "Cảnh báo lâm sàng: Não bộ mệt mỏi. Tạm ngưng BCI trong 30 phút để nghỉ ngơi." : 
+                "Clinical alert: System detected brain fatigue. Pause BCI for 30 minutes to rest.");
+            
+            // CHỈ GỬI LỆNH KHÓA KHI ĐƯỢC GỌI CHỦ ĐỘNG
+            syncRestCommandToCloud("LOCK_REST", dur);
+            startRestCountdown(dur);
+            document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
+                `"Thử nghiệm cảnh báo não bộ mệt mỏi. Đã kích hoạt chế độ nghỉ 30 phút"` :
+                `"Testing brain fatigue alert. Activated 30-minute rest break"`;
+        }
 
-let userDismissedLockUntil = 0;
+        let userDismissedLockUntil = 0;
 
-function dismissFatigueAlert() {
-    document.getElementById('fatigue-alert-banner').style.display = 'none';
-    userDismissedLockUntil = Date.now() + 30000; // Chặn mọi lệnh lặp trong 30 giây
-    tbrHighSince = 0;
-    isForcedFatigue = false;
-    isRestBreakActive = false;
+        function dismissFatigueAlert() {
+            document.getElementById('fatigue-alert-banner').style.display = 'none';
+            userDismissedLockUntil = Date.now() + 30000; // Chặn mọi lệnh lặp trong 30 giây
+            tbrHighSince = 0;
+            isForcedFatigue = false;
+            isRestBreakActive = false;
 
-    if (restTimerInterval) {
-        clearInterval(restTimerInterval);
-        restTimerInterval = null;
-    }
-    document.getElementById('btn-rest-toggle').innerText = i18n[currentLang].btn_rest;
-    document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
+            if (restTimerInterval) {
+                clearInterval(restTimerInterval);
+                restTimerInterval = null;
+            }
+            document.getElementById('btn-rest-toggle').innerText = i18n[currentLang].btn_rest;
+            document.getElementById('btn-rest-toggle').style.background = 'var(--rose)';
 
-    // Đưa nút thử nghiệm về màu bình thường
-    const btnForce = document.getElementById('btn-force-fatigue');
-    if (btnForce) {
-        btnForce.style.background = 'rgba(239, 68, 68, 0.08)';
-        btnForce.style.color = 'var(--rose)';
-        btnForce.innerText = i18n[currentLang].fatigue_test_off;
-    }
+            // Đưa nút thử nghiệm về màu bình thường
+            const btnForce = document.getElementById('btn-force-fatigue');
+            if (btnForce) {
+                btnForce.style.background = 'rgba(239, 68, 68, 0.08)';
+                btnForce.style.color = 'var(--rose)';
+                btnForce.innerText = i18n[currentLang].fatigue_test_off;
+            }
 
-    // Gửi ngay lệnh UNLOCK_REST lên Cloud Render
-    syncRestCommandToCloud("UNLOCK_REST", 0);
-    console.log("[ALARM] Bác sĩ đã xác nhận tắt báo động. Đã gửi UNLOCK_REST.");
-}
-function toggleRestBreak() {
-    if (isRestBreakActive) {
-        dismissFatigueAlert();
-    } else {
-        syncRestCommandToCloud("LOCK_REST", 30 * 60);
-        startRestCountdown(30 * 60);
-        document.getElementById('fatigue-alert-banner').style.display = 'flex';
-    }
-}
+            // Gửi ngay lệnh UNLOCK_REST lên Cloud Render
+            syncRestCommandToCloud("UNLOCK_REST", 0);
+            console.log("[ALARM] Bác sĩ đã xác nhận tắt báo động. Đã gửi UNLOCK_REST.");
+        }
+        function toggleRestBreak() {
+            if (isRestBreakActive) {
+                dismissFatigueAlert();
+            } else {
+                syncRestCommandToCloud("LOCK_REST", 30 * 60);
+                startRestCountdown(30 * 60);
+                document.getElementById('fatigue-alert-banner').style.display = 'flex';
+            }
+        }
 
         // ================= CẬP NHẬT GIAO DIỆN & TÍNH TOÁN DỮ LIỆU ĐIỆN NÃO =================
         function updateUI(tData) {
@@ -1214,7 +1215,7 @@ function toggleRestBreak() {
             document.getElementById('conn-text').innerText = isDemoMode ? (currentLang === 'vi' ? 'ĐANG MÔ PHỎNG' : 'SIMULATION') : (isRecent ? t.conn_online : t.conn_offline);
             document.getElementById('conn-text').style.color = isRecent ? 'var(--emerald)' : 'var(--rose)';
 
-            // HÀNG 1: Dữ liệu native từ TGAM và INA226
+            // HÀNG 1: Dữ liệu native từ TGAM, hoặc từ thuật toán
             document.getElementById('avg-att').innerText = att; 
             document.getElementById('bar-att').style.width = att + '%';
             document.getElementById('avg-med').innerText = med; 
@@ -1249,9 +1250,11 @@ function toggleRestBreak() {
             let safeBeta = Math.max(10, w.b);
             let safeAlpha = Math.max(10, w.a);
 
-            // 1. Ô 1: CHỈ SỐ MỎI CƠ (FATIGUE) (Fatigue Index / TBR) - NẾU KHÔNG CÓ SÓNG THÌ BẰNG 0
-            let fatigueRatio = isZeroData ? 0.00 : ((w.t + (w.a * 0.5)) / safeBeta);
-            let fatiguePct = isZeroData ? 0 : Math.min(100, Math.round((fatigueRatio / 3.5) * 100));
+            // 1. Ô 1: CHỈ SỐ MỎI CƠ (FATIGUE)
+            // Lấy từ cloud telemetry nếu có cfi thực tế (nếu không dùng giá trị giả lập)
+            let fatigueRatio = isDemoMode ? (isZeroData ? 0.00 : ((w.t + (w.a * 0.5)) / safeBeta)) : (tData.cfi ? (tData.cfi / 100.0 * 3.5) : (isZeroData ? 0.00 : ((w.t + (w.a * 0.5)) / safeBeta)));
+            let fatiguePct = isDemoMode ? (isZeroData ? 0 : Math.min(100, Math.round((fatigueRatio / 3.5) * 100))) : (tData.cfi !== undefined ? tData.cfi : (isZeroData ? 0 : Math.min(100, Math.round((fatigueRatio / 3.5) * 100))));
+            
             document.getElementById('bio-fatigue-val').innerText = fatigueRatio.toFixed(2);
             document.getElementById('bio-fatigue-pct').innerText = `(${fatiguePct}%)`;
             const barFatigueEl = document.getElementById('bar-bio-fatigue');
@@ -1259,12 +1262,12 @@ function toggleRestBreak() {
             barFatigueEl.style.width = fatiguePct + '%';
 
             // CHỈ CẬP NHẬT MÀU SẮC ĐỂ QUAN SÁT - TUYỆT ĐỐI KHÔNG TỰ ĐỘNG KHÓA
-            if (fatigueRatio >= 2.8 || isForcedFatigue) {
+            if (fatiguePct >= 75 || isForcedFatigue) {
                 document.getElementById('bio-fatigue-val').style.color = 'var(--rose)';
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'KIỆT SỨC' : 'EXHAUSTED';
                 badgeFatigueEl.style.color = 'var(--rose)';
                 barFatigueEl.style.background = 'var(--rose)';
-            } else if (fatigueRatio >= 1.8) {
+            } else if (fatiguePct >= 50) {
                 document.getElementById('bio-fatigue-val').style.color = 'var(--amber)';
                 badgeFatigueEl.innerText = currentLang === 'vi' ? 'CẬN MỆT MỎI' : 'WARNING';
                 badgeFatigueEl.style.color = 'var(--amber)';
@@ -1283,8 +1286,8 @@ function toggleRestBreak() {
                 let secLeft = parseInt(tData.fatigueSecLeft, 10) || 1800;
                 startRestCountdown(secLeft);
                 document.getElementById('fatigue-banner-msg').innerText = currentLang === 'vi' ?
-                    `"Hệ thống ghi nhận não bộ đã kiệt sức. Thiết bị đang trong chế độ nghỉ 30 phút"` :
-                    `"System confirmed brain fatigue. BCI is resting for 30 minutes"`;
+                    `"Hệ thống ghi nhận cơ đã mỏi. Thiết bị đang trong chế độ nghỉ 30 phút"` :
+                    `"System confirmed muscle fatigue. BCI is resting for 30 minutes"`;
             } else if (!isForcedFatigue && !isRestBreakActive) {
                 // Tự động tắt banner khi thiết bị đã mở khóa
                 banner.style.display = 'none';
@@ -1318,27 +1321,38 @@ function toggleRestBreak() {
             const sleepValEl = document.getElementById('bio-sleep-val');
             const sleepBadgeEl = document.getElementById('bio-sleep-badge');
             const barSleepEl = document.getElementById('bar-bio-sleep');
-            document.getElementById('bio-sleep-pct').innerText = `(${deltaPctOfTotal}% Delta)`;
-            barSleepEl.style.width = Math.min(100, deltaPctOfTotal * 1.5) + '%';
-
-            if (deltaPctOfTotal >= 60) {
+            
+            // Xử lý cờ Sleep thông minh từ kính truyền lên
+            if (tData.isSleeping) {
+                document.getElementById('bio-sleep-pct').innerText = currentLang === 'vi' ? `(Chế độ ngủ)` : `(Sleep mode)`;
+                barSleepEl.style.width = '100%';
                 sleepValEl.innerText = currentLang === 'vi' ? 'NGỦ SÂU' : 'DEEP SLEEP';
                 sleepValEl.style.color = 'var(--purple)';
-                sleepBadgeEl.innerText = currentLang === 'vi' ? 'GIAI ĐOẠN 3/4' : 'NREM STAGE 3';
+                sleepBadgeEl.innerText = currentLang === 'vi' ? 'NGỦ' : 'SLEEPING';
                 sleepBadgeEl.style.color = 'var(--purple)';
                 barSleepEl.style.background = 'var(--purple)';
-            } else if (deltaPctOfTotal >= 40) {
-                sleepValEl.innerText = currentLang === 'vi' ? 'NGỦ NÔNG' : 'LIGHT SLEEP';
-                sleepValEl.style.color = 'var(--cyan)';
-                sleepBadgeEl.innerText = currentLang === 'vi' ? 'GIAI ĐOẠN 1/2' : 'NREM STAGE 1';
-                sleepBadgeEl.style.color = 'var(--cyan)';
-                barSleepEl.style.background = 'var(--cyan)';
             } else {
-                sleepValEl.innerText = currentLang === 'vi' ? 'TỈNH TÁO' : 'AWAKE';
-                sleepValEl.style.color = 'var(--text-primary)';
-                sleepBadgeEl.innerText = currentLang === 'vi' ? 'ĐANG THỨC' : 'WAKEFUL';
-                sleepBadgeEl.style.color = 'var(--emerald)';
-                barSleepEl.style.background = 'var(--emerald)';
+                document.getElementById('bio-sleep-pct').innerText = `(${deltaPctOfTotal}% Delta)`;
+                barSleepEl.style.width = Math.min(100, deltaPctOfTotal * 1.5) + '%';
+                if (deltaPctOfTotal >= 60) {
+                    sleepValEl.innerText = currentLang === 'vi' ? 'NGỦ SÂU' : 'DEEP SLEEP';
+                    sleepValEl.style.color = 'var(--purple)';
+                    sleepBadgeEl.innerText = currentLang === 'vi' ? 'GIAI ĐOẠN 3/4' : 'NREM STAGE 3';
+                    sleepBadgeEl.style.color = 'var(--purple)';
+                    barSleepEl.style.background = 'var(--purple)';
+                } else if (deltaPctOfTotal >= 40) {
+                    sleepValEl.innerText = currentLang === 'vi' ? 'NGỦ NÔNG' : 'LIGHT SLEEP';
+                    sleepValEl.style.color = 'var(--cyan)';
+                    sleepBadgeEl.innerText = currentLang === 'vi' ? 'GIAI ĐOẠN 1/2' : 'NREM STAGE 1';
+                    sleepBadgeEl.style.color = 'var(--cyan)';
+                    barSleepEl.style.background = 'var(--cyan)';
+                } else {
+                    sleepValEl.innerText = currentLang === 'vi' ? 'TỈNH TÁO' : 'AWAKE';
+                    sleepValEl.style.color = 'var(--text-primary)';
+                    sleepBadgeEl.innerText = currentLang === 'vi' ? 'ĐANG THỨC' : 'WAKEFUL';
+                    sleepBadgeEl.style.color = 'var(--emerald)';
+                    barSleepEl.style.background = 'var(--emerald)';
+                }
             }
 
             // 4. Ô 4: CHẤT LƯỢNG TÍN HIỆU (Signal Quality - TGAM Poor Signal 0-200)
