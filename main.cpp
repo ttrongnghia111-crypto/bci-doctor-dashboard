@@ -48,27 +48,27 @@ void rgbRainbowTask(void * parameter);
 
 // =========================================================================
 // HỆ THỐNG HMI ESP32-S3 - BẢN HỢP NHẤT HOÀN HẢO:
-// 1. GIAO TIẾP: Chỉ Gật Đầu Để Chọn (Siêu ổn định, không khóa nhầm khi gõ nhanh)
+// 1. GIAO TIẾP: Kính IR (TCRT5000) + Gật Đầu (LSM6DS3) chống nhiễu 5 tầng
 // 2. Y SINH LSM6DS3: Tự động đo Mỏi cơ CFI + Co giật/Té ngã + Chống loét 120p + Nhiệt độ
-// 3. THỊ GIÁC MẮT MỜ: Hình vẽ SVG Mảng Lớn Tương Phản Cực Cao + Hỗ trợ Gắn Ảnh Thật
+// 3. THỊ GIÁC MẮT MỜ: 6 Nhóm ngữ cảnh (42 thẻ) + SVG tương phản cao + Hỗ trợ Gắn Ảnh Thật
 // =========================================================================
 
 WiFiMulti wifiMulti;
-WiFiClientSecure secureClient; 
+WiFiClientSecure secureClient;
 
 // 1. Cấu hình Wi-Fi Router
-const char* WIFI_SSID_1 = "iPhone";     
-const char* WIFI_PASS_1 = "27112012"; 
-const char* WIFI_SSID_2 = "Trong Nghia";     
+const char* WIFI_SSID_1 = "iPhone";
+const char* WIFI_PASS_1 = "27112012";
+const char* WIFI_SSID_2 = "Trong Nghia";
 const char* WIFI_PASS_2 = "109876543";
-const char* WIFI_SSID_3 = "Tuyet Nghia";     
-const char* WIFI_PASS_3 = "@tuyet1003@";   
+const char* WIFI_SSID_3 = "Tuyet Nghia";
+const char* WIFI_PASS_3 = "@tuyet1003@";
 
 const char* AP_SSID = "ESP32_BCI_SYSTEM";
 const char* AP_PASS = "12345678";
 
 // 2. ĐỊA CHỈ WEB SERVER CLOUD TRÊN RENDER
-const char* CLOUD_SERVER_URL    = "https://bci-api-server.onrender.com/api/logs"; 
+const char* CLOUD_SERVER_URL    = "https://bci-api-server.onrender.com/api/logs";
 const char* CLOUD_TELEMETRY_URL = "https://bci-api-server.onrender.com/api/telemetry";
 const char* CLOUD_COMMAND_URL   = "https://bci-api-server.onrender.com/api/command";
 
@@ -81,9 +81,9 @@ volatile bool cloudCommandOk = false;
 int cloudCommandFailCount = 0;
 unsigned long ignoreLockUntil = 0;
 
-// Quản lý Khóa/Mở điều khiển thông minh (Từ bảnv1 - Chống khóa nhầm 100%):
-// - Khi ĐANG MỞ: Gật nhanh liên hoàn thoải mái để chọn chữ, chỉ khóa khi Cúi giữ 1.2s hoặc bấm nút Khóa.
-// - Khi ĐANG KHÓA: Gật 3 cái liên tiếp (trong 3.5s) hoặc Cúi giữ 1.2s để Mở khóa lại.
+// Quản lý Khóa/Mở điều khiển thông minh:
+// - Khi ĐANG MỞ: Gật/nháy liên hoàn thoải mái để chọn, chỉ khóa khi Cúi giữ 1.2s / Nhắm mắt 1.8s / bấm nút Khóa.
+// - Khi ĐANG KHÓA: Gật/nháy 3 cái liên tiếp (trong 3.5s) hoặc giữ để Mở khóa lại.
 volatile bool isControlLocked = false;
 unsigned long unlockNodTimestamps[3] = {0, 0, 0};
 uint8_t unlockNodCount = 0;
@@ -102,7 +102,7 @@ String pendingCloudCommand = "";
 void syncSentenceToCloud(String sentence) { pendingCloudSentence = sentence; }
 void syncTelemetryToCloud() { pendingTelemetry = true; }
 
-// 3. CẤU HÌNH CHÂN I2C & NGOẠI VI ESP32-S3
+// 3. CẤU HÌNH CHÂN I2C & NGOẠI VI ESP32-S3 (PRO-CAD V8.1)
 #define I2C_SDA_PIN 8
 #define I2C_SCL_PIN 9
 
@@ -123,22 +123,22 @@ uint8_t LSM6DS3_ADDR = 0x6A; // Tự động dò cả 0x6A và 0x6B
 // GPIO Output Relay & Pin
 #define RELAY1_PIN 10
 #define RELAY2_PIN 11
-#define BATTERY_PIN 1 
+#define BATTERY_PIN 1
 
-// Sửa lại 3 dòng này cho chuẩn với mạch thực tế:
-#define IR_LED_PULSE_PIN 5  // Chân băm xung kích LED phát hồng ngoại 950nm
-#define IR_SENSOR_ADC_PIN 2 // Đọc điện áp phản xạ mí mắt
+// Chân phần cứng PRO-CAD V8.1
+#define IR_LED_PULSE_PIN 5  // Chân kích xung âm cho LED phát hồng ngoại 950nm (HIGH = TẮT, LOW = BẬT)
+#define IR_SENSOR_ADC_PIN 2 // Đọc điện áp phản xạ mí mắt (Phototransistor)
 #define BUZZER_PIN 4        // Chân kích Buzzer SMD 5020 qua Transistor S8050
 
 // Module LED RGB WS2812 onboard ESP32-S3 Super Mini (Chạy riêng lẻ cầu vồng)
 #ifndef RGB_LED_PIN
-  #define RGB_LED_PIN 48    // Chân LED RGB WS2812 onboard của ESP32-S3 Super Mini
+  #define RGB_LED_PIN 48
 #endif
 #define RGB_NUM_LEDS 1
 #define RGB_BRIGHTNESS_LEVEL 45 // Độ sáng 45/255 (~18%): Dịu mắt, không lóa, tiết kiệm năng lượng
 
 Adafruit_NeoPixel rgbLed(RGB_NUM_LEDS, RGB_LED_PIN, NEO_GRB + NEO_KHZ800);
-TaskHandle_t rgbRainbowTaskHandle = NULL; 
+TaskHandle_t rgbRainbowTaskHandle = NULL;
 
 // =========================================================================
 // CẤU TRÚC 2 MODE GẬT ĐẦU (NHẸ / NẶNG / KÉP) & BỘ LỌC Y SINH 5 TẦNG
@@ -165,16 +165,16 @@ struct NodModeProfile {
 
 const NodModeProfile PROFILE_LIGHT = {
   "LIGHT",
-  13.5f,  // triggerDps: Vượt qua vận tốc nâng lồng ngực khi thở sâu
-  16.5f,  // commitDps: Đạt 16.5 dps trên sườn xuống là chốt lệnh
-  1.35f,  // commitAngleDeg: Cúi 1.35 độ trong thời gian ngắn (<230ms) là ĂN LIỀN
-  0.78f,  // minJerk: Yêu cầu độ dứt khoát cơ cổ (nhịp thở tự nhiên có Jerk < 0.25)
-  22.0f,  // minTkeo: Năng lượng Teager-Kaiser vượt hẳn trôi sinh học
-  0.70f,  // yawVetoRatio: Khóa nếu đang xoay/lắc đầu ngang
-  0.45f,  // shockVetoG: Khóa nếu giường bị va chạm
-  25,     // minCommitMs: Hội tụ nhanh từ 25ms
-  230,    // maxWindowMs: Mọi cử động chậm > 230ms mới đạt 1.35 độ đều là trượt gối -> Hủy!
-  220     // cooldownMs: Cho phép gật liên tiếp cực nhanh để chọn các chữ gần nhau
+  13.5f,  // triggerDps
+  16.5f,  // commitDps
+  1.35f,  // commitAngleDeg
+  0.78f,  // minJerk
+  22.0f,  // minTkeo
+  0.70f,  // yawVetoRatio
+  0.45f,  // shockVetoG
+  25,     // minCommitMs
+  230,    // maxWindowMs
+  220     // cooldownMs
 };
 
 const NodModeProfile PROFILE_HEAVY = {
@@ -208,13 +208,13 @@ float accX = 0.0f, accY = 0.0f, accZ = 1.0f;
 float gyroX = 0.0f, gyroY = 0.0f, gyroZ = 0.0f;
 float totalRawGyro = 0.0f;
 float accMag = 1.0f;
-float sensorTempC = 34.5f; // Nhiệt độ nội suy LSM6DS3 (Thanh ghi 0x20-0x21)
+float sensorTempC = 34.5f;
 
 // Tầng 2: Vector trọng trường chuẩn hóa, đường nền Gyro & Bộ lọc bù 6-DOF (Pitch & Roll)
 float gravX = 0.0f, gravY = 0.0f, gravZ = 1.0f;
 float baseGyroX = 0.0f, baseGyroY = 0.0f, baseGyroZ = 0.0f;
-float compPitchAngle = 0.0f; // Góc Pitch từ bộ lọc bù 6-DOF (alpha = 0.96)
-float compRollAngle  = 0.0f; // Góc Roll từ bộ lọc bù 6-DOF (phục vụ giám sát 3D Cloud)
+float compPitchAngle = 0.0f;
+float compRollAngle  = 0.0f;
 float headTiltFromRestDeg = 0.0f;
 int lockedAxisIdx = 0;
 
@@ -248,12 +248,12 @@ float nodPeakTkeo = 0.0f;
 unsigned long commitLatencyMs = 0;
 
 // =========================================================================
-// CÁC TÍNH NĂNG Y SINH ĐỘC LẬP CỦA LSM6DS3 (BÊ TỪ FILE MAIN CŨ SANG)
+// CÁC TÍNH NĂNG Y SINH ĐỘC LẬP CỦA LSM6DS3
 // =========================================================================
 // 1. Chỉ số Mỏi cơ cổ thời gian thực (Cervical Fatigue Index - CFI 0..100%)
-float tremorBandEnergy = 0.0f;   // Năng lượng vi rung giật bệnh lý 8-12Hz
-float cfiScore = 12.0f;          // Chỉ số CFI (%)
-float baselinePeakDps = 32.0f;   // Đỉnh vận tốc góc trung bình khi cơ cổ khỏe
+float tremorBandEnergy = 0.0f;
+float cfiScore = 12.0f;
+float baselinePeakDps = 32.0f;
 
 // 2. Phát hiện Co giật, Co cứng & Té ngã (||A|| >= 2.5g & |w| >= 200 dps)
 uint8_t spasmConfirmCount = 0;
@@ -263,13 +263,13 @@ unsigned long lastSpasmAlertMs = 0;
 float anchorGravX = 0.0f, anchorGravY = 0.0f, anchorGravZ = 1.0f;
 unsigned long postureStaticStartMs = 0;
 unsigned long lastBedsoreAlertMs = 0;
-const unsigned long BEDSORE_LIMIT_MS = 120UL * 60UL * 1000UL; // 120 phút
+const unsigned long BEDSORE_LIMIT_MS = 120UL * 60UL * 1000UL;
 
 // Trạng thái hệ thống tương thích
-volatile int signalQuality = 0; 
-volatile int attention = 0;      
-volatile int meditation = 95;    
-volatile int blinkStrength = 0;  
+volatile int signalQuality = 0;
+volatile int attention = 0;
+volatile int meditation = 95;
+volatile int blinkStrength = 0;
 String lastNodTypeStr = "NONE";
 
 unsigned long delta = 0, theta = 0, lowAlpha = 0, highAlpha = 0, lowBeta = 0, highBeta = 0, lowGamma = 0, midGamma = 0;
@@ -293,7 +293,7 @@ volatile bool isSleeping = false;
 unsigned long lastActivityTime = 0;
 const unsigned long AUTO_SLEEP_TIMEOUT = 15UL * 60UL * 1000UL;
 unsigned long lastTelemetrySyncTime = 0;
-const unsigned long TELEMETRY_INTERVAL = 25000;  
+const unsigned long TELEMETRY_INTERVAL = 25000;
 
 // =========================================================================
 // MODULE CÒI PHẢN HỒI XÚC GIÁC ÂM THANH (NON-BLOCKING BUZZER SMD 5020)
@@ -417,8 +417,8 @@ void triggerLocalFatigueLock(unsigned long durationSec, String source) {
   fatigueLockStartTime = millis();
   fatigueLockDurationMs = durationSec * 1000UL;
   fatigueLockSource = source;
-  
-  triggerBuzzer(3); // Cảnh báo kiệt sức / khóa mỏi cơ 3 hồi dài
+
+  triggerBuzzer(3);
   String msg = "FATIGUE_LOCK:" + String(durationSec) + "," + source;
   webSocket.broadcastTXT(msg);
   Serial.printf("[FATIGUE ALERT] Kích hoạt khóa nghỉ %lu giây. Nguồn: %s\n", durationSec, source.c_str());
@@ -427,7 +427,7 @@ void triggerLocalFatigueLock(unsigned long durationSec, String source) {
 void releaseLocalFatigueLock() {
   if (isFatigueLocked) {
     isFatigueLocked = false;
-    cfiScore = 18.0f; // Reset CFI sau khi nghỉ phục hồi
+    cfiScore = 18.0f;
     ignoreLockUntil = millis() + 30000;
     webSocket.broadcastTXT("FATIGUE_UNLOCK");
     Serial.println("[FATIGUE] Đã mở khóa hệ thống.");
@@ -464,13 +464,13 @@ void setControlLock(bool lockState) {
   broadcastControlLock();
   syncTelemetryToCloud();
   if (isControlLocked) {
-    triggerBuzzer(3); // Khóa điều khiển -> 3 hồi dài cảnh báo
+    triggerBuzzer(3);
   } else {
-    triggerBuzzer(2); // Mở khóa -> 2 tiếng bíp ngắn
+    triggerBuzzer(2);
   }
 }
 
-// Kiểm tra 3 lần gật liên tiếp CHỈ DÙNG ĐỂ MỞ KHÓA khi hệ thống đang ở trạng thái Khóa!
+// Kiểm tra 3 lần gật/nháy liên tiếp CHỈ DÙNG ĐỂ MỞ KHÓA khi hệ thống đang ở trạng thái Khóa
 bool checkTripleNodToUnlock(unsigned long nowMs) {
   if (!isControlLocked) return false;
 
@@ -547,7 +547,7 @@ void initLSM6DS3() {
 }
 
 // =========================================================================
-// XỬ LÝ SỰ KIỆN GẬT ĐẦU (TÍCH HỢP CẬP NHẬT CHỈ SỐ MỎI CƠ CỔ CFI TỪ MAIN CŨ)
+// XỬ LÝ SỰ KIỆN GẬT ĐẦU / NHÁY MẮT & CẬP NHẬT CHỈ SỐ MỎI CƠ CỔ CFI
 // =========================================================================
 void fireInstantNodEvent(bool isHeavyNod, float angleDeg, float peakDps, float peakTkeo, unsigned long latencyMs) {
   unsigned long nowMs = millis();
@@ -562,8 +562,8 @@ void fireInstantNodEvent(bool isHeavyNod, float angleDeg, float peakDps, float p
       WiFi.setSleep(false);
       webSocket.broadcastTXT("WAKEUP");
       syncTelemetryToCloud();
-      triggerBuzzer(2); // Kêu 2 bíp mở khóa / đánh thức
-      Serial.println(">>> [SMART SLEEP WAKEUP!] Đánh thức hệ thống bằng cú GẬT ĐẦU MẠNH! <<<");
+      triggerBuzzer(2);
+      Serial.println(">>> [SMART SLEEP WAKEUP!] Đánh thức hệ thống thành công! <<<");
     }
     return;
   }
@@ -582,7 +582,7 @@ void fireInstantNodEvent(bool isHeavyNod, float angleDeg, float peakDps, float p
   delta = (unsigned long)(angleDeg * 100.0f);
   theta = (unsigned long)(peakTkeo);
 
-  // CẬP NHẬT CHỈ SỐ MỎI CƠ CỔ (CFI) SAU MỖI CÚ GẬT (Từ main cũ):
+  // CẬP NHẬT CHỈ SỐ MỎI CƠ CỔ (CFI)
   if (peakDps < baselinePeakDps * 0.72f) {
     cfiScore = constrain(cfiScore + 3.2f, 0.0f, 100.0f);
   } else {
@@ -596,19 +596,19 @@ void fireInstantNodEvent(bool isHeavyNod, float angleDeg, float peakDps, float p
     return;
   }
 
-  // 2. NẾU ĐANG KHÓA ĐIỀU KHIỂN (isControlLocked == true):
+  // 2. NẾU ĐANG KHÓA ĐIỀU KHIỂN:
   if (isControlLocked) {
     if (checkTripleNodToUnlock(nowMs)) {
       return;
     }
-    triggerBuzzer(1); // Phản hồi 1 bíp ngắn cho mỗi nhịp gật/nháy 1/3, 2/3
-    Serial.printf("[CONTROL LOCKED] Đã nhận %u/3 nhịp gật mở khóa.\n", unlockNodCount);
+    triggerBuzzer(1);
+    Serial.printf("[CONTROL LOCKED] Đã nhận %u/3 nhịp mở khóa.\n", unlockNodCount);
     return;
   }
 
   // 3. KHI ĐANG MỞ KHÓA: PHÁT LỆNH CHỌN Ô NGAY LẬP TỨC!
   triggerBuzzer(isHeavyNod ? 2 : 1);
-  Serial.printf(">>> [NOD CLICK - %s] Góc: %.2f deg | Đỉnh: %.1f dps | TKEO: %.1f | CFI: %.0f%% | Trễ: %lu ms <<<\n",
+  Serial.printf(">>> [CLICK - %s] Góc: %.2f deg | Đỉnh: %.1f dps | TKEO: %.1f | CFI: %.0f%% | Trễ: %lu ms <<<\n",
                 isHeavyNod ? "NẶNG" : "NHẸ",
                 angleDeg, peakDps, peakTkeo, cfiScore, latencyMs);
 
@@ -682,7 +682,7 @@ void processLSM6DS3() {
     if (spasmConfirmCount >= 2 && (now - lastSpasmAlertMs > 8000)) {
       lastSpasmAlertMs = now;
       spasmConfirmCount = 0;
-      triggerBuzzer(3); // Cảnh báo co giật / té ngã khẩn cấp 3 hồi dài
+      triggerBuzzer(3);
       Serial.printf("[MEDICAL ALERT] PHÁT HIỆN CO GIẬT / TÉ NGÃ! ||A||=%.2fg, |w|=%.1fdps\n", accMag, totalRawGyro);
       webSocket.broadcastTXT("ALERT:SPASM_FALL," + String(accMag, 2) + "," + String(totalRawGyro, 0));
       syncSentenceToCloud("CẢNH BÁO KHẨN CẤP: PHÁT HIỆN CO GIẬT / TÉ NGÃ (||A||=" + String(accMag, 1) + "g)");
@@ -723,7 +723,6 @@ void processLSM6DS3() {
     float dotPosture = constrain(uX * anchorGravX + uY * anchorGravY + uZ * anchorGravZ, -1.0f, 1.0f);
     float postureShiftDeg = acosf(dotPosture) * 57.29578f;
     if (postureShiftDeg > 8.5f) {
-      // Bệnh nhân đã đổi tư thế đầu -> Reset bộ đếm 120 phút
       postureStaticStartMs = now;
       anchorGravX = uX; anchorGravY = uY; anchorGravZ = uZ;
     } else if ((now - postureStaticStartMs >= BEDSORE_LIMIT_MS) && (now - lastBedsoreAlertMs > 300000UL)) {
@@ -766,7 +765,7 @@ void processLSM6DS3() {
   }
   secondaryRollRate *= 0.7f;
 
-  // Bộ lọc bù 6-DOF (Complementary Filter alpha = 0.96) tính góc 3D Pitch & Roll gửi lên Cloud
+  // Bộ lọc bù 6-DOF (Complementary Filter alpha = 0.96)
   float accPitchDeg = atan2f(accY, sqrtf(accX * accX + accZ * accZ)) * 57.29578f;
   float accRollDeg  = atan2f(-accX, accZ) * 57.29578f;
   compPitchAngle = 0.96f * (compPitchAngle + rawPitchRate * dt) + 0.04f * accPitchDeg;
@@ -845,7 +844,7 @@ void processLSM6DS3() {
 
   const NodModeProfile& activeProf = (isSleeping || currentNodMode == NOD_MODE_HEAVY) ? PROFILE_HEAVY : PROFILE_LIGHT;
 
-  // HỆ CHUYÊN GIA Y SINH 4: Hồi quy ngưỡng thích ứng theo độ mỏi cơ (Adaptive Fatigue Regression)
+  // HỆ CHUYÊN GIA Y SINH 4: Hồi quy ngưỡng thích ứng theo độ mỏi cơ
   float fatigueAssistScale = 1.0f;
   if (!isSleeping && currentNodMode != NOD_MODE_HEAVY && cfiScore > 35.0f) {
     fatigueAssistScale = constrain(1.0f - ((cfiScore - 35.0f) / 160.0f), 0.75f, 1.0f);
@@ -987,29 +986,11 @@ void processLSM6DS3() {
       break;
     }
   }
-  // ... (Phần code cũ kết thúc ở dòng: break; } })
-
-  // =========================================================================
-  // DEBUG SERIAL PLOTTER DÀNH RIÊNG CHO LSM6DS3 (Xuất mỗi 20ms / 50Hz)
-  // =========================================================================
-  static unsigned long lastSerialDebugMs = 0;
-  if (now - lastSerialDebugMs >= 20) {
-    lastSerialDebugMs = now;
-    
-    // In ra dạng CSV để xem trên Serial Plotter:
-    // RawPitch, FilteredPitch, TKEO_Energy, Jerk_Diff, PitchAngle(DOF-6)
-    //Serial.printf("%.1f, %.1f, %.1f, %.1f, %.1f\n", 
-    //              rawPitchRate,         
-    //              cleanPitchRate,       
-    //              currentTkeo * 0.1f,   
-    //              currentJerk * 5.0f,   
-    //              compPitchAngle        
-    //             );
-  }
-} // <--- Dấu đóng ngoặc của hàm processLSM6DS3()
+}
 
 // =========================================================================
 // THUẬT TOÁN ĐỌC VI SAI KHỬ NHIỄU NẮNG MẮT HỒNG NGOẠI TCRT5000 (200Hz)
+// Đã gộp bản vá Auto-Calibrate 2.5s chống kẹt đường nền từ main.txt
 // =========================================================================
 float irEmaFast = 0.0f;
 float irEmaSlow = 0.0f;
@@ -1022,22 +1003,21 @@ bool irImuVetoOccurred = false;
 unsigned long irLastBlinkEndMs = 0;
 
 void processTCRT5000() {
-
   static unsigned long lastIrMicros = 0;
   unsigned long nowMicros = micros();
   if (nowMicros - lastIrMicros < 5000) return; // Chu kỳ chuẩn 200Hz (dt = 0.005s)
   lastIrMicros = nowMicros;
 
- // Bước 1: Xuất HIGH (Tắt LED xanh), chờ 60us, đọc adc_ambient (Nền)
+  // Bước 1: Xuất HIGH (Tắt LED IR), chờ 60us, đọc adc_ambient (Nền)
   digitalWrite(IR_LED_PULSE_PIN, HIGH);
   delayMicroseconds(60);
   int adc_ambient = analogRead(IR_SENSOR_ADC_PIN);
 
-  // Bước 2: Xuất LOW (Bật LED xanh), chờ 60us, đọc adc_on (Phản xạ)
+  // Bước 2: Xuất LOW (Bật LED IR), chờ 60us, đọc adc_on (Phản xạ)
   digitalWrite(IR_LED_PULSE_PIN, LOW);
   delayMicroseconds(60);
   int adc_on = analogRead(IR_SENSOR_ADC_PIN);
-  
+
   // Trả lại mức HIGH để Tắt LED, bảo vệ mắt và tiết kiệm pin
   digitalWrite(IR_LED_PULSE_PIN, HIGH);
 
@@ -1061,6 +1041,16 @@ void processTCRT5000() {
   }
 
   float irDelta = fabsf(irEmaFast - irEmaSlow);
+  unsigned long nowMs = millis();
+
+  // BẢN VÁ AUTO-CALIBRATE (CHỐNG KẸT ĐƯỜNG NỀN):
+  // Nếu bị vọt tín hiệu kéo dài quá 2.5 giây (do kính trượt sát mặt) -> Tự reset đường nền
+  if (irBlinkActive && (nowMs - irBlinkStartMs > 2500)) {
+    irBlinkActive = false;
+    irEmaSlow = irEmaFast;
+    irDelta = 0.0f;
+    irHoldLockTriggered = false;
+  }
 
   if (!irBlinkActive && irDelta < 25.0f) {
     irBaselineNoise = 0.995f * irBaselineNoise + 0.005f * irDelta;
@@ -1080,10 +1070,9 @@ void processTCRT5000() {
   if (currentInputMode == INPUT_NOD_ONLY) {
     irBlinkActive = false;
     irHoldLockTriggered = false;
-    return; // THÊM LỆNH RETURN ĐỂ THOÁT SỚM NẾU CHỈ DÙNG IMU
+    return;
   }
 
-  unsigned long nowMs = millis();
   bool isOverThreshold = (irDelta >= irThreshold);
 
   // Bước 6 (Phân loại độ dài nháy mắt):
@@ -1100,7 +1089,7 @@ void processTCRT5000() {
       if (irDelta > irPeakDelta) irPeakDelta = irDelta;
       unsigned long pulseDurationMs = nowMs - irBlinkStartMs;
 
-      // Nhắm mắt giữ nguyên >= 1800ms: Tương đương Cúi giữ 1.2s -> Đổi trạng thái Khóa/Mở điều khiển
+      // Nhắm mắt giữ nguyên >= 1800ms: Đổi trạng thái Khóa/Mở điều khiển
       if (pulseDurationMs >= 1800 && !irHoldLockTriggered) {
         if (!irImuVetoOccurred) {
           irHoldLockTriggered = true;
@@ -1118,7 +1107,7 @@ void processTCRT5000() {
 
       if (!irHoldLockTriggered && !irImuVetoOccurred) {
         if (pulseDurationMs >= 90 && pulseDurationMs <= 420) {
-          // Nháy mắt chủ đích (90ms - 420ms) kèm cooldown 300ms -> Kích hoạt chọn ô ngay lập tức
+          // Nháy mắt chủ đích (90ms - 420ms) kèm cooldown 300ms -> Kích hoạt chọn ô ngay
           if (nowMs - irLastBlinkEndMs >= 300) {
             Serial.printf(">>> [IR BLINK CLICK] Xung: %lu ms | Delta: %.1f | Ngưỡng: %.1f <<<\n",
                           pulseDurationMs, irPeakDelta, irThreshold);
@@ -1140,23 +1129,20 @@ void processTCRT5000() {
       irImuVetoOccurred = false;
     }
   }
-  
-  // =========================================================================
+
   // DEBUG LÊN WEB UI: TEST PHẦN CỨNG MẮT HỒNG NGOẠI TCRT5000
-  // =========================================================================
   static unsigned long lastIrWebDebugMs = 0;
-  if (nowMs - lastIrWebDebugMs >= 150) { // Cập nhật mỗi 150ms để không nghẽn WiFi
+  if (nowMs - lastIrWebDebugMs >= 150) {
     lastIrWebDebugMs = nowMs;
     if (webSocket.connectedClients() > 0) {
-      String irMsg = "IR_DEBUG:" + String(adc_ambient) + "," + 
-                     String(adc_on) + "," + 
-                     String(irDelta, 1) + "," + 
+      String irMsg = "IR_DEBUG:" + String(adc_ambient) + "," +
+                     String(adc_on) + "," +
+                     String(irDelta, 1) + "," +
                      String(irThreshold, 1);
       webSocket.broadcastTXT(irMsg);
     }
   }
-} // <--- Đã sửa lỗi mất dấu ngoặc ở đây
-
+}
 
 // =========================================================================
 // KHỞI TẠO & ĐỌC CẢM BIẾN NĂNG LƯỢNG INA226 (CHUẨN XÁC V, mA, mW, % PIN)
@@ -1166,7 +1152,7 @@ void initINA226() {
   if (Wire.endTransmission() == 0) {
     hasINA226 = true;
     Serial.println("[INA226] Nhận diện thành công cảm biến INA226 tại 0x40!");
-    
+
     Wire.beginTransmission(INA226_I2C_ADDR);
     Wire.write(0x00);
     Wire.write(0x45);
@@ -1245,7 +1231,7 @@ void readINA226() {
 
 // =========================================================================
 // GIAO DIỆN THẤU CẢM TÍCH HỢP ẢNH THỰC TẾ & QUÉT ĐỒNG BỘ GIỌNG ĐỌC THÔNG MINH
-// Khắc phục triệt để lỗi ngắt giọng đọc TTS & giảm 100% rủi ro chọn nhầm hàng
+// (Giữ nguyên bộ CSS chuẩn từ main.cpp + bổ sung đầy đủ quickData 42 ngữ cảnh)
 // =========================================================================
 const char INDEX_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -1300,7 +1286,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
+
         body {
             font-family: 'Segoe UI', Quicksand, Roboto, sans-serif;
             background: linear-gradient(180deg, var(--bg-sky-top) 0%, var(--bg-sky-bottom) 100%);
@@ -2099,7 +2085,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             </span>
         </div>
     </div>
-    
+
     <div id="ir-debug-banner" style="position: fixed; top: 70px; left: 20px; background: rgba(15,23,42,0.85); color: #fff; padding: 10px 18px; border-radius: 12px; border: 2px solid #f59e0b; font-size: 13px; font-weight: 800; z-index: 999; display: none; backdrop-filter: blur(10px);">
         IR - Nền: <span id="ir-amb" style="color:#38bdf8">0</span> | Phản xạ: <span id="ir-on" style="color:#fb7185">0</span> | Delta: <span id="ir-delta" style="color:#34d399">0.0</span> | Ngưỡng: <span id="ir-thresh" style="color:#fbbf24">65.0</span>
     </div>
@@ -2374,6 +2360,68 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             feel_tv: `<svg viewBox="0 0 120 120"><rect x="18" y="28" width="84" height="58" rx="10" fill="#fff"/><rect x="26" y="36" width="68" height="42" rx="6" fill="#0284c7"/><rect x="42" y="92" width="36" height="8" rx="4" fill="#fde047"/></svg>`
         };
 
+        // =========================================================================
+        // DỮ LIỆU 6 NHÓM NGỮ CẢNH & 36 THẺ GIAO TIẾP NHANH (TỔNG 42 MỤC)
+        // =========================================================================
+        const quickData = {
+            main: [
+                { id: 'cat_pain', title: 'Đau & Khó Chịu', voice: 'Nhóm đau và khó chịu', target: 'pain', bg: 'linear-gradient(135deg, #e11d48, #be123c)' },
+                { id: 'cat_food', title: 'Ăn Uống & Thuốc', voice: 'Nhóm ăn uống và thuốc', target: 'food', bg: 'linear-gradient(135deg, #0284c7, #0369a1)' },
+                { id: 'cat_life', title: 'Sinh Hoạt & Tư Thế', voice: 'Nhóm sinh hoạt và tư thế', target: 'life', bg: 'linear-gradient(135deg, #0d9488, #0f766e)' },
+                { id: 'cat_help', title: 'Gọi Hỗ Trợ Y Tế', voice: 'Nhóm gọi hỗ trợ y tế', target: 'help', bg: 'linear-gradient(135deg, #d97706, #b45309)' },
+                { id: 'cat_room', title: 'Phòng & Thiết Bị', voice: 'Nhóm phòng và thiết bị', target: 'room', bg: 'linear-gradient(135deg, #4f46e5, #3730a3)' },
+                { id: 'cat_feel', title: 'Cảm Xúc & Trả Lời', voice: 'Nhóm cảm xúc và trả lời', target: 'feel', bg: 'linear-gradient(135deg, #059669, #047857)' }
+            ],
+            pain: [
+                { id: 'pain_head',  title: 'Đau Đầu / Chóng Mặt', voice: 'Đau đầu chóng mặt', speakOut: 'Tôi bị đau đầu và chóng mặt', bg: 'linear-gradient(135deg, #e11d48, #be123c)' },
+                { id: 'pain_chest', title: 'Đau Ngực / Khó Thở',  voice: 'Đau ngực khó thở',  speakOut: 'Tôi bị đau ngực và khó thở, cần kiểm tra ngay', bg: 'linear-gradient(135deg, #dc2626, #991b1b)' },
+                { id: 'pain_belly', title: 'Đau Bụng / Buồn Nôn', voice: 'Đau bụng buồn nôn', speakOut: 'Tôi bị đau bụng và buồn nôn', bg: 'linear-gradient(135deg, #ea580c, #c2410c)' },
+                { id: 'pain_back',  title: 'Đau Lưng / Mỏi Cổ',   voice: 'Đau lưng mỏi cổ',   speakOut: 'Tôi bị đau lưng và mỏi cổ', bg: 'linear-gradient(135deg, #d97706, #b45309)' },
+                { id: 'pain_limbs', title: 'Tê Mỏi Tay Chân',     voice: 'Tê mỏi tay chân',   speakOut: 'Tay chân tôi đang bị tê mỏi', bg: 'linear-gradient(135deg, #c026d3, #86198f)' },
+                { id: 'pain_wound', title: 'Đau Vết Mổ / Ngứa',   voice: 'Đau vết mổ hoặc ngứa', speakOut: 'Tôi bị đau hoặc ngứa ở vết mổ', bg: 'linear-gradient(135deg, #be185d, #831843)' }
+            ],
+            food: [
+                { id: 'food_water',    title: 'Uống Nước',   voice: 'Uống nước',   speakOut: 'Tôi khát, cho tôi uống nước', bg: 'linear-gradient(135deg, #0284c7, #0369a1)' },
+                { id: 'food_milk',     title: 'Uống Sữa',    voice: 'Uống sữa',    speakOut: 'Cho tôi uống sữa', bg: 'linear-gradient(135deg, #0891b2, #155e75)' },
+                { id: 'food_porridge', title: 'Ăn Cháo',     voice: 'Ăn cháo',     speakOut: 'Tôi đói, cho tôi ăn cháo', bg: 'linear-gradient(135deg, #d97706, #b45309)' },
+                { id: 'food_rice',     title: 'Ăn Cơm',      voice: 'Ăn cơm',      speakOut: 'Tôi muốn ăn cơm', bg: 'linear-gradient(135deg, #ca8a04, #854d0e)' },
+                { id: 'food_fruit',    title: 'Ăn Trái Cây', voice: 'Ăn trái cây', speakOut: 'Cho tôi ăn một ít trái cây', bg: 'linear-gradient(135deg, #16a34a, #166534)' },
+                { id: 'food_meds',     title: 'Uống Thuốc',  voice: 'Uống thuốc',  speakOut: 'Đến giờ uống thuốc rồi, cho tôi uống thuốc', bg: 'linear-gradient(135deg, #e11d48, #9f1239)' }
+            ],
+            life: [
+                { id: 'life_toilet',  title: 'Đi Vệ Sinh',      voice: 'Đi vệ sinh',      speakOut: 'Tôi cần đi vệ sinh', bg: 'linear-gradient(135deg, #0284c7, #075985)' },
+                { id: 'life_liedown', title: 'Hạ Giường Nằm',   voice: 'Hạ giường nằm',   speakOut: 'Hỗ trợ hạ giường cho tôi nằm xuống', bg: 'linear-gradient(135deg, #4f46e5, #3730a3)' },
+                { id: 'life_situp',   title: 'Nâng Đầu Ngồi',   voice: 'Nâng đầu ngồi',   speakOut: 'Hỗ trợ nâng đầu giường cho tôi ngồi dậy', bg: 'linear-gradient(135deg, #0d9488, #115e59)' },
+                { id: 'life_turn',    title: 'Hỗ Trợ Trở Mình', voice: 'Hỗ trợ trở mình', speakOut: 'Giúp tôi nghiêng người trở mình cho đỡ mỏi', bg: 'linear-gradient(135deg, #059669, #065f46)' },
+                { id: 'life_clothes', title: 'Thay Áo / Lau Người', voice: 'Thay áo lau người', speakOut: 'Giúp tôi lau người và thay quần áo', bg: 'linear-gradient(135deg, #7c3aed, #5b21b6)' },
+                { id: 'life_blanket', title: 'Đắp Chăn / Gối',  voice: 'Đắp chăn chỉnh gối', speakOut: 'Giúp tôi đắp chăn và chỉnh lại gối', bg: 'linear-gradient(135deg, #2563eb, #1e40af)' }
+            ],
+            help: [
+                { id: 'help_doctor',  title: 'Gọi Bác Sĩ (SOS)', voice: 'Gọi bác sĩ cấp cứu', speakOut: 'Cấp cứu! Cần bác sĩ giúp đỡ gấp!', isSOS: true, bg: 'linear-gradient(135deg, #dc2626, #991b1b)' },
+                { id: 'help_nurse',   title: 'Gọi Y Tá',         voice: 'Gọi y tá',           speakOut: 'Nhờ gọi y tá điều dưỡng giúp tôi', bg: 'linear-gradient(135deg, #e11d48, #be123c)' },
+                { id: 'help_family',  title: 'Gọi Người Nhà',    voice: 'Gọi người nhà',      speakOut: 'Nhờ gọi người nhà vào với tôi', bg: 'linear-gradient(135deg, #0284c7, #0369a1)' },
+                { id: 'help_bp',      title: 'Đo Huyết Áp',      voice: 'Đo huyết áp',        speakOut: 'Nhờ đo huyết áp và kiểm tra sức khỏe cho tôi', bg: 'linear-gradient(135deg, #d97706, #b45309)' },
+                { id: 'help_breath',  title: 'Hỗ Trợ Hô Hấp',    voice: 'Hỗ trợ hô hấp hút đờm', speakOut: 'Tôi khó thở, cần hỗ trợ hô hấp hoặc hút đờm', bg: 'linear-gradient(135deg, #0891b2, #155e75)' },
+                { id: 'help_massage', title: 'Xoa Bóp Giảm Mỏi', voice: 'Xoa bóp giảm mỏi',   speakOut: 'Nhờ xoa bóp tay chân giúp tôi đỡ mỏi', bg: 'linear-gradient(135deg, #059669, #047857)' }
+            ],
+            room: [
+                { id: 'room_light', title: 'Bật / Tắt Đèn',  voice: 'Bật tắt đèn phòng', speakOut: 'Đã chuyển trạng thái đèn phòng', sysCmd: 'R1', bg: 'linear-gradient(135deg, #d97706, #b45309)' },
+                { id: 'room_fan',   title: 'Bật / Tắt Quạt', voice: 'Bật tắt quạt máy',  speakOut: 'Đã chuyển trạng thái quạt máy',  sysCmd: 'R2', bg: 'linear-gradient(135deg, #0284c7, #0369a1)' },
+                { id: 'room_cold',  title: 'Phòng Hơi Lạnh', voice: 'Phòng hơi lạnh',    speakOut: 'Tôi thấy hơi lạnh, nhờ tăng nhiệt độ hoặc tắt gió', bg: 'linear-gradient(135deg, #2563eb, #1e3a8a)' },
+                { id: 'room_hot',   title: 'Phòng Hơi Nóng', voice: 'Phòng hơi nóng',    speakOut: 'Tôi thấy hơi nóng, nhờ bật mát hơn', bg: 'linear-gradient(135deg, #ea580c, #9a3412)' },
+                { id: 'room_book',  title: 'Đọc Sách Báo',   voice: 'Mở đọc sách báo',   speakOut: 'Mở trình đọc sách báo', sysCmd: 'OPEN_READER', bg: 'linear-gradient(135deg, #4f46e5, #3730a3)' },
+                { id: 'room_lock',  title: 'Khóa Tạm Nghỉ',  voice: 'Khóa tạm nghỉ',     speakOut: 'Khóa tạm nghỉ điều khiển', sysCmd: 'LOCK_NOW', bg: 'linear-gradient(135deg, #e11d48, #9f1239)' }
+            ],
+            feel: [
+                { id: 'feel_good',   title: 'Tôi Thấy Ổn',      voice: 'Tôi thấy ổn và khỏe', speakOut: 'Tôi cảm thấy ổn và dễ chịu rồi', bg: 'linear-gradient(135deg, #059669, #047857)' },
+                { id: 'feel_sleepy', title: 'Tôi Buồn Ngủ',     voice: 'Tôi buồn ngủ',        speakOut: 'Tôi buồn ngủ, muốn nghỉ ngơi một lát', bg: 'linear-gradient(135deg, #4f46e5, #312e81)' },
+                { id: 'feel_thanks', title: 'Cảm Ơn Nhiều',     voice: 'Cảm ơn nhiều',        speakOut: 'Cảm ơn bạn rất nhiều', bg: 'linear-gradient(135deg, #db2777, #9d174d)' },
+                { id: 'feel_yes',    title: 'Đúng / Đồng Ý',    voice: 'Đúng đồng ý',         speakOut: 'Vâng, đúng rồi, tôi đồng ý', bg: 'linear-gradient(135deg, #16a34a, #166534)' },
+                { id: 'feel_no',     title: 'Không / Chưa Cần', voice: 'Không chưa cần',      speakOut: 'Không phải, tôi chưa cần', bg: 'linear-gradient(135deg, #e11d48, #9f1239)' },
+                { id: 'feel_tv',     title: 'Mở Tivi / Nhạc',   voice: 'Mở ti vi hoặc nhạc',  speakOut: 'Nhờ mở ti vi hoặc bật nhạc nhẹ giúp tôi', bg: 'linear-gradient(135deg, #0284c7, #075985)' }
+            ]
+        };
+
         const storyLibrary = [
             {
                 title: "Hạt Giống Tâm Hồn: Tia Nắng Buổi Sáng",
@@ -2406,17 +2454,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         // =========================================================================
         // 3 CHẾ ĐỘ QUÉT THÍCH ỨNG THÔNG MINH (SMART / DIRECT_ITEM / ROW_COL)
-        // - SMART (Mặc định): Quét Từng Ô (1 nhịp ăn ngay) ở Menu, Hình Ảnh, Đọc Báo;
-        //                     Quét Hàng-Cột chống trượt ở Bàn Phím Gõ Chữ.
-        // - ITEM (Từng Ô): Quét Từng Ô 1 nhịp trên mọi màn hình (Rủi ro nhầm = 0%).
-        // - ROW_COL (Hàng-Cột): Quét Hàng trước, Cột sau truyền thống.
         // =========================================================================
         let scanStrategy = localStorage.getItem('aac_scan_strategy') || 'SMART';
 
         function isDirectItemScanActive() {
             if (scanStrategy === 'ITEM') return true;
             if (scanStrategy === 'ROW_COL') return false;
-            // SMART: Trang chủ, Bảng Hình Ảnh, Đọc Báo dùng Quét Từng Ô trực tiếp (1 nhịp chọn ngay)
             return (currentView !== 'KEYBOARD');
         }
 
@@ -2520,7 +2563,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function buildVisualBoxHTML(item) {
             const svgCode = pictograms[item.id] || pictograms.cat_help;
             const savedPhoto = localStorage.getItem('aac_photo_' + item.id);
-            if (savedPhoto) {
+            if (savedPhoto && useRealPhotoMode) {
                 return `<img class="real-photo-img" src="${savedPhoto}" alt="${item.title}">`;
             }
             if (useRealPhotoMode && item.photo) {
@@ -2690,7 +2733,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function connectWebSocket() {
             ws = new WebSocket(`ws://${hostIP}:81`);
             ws.onclose = () => { setTimeout(connectWebSocket, 2500); };
-            
+
             ws.onmessage = (event) => {
                 const data = event.data;
                 if (data === "LOCK_CONTROL:ON") {
@@ -2759,7 +2802,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                         }
                         if (cfiMini) cfiMini.innerText = `${cfi}%`;
                     }
-                } 
+                }
                 else if (data.startsWith("INA:")) {
                     let parts = data.substring(4).split(',');
                     if (parts.length >= 4) {
@@ -2772,7 +2815,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 else if (data.startsWith("RELAY:")) {
                     let parts = data.substring(6).split(',');
                     updateRelayUI(1, parts[0] === '1'); updateRelayUI(2, parts[1] === '1');
-                } 
+                }
                 else if (data.startsWith("FATIGUE_LOCK:")) {
                     let parts = data.substring(13).split(',');
                     enterFatigueLockMode(parseInt(parts[0]));
@@ -2780,8 +2823,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 else if (data === "FATIGUE_UNLOCK") exitFatigueLockMode();
                 else if (data === "SLEEPING") enterSleepMode();
                 else if (data === "WAKEUP") exitSleepMode();
-                
-                // THÊM ĐOẠN NHẬN DỮ LIỆU DEBUG HỒNG NGOẠI:
                 else if (data.startsWith("IR_DEBUG:")) {
                     let parts = data.substring(9).split(',');
                     if(parts.length >= 4) {
@@ -2795,7 +2836,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                         }
                     }
                 }
-            }; // Kết thúc ws.onmessage
+            };
         }
         connectWebSocket();
 
@@ -2852,12 +2893,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 if(elSigMini) { elSigMini.innerText = "Tạm Khóa"; elSigMini.style.color = "var(--warning)"; }
                 return;
             }
-            if (sig === 0) { 
-                elSig.innerText = "Sẵn Sàng"; elSig.className = "dash-value good"; 
-                if(elSigMini) { elSigMini.innerText = "Sẵn Sàng"; elSigMini.style.color = "var(--success)"; } 
-            } else { 
-                elSig.innerText = "Chờ Cảm Biến"; elSig.className = "dash-value bad"; 
-                if(elSigMini) { elSigMini.innerText = "Chờ Cảm Biến"; elSigMini.style.color = "var(--warning)"; } 
+            if (sig === 0) {
+                elSig.innerText = "Sẵn Sàng"; elSig.className = "dash-value good";
+                if(elSigMini) { elSigMini.innerText = "Sẵn Sàng"; elSigMini.style.color = "var(--success)"; }
+            } else {
+                elSig.innerText = "Chờ Cảm Biến"; elSig.className = "dash-value bad";
+                if(elSigMini) { elSigMini.innerText = "Chờ Cảm Biến"; elSigMini.style.color = "var(--warning)"; }
             }
         }
 
@@ -2872,8 +2913,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function showMenu() {
             currentView = 'MENU';
             stopScannerTimer();
-            document.getElementById('view-keyboard').style.display = 'none'; 
-            document.getElementById('view-reader').style.display = 'none'; 
+            document.getElementById('view-keyboard').style.display = 'none';
+            document.getElementById('view-reader').style.display = 'none';
             document.getElementById('view-quick').style.display = 'none';
             document.getElementById('view-menu').style.display = 'flex';
             document.getElementById('tgam-status-mini').style.display = 'none';
@@ -2886,8 +2927,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function showKeyboard() {
             currentView = 'KEYBOARD';
             stopScannerTimer();
-            document.getElementById('view-menu').style.display = 'none'; 
-            document.getElementById('view-reader').style.display = 'none'; 
+            document.getElementById('view-menu').style.display = 'none';
+            document.getElementById('view-reader').style.display = 'none';
             document.getElementById('view-quick').style.display = 'none';
             document.getElementById('view-keyboard').style.display = 'flex';
             document.getElementById('tgam-status-mini').style.display = 'flex';
@@ -2900,8 +2941,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function showReader() {
             currentView = 'READER';
             stopScannerTimer();
-            document.getElementById('view-menu').style.display = 'none'; 
-            document.getElementById('view-keyboard').style.display = 'none'; 
+            document.getElementById('view-menu').style.display = 'none';
+            document.getElementById('view-keyboard').style.display = 'none';
             document.getElementById('view-quick').style.display = 'none';
             document.getElementById('view-reader').style.display = 'flex';
             document.getElementById('tgam-status-mini').style.display = 'flex';
@@ -2960,15 +3001,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             grid.innerHTML = html;
 
             grid.querySelectorAll('.scan-item').forEach(btn => {
-                btn.addEventListener('click', (e) => { 
-                    e.preventDefault(); e.stopPropagation(); 
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault(); e.stopPropagation();
                     if (isPhotoEditMode) {
                         pendingPhotoSlotKey = btn.getAttribute('data-slot');
                         document.getElementById('real-photo-input').click();
                         return;
                     }
-                    executeAction(btn); 
-                    if (document.activeElement) document.activeElement.blur(); 
+                    executeAction(btn);
+                    if (document.activeElement) document.activeElement.blur();
                 });
             });
 
@@ -2979,9 +3020,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function showQuick() {
             currentView = 'QUICK';
             stopScannerTimer();
-            document.getElementById('view-menu').style.display = 'none'; 
-            document.getElementById('view-keyboard').style.display = 'none'; 
-            document.getElementById('view-reader').style.display = 'none'; 
+            document.getElementById('view-menu').style.display = 'none';
+            document.getElementById('view-keyboard').style.display = 'none';
+            document.getElementById('view-reader').style.display = 'none';
             document.getElementById('view-quick').style.display = 'flex';
             document.getElementById('tgam-status-mini').style.display = 'flex';
             if (isAutoScrolling) toggleAutoScroll();
@@ -2990,12 +3031,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         // =========================================================================
-        // HỆ THỐNG GIỌNG ĐỌC ĐỒNG BỘ 100% VỚI BỘ QUÉT (KHÔNG BAO GIỜ BỊ CẮT NGANG)
+        // HỆ THỐNG GIỌNG ĐỌC ĐỒNG BỘ 100% VỚI BỘ QUÉT
         // =========================================================================
-        let voices = []; 
-        let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 1.00; 
+        let voices = [];
+        let ttsRate = parseFloat(localStorage.getItem('ttsRate')) || 1.00;
         let ttsVolume = parseFloat(localStorage.getItem('ttsVolume')) || 1.0;
-        let savedVoiceURI = localStorage.getItem('ttsVoiceURI'); 
+        let savedVoiceURI = localStorage.getItem('ttsVoiceURI');
         let isSettingsOpen = false;
         let activeSpeechToken = 0;
         let activeSpeechSafetyTimer = null;
@@ -3028,7 +3069,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             msg.lang = 'vi-VN';
         }
 
-        // Đọc thông báo khi bệnh nhân ĐÃ CHỌN một câu (Ưu tiên cao nhất, tạm dừng bộ quét cho đến khi đọc xong)
         function speakActionFeedback(text, onDoneCallback = null) {
             stopScannerTimer();
             activeSpeechToken++;
@@ -3069,7 +3109,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             }, 35);
         }
 
-        // Đọc tên mục đang quét: ĐỢI ĐỌC XONG 100% RỒI MỚI BẮT ĐẦU ĐẾM THỜI GIAN CHỜ PHẢN XẠ
         function speakScanPromptAndWait(text, onPromptFinished) {
             activeSpeechToken++;
             const myToken = activeSpeechToken;
@@ -3086,7 +3125,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 if (myToken !== activeSpeechToken || isActionSpeechPlaying) return;
                 const cleanText = text.trim();
                 const msg = new SpeechSynthesisUtterance(cleanText);
-                // Đọc tên mục quét gọn và rõ
                 msg.rate = Math.min(1.35, Math.max(0.95, ttsRate * 1.05));
                 msg.volume = ttsVolume;
                 selectVietnameseVoice(msg);
@@ -3103,7 +3141,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
                 msg.onend = finish;
                 msg.onerror = finish;
-                // Bảo hiểm chống kẹt nếu trình duyệt không trả sự kiện onend
                 const maxWait = Math.max(1300, cleanText.length * 105 + 650);
                 activeSpeechSafetyTimer = setTimeout(finish, maxWait);
 
@@ -3120,11 +3157,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
         // =========================================================================
         // BỘ MÁY QUÉT ĐỒNG BỘ GIỌNG ĐỌC (SPEECH-SYNCHRONIZED SCANNER ENGINE)
-        // - Khi Âm Quét BẬT: Đọc hết câu -> Giữ vệt sáng chờ phản xạ (holdAfterSpeechMs) -> Mới qua ô kế tiếp
-        // - Khi Âm Quét TẮT: Chạy theo tốc độ chuẩn (silentStepMs)
         // =========================================================================
-        const silentStepMs      = [1900, 1350, 950]; // Khi tắt âm quét
-        const holdAfterSpeechMs = [1350, 950, 650];  // Thời gian giữ vệt sáng SAU KHI ĐÃ ĐỌC XONG CÂU
+        const silentStepMs      = [1900, 1350, 950];
+        const holdAfterSpeechMs = [1350, 950, 650];
         const speedLabels       = ["Chậm", "Vừa", "Nhanh"];
         let speedIdx = 1;
         let scanTimer = null;
@@ -3158,7 +3193,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             else if (currentView === 'QUICK') activeView = document.getElementById('view-quick');
 
             if (currentView === 'QUICK') {
-                // ƯU TIÊN QUÉT 6 THẺ HÌNH ẢNH TRƯỚC, THANH ĐIỀU HƯỚNG QUÉT SAU CÙNG
                 const gridGroups = Array.from(document.querySelectorAll('#quick-grid .scan-group'));
                 const navGroup = document.getElementById('quick-nav-group');
                 scanGroups = navGroup ? [...gridGroups, navGroup] : gridGroups;
@@ -3166,7 +3200,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 scanGroups = Array.from(activeView.querySelectorAll('.scan-group'));
             }
 
-            // Tạo danh sách phẳng các ô đang hiển thị phục vụ chế độ Quét Từng Ô (1 Nhịp)
             flatScanItems = [];
             scanGroups.forEach(grp => {
                 const items = Array.from(grp.querySelectorAll('.scan-item')).filter(el => el.offsetParent !== null && el.innerText.trim() !== '');
@@ -3181,10 +3214,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             renderScan();
         }
 
-        function renderScan() { 
+        function renderScan() {
             document.querySelectorAll('.scanning-row').forEach(el => el.classList.remove('scanning-row'));
             document.querySelectorAll('.scanning-cell').forEach(el => el.classList.remove('scanning-cell'));
-            
+
             if (isControlLocked) return;
 
             if (isDirectItemScanActive()) {
@@ -3255,7 +3288,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     currentItemIdx++;
                     if (currentItemIdx >= items.length) {
                         loopCount++;
-                        // Tự động thoát ra quét hàng tiếp theo sau 1 vòng nếu vào nhầm hàng để không làm người bệnh bị kẹt
                         if (loopCount >= 1) {
                             scanState = 'GROUP';
                             currentItemIdx = 0;
@@ -3286,7 +3318,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             });
         }
 
-        function startScanning() { 
+        function startScanning() {
             stopScannerTimer();
             if (isControlLocked || isSleeping || isSettingsOpen || isFatigueLocked) return;
             runCurrentScanStep();
@@ -3295,7 +3327,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function executeNormalSelection() {
             if (isControlLocked || isSleeping || isSettingsOpen || isFatigueLocked) return;
 
-            // CHẾ ĐỘ 1: QUÉT TỪNG Ô TRỰC TIẾP (1 NHỊP CHỌN NGAY - KHÔNG QUA HÀNG)
             if (isDirectItemScanActive()) {
                 if (!flatScanItems || flatScanItems.length === 0) return;
                 const targetBtn = flatScanItems[currentFlatIdx];
@@ -3306,7 +3337,6 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 return;
             }
 
-            // CHẾ ĐỘ 2: QUÉT HÀNG - CỘT (CÓ CHỐNG TRƯỢT 420MS KHI VỪA VÀO HÀNG)
             if (!scanGroups || scanGroups.length === 0) return;
 
             if (scanState === 'GROUP') {
@@ -3316,16 +3346,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                         stopScannerTimer();
                         items[0].click();
                     } else {
-                        scanState = 'ITEM'; 
-                        currentItemIdx = 0; 
+                        scanState = 'ITEM';
+                        currentItemIdx = 0;
                         loopCount = 0;
                         lastRowEnterTimestamp = Date.now();
                         runCurrentScanStep();
                     }
                 }
-            } 
+            }
             else if (scanState === 'ITEM') {
-                // Chống nháy đúp vô tình ngay lúc vừa vào hàng (< 420ms)
                 if (Date.now() - lastRowEnterTimestamp < 420) return;
 
                 let items = Array.from(scanGroups[currentGroupIdx].querySelectorAll('.scan-item')).filter(el => el.offsetParent !== null);
@@ -3398,7 +3427,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                     }
                 }
                 if (targetIdx !== -1) { let accentedChar = (baseWord[targetIdx].normalize('NFD') + tones[lastChar]).normalize('NFC'); lastWord = baseWord.substring(0, targetIdx) + accentedChar + baseWord.substring(targetIdx + 1); }
-                else lastWord = baseWord + lastChar; 
+                else lastWord = baseWord + lastChar;
             }
             words[words.length - 1] = lastWord; return words.join(' ');
         }
@@ -3409,7 +3438,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             const currentPrefix = outText.endsWith(' ') ? '' : (words[words.length - 1] || '').toUpperCase();
             let lastCompleteWord = outText.endsWith(' ') ? (words[words.length - 1] || '').toUpperCase() : (words.length >= 2 ? words[words.length - 2].toUpperCase() : '');
             let matches = [];
-            if (currentPrefix === '') { matches = (lastCompleteWord && bigrams[lastCompleteWord]) ? [...bigrams[lastCompleteWord]] : ["TÔI", "CẦN", "UỐNG", "ĐAU"]; } 
+            if (currentPrefix === '') { matches = (lastCompleteWord && bigrams[lastCompleteWord]) ? [...bigrams[lastCompleteWord]] : ["TÔI", "CẦN", "UỐNG", "ĐAU"]; }
             else {
                 const cleanPrefix = removeAccents(currentPrefix);
                 if (lastCompleteWord && bigrams[lastCompleteWord]) { matches.push(...bigrams[lastCompleteWord].filter(w => removeAccents(w).startsWith(cleanPrefix) && w !== currentPrefix)); }
@@ -3442,8 +3471,8 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         function executeAction(element) {
             stopScannerTimer();
             const textRaw = element.innerText.trim();
-            const text = textRaw.replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim(); 
-            if (textRaw === '') return; 
+            const text = textRaw.replace(/[^a-zA-ZÀ-ỹ0-9 ]/g, "").trim();
+            if (textRaw === '') return;
             const outBox = document.getElementById('output-box');
 
             if (element.classList.contains('word-suggest')) {
@@ -3451,13 +3480,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
                 speakActionFeedback(text, resumeScanningAfterAction);
                 return;
             }
-            else if (element.classList.contains('quick-cat')) { 
+            else if (element.classList.contains('quick-cat')) {
                 let target = element.getAttribute('data-target');
-                let voiceLabel = element.getAttribute('data-voice') || text;
                 renderQuickGrid(target);
                 return;
             }
-            else if (element.classList.contains('quick-phrase')) { 
+            else if (element.classList.contains('quick-phrase')) {
                 let phrase = element.getAttribute('data-phrase') || text;
                 let speakOutText = element.getAttribute('data-speakout') || element.getAttribute('data-voice') || phrase;
                 let isSOS = element.getAttribute('data-sos') === '1';
@@ -3543,10 +3571,10 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }
 
         document.querySelectorAll('button, .cell, .btn-sub, .top-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => { 
-                e.preventDefault(); e.stopPropagation(); 
-                if(btn.classList.contains('cell')) executeAction(btn); 
-                if (document.activeElement) document.activeElement.blur(); 
+            btn.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if(btn.classList.contains('cell')) executeAction(btn);
+                if (document.activeElement) document.activeElement.blur();
             });
         });
 
@@ -3561,22 +3589,22 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
             if (kEl) {
                 let name = num === 1 ? "ĐÈN" : "QUẠT";
                 kEl.innerText = `${actionLabel} ${name}`;
-                kEl.style.backgroundColor = state ? "rgba(245, 158, 11, 0.18)" : "var(--key-sys-bg)"; 
+                kEl.style.backgroundColor = state ? "rgba(245, 158, 11, 0.18)" : "var(--key-sys-bg)";
                 kEl.style.color = state ? "var(--warning)" : "var(--text-main)";
                 kEl.style.borderColor = state ? "var(--warning)" : "var(--key-border)";
             }
         }
 
-        function enterSleepMode() { 
-            isSleeping = true; 
+        function enterSleepMode() {
+            isSleeping = true;
             stopScannerTimer();
-            document.getElementById('sleep-overlay').style.display = 'flex'; 
+            document.getElementById('sleep-overlay').style.display = 'flex';
             if (isAutoScrolling) toggleAutoScroll();
-            speakActionFeedback("Chế độ nghỉ thư giãn."); 
+            speakActionFeedback("Chế độ nghỉ thư giãn.");
         }
-        function exitSleepMode() { 
-            isSleeping = false; 
-            document.getElementById('sleep-overlay').style.display = 'none'; 
+        function exitSleepMode() {
+            isSleeping = false;
+            document.getElementById('sleep-overlay').style.display = 'none';
             speakActionFeedback("Đã thức dậy", () => {
                 if (!isControlLocked) startScanning();
             });
@@ -3606,12 +3634,12 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         document.getElementById('rate-slider').oninput = function() { document.getElementById('rate-val').innerText = parseFloat(this.value).toFixed(2); };
         document.getElementById('vol-slider').oninput = function() { document.getElementById('vol-val').innerText = Math.round(this.value * 100) + '%'; };
 
-        window.addEventListener('keydown', (e) => { 
-            if (e.code === 'Space') { 
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
                 e.preventDefault(); e.stopPropagation();
-                if (document.activeElement) document.activeElement.blur(); 
-                sendCommand('SIMULATE_BLINK'); 
-            } 
+                if (document.activeElement) document.activeElement.blur();
+                sendCommand('SIMULATE_BLINK');
+            }
             else if (e.code === 'KeyI') {
                 e.preventDefault();
                 toggleHybridTrack();
@@ -3631,7 +3659,7 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
         }, true);
 
         updatePredictiveText();
-        
+
         document.addEventListener('DOMContentLoaded', () => {
             buildScanTree();
             startScanning();
@@ -3640,13 +3668,9 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 </body>
 </html>
 )rawliteral";
+
 // =========================================================================
-// TASK FREERTOS: LED RGB WS2812 CẦU VỒNG ONBOARD (CHẠY RIÊNG LẺ TRÊN CORE 0)
-// Tự động bật ngay khi cắm nguồn điện và chuyển đổi màu cầu vồng liên tục
-// =========================================================================
-// =========================================================================
-// TASK FREERTOS: LED RGB WS2812 CẦU VỒNG ONBOARD (CHẠY MƯỢT 100% VỚI WIFI)
-// Sử dụng hàm phần cứng neopixelWrite() gốc của ESP32-S3, không bao giờ treo RMT
+// TASK FREERTOS: LED RGB WS2812 CẦU VỒNG ONBOARD (CHẠY MƯỢT VỚI WIFI)
 // =========================================================================
 void hsvToRgb(uint8_t h, uint8_t s, uint8_t v, uint8_t &r, uint8_t &g, uint8_t &b) {
   uint8_t region = h / 43;
@@ -3670,19 +3694,15 @@ void rgbRainbowTask(void * parameter) {
   uint8_t r, g, b;
 
   for (;;) {
-    // Chuyển đổi góc màu hue (0..255) sang RGB với độ sáng RGB_BRIGHTNESS_LEVEL (45/255)
     hsvToRgb(hue, 255, RGB_BRIGHTNESS_LEVEL, r, g, b);
-
-    // Xuất trực tiếp ra LED WS2812 bằng driver RMT gốc của lõi ESP32-S3
     neopixelWrite(RGB_LED_PIN, r, g, b);
-
-    hue++; // Tăng dần dải màu cầu vồng liên tục (0 -> 255 rồi tự quay về 0)
-    vTaskDelay(pdMS_TO_TICKS(20)); // Tốc độ chuyển màu mượt (20ms/bước ~ 5 giây/vòng)
+    hue++;
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 
 // =========================================================================
-// TASK FREERTOS: CLOUD SYNC TASK (CORE 0 - ĐỒNG BỘ ĐẦY ĐỦ CFI, NHIỆT ĐỘ, 3D PITCH/ROLL)
+// TASK FREERTOS: CLOUD SYNC TASK (CORE 0 - ĐỒNG BỘ CFI, NHIỆT ĐỘ, 3D PITCH/ROLL)
 // =========================================================================
 void cloudSyncTask(void * parameter) {
   unsigned long lastCommandCheck = 0;
@@ -3720,7 +3740,7 @@ void cloudSyncTask(void * parameter) {
             releaseLocalFatigueLock();
             pendingCloudCommand = "IDLE";
           }
-        } 
+        }
         else if (resp.indexOf("LOCK_REST") >= 0 && resp.indexOf("UNLOCK_REST") == -1) {
           if (!isFatigueLocked && millis() > ignoreLockUntil) {
             triggerLocalFatigueLock(1800, "GLOBAL");
@@ -3739,13 +3759,13 @@ void cloudSyncTask(void * parameter) {
         HTTPClient http;
         http.begin(secureClient, CLOUD_SERVER_URL);
         http.addHeader("Content-Type", "application/json");
-        http.setTimeout(2500); 
+        http.setTimeout(2500);
 
         String jsonPayload = "{\"sentence\":\"" + pendingCloudSentence + "\",\"attention\":" + String(attention) + ",\"meditation\":" + String(meditation) + ",\"signalQuality\":" + String(signalQuality) + "}";
         http.POST(jsonPayload);
         http.end();
       }
-      pendingCloudSentence = ""; 
+      pendingCloudSentence = "";
     }
 
     if (pendingTelemetry) {
@@ -3810,7 +3830,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       }
       IPAddress ip = webSocket.remoteIP(num);
       Serial.printf("[WS] Client #%u Connected from %s\n", num, ip.toString().c_str());
-      
+
       String rState = "RELAY:" + String(relay1State ? "1" : "0") + "," + String(relay2State ? "1" : "0");
       webSocket.sendTXT(num, rState);
 
@@ -3834,7 +3854,7 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
       webSocket.sendTXT(num, "INPUT_MODE:" + inModeStr);
 
       webSocket.sendTXT(num, isControlLocked ? "LOCK_CONTROL:ON" : "LOCK_CONTROL:OFF");
-      
+
       if (isSleeping) {
         webSocket.sendTXT(num, "SLEEPING");
       }
@@ -3847,16 +3867,16 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
 
       if (msg == "S") {
         isSleeping = true;
-        WiFi.setSleep(true); 
+        WiFi.setSleep(true);
         webSocket.broadcastTXT("SLEEPING");
         syncTelemetryToCloud();
-      } 
+      }
       else if (msg == "W") {
         isSleeping = false;
         WiFi.setSleep(false);
         webSocket.broadcastTXT("WAKEUP");
         syncTelemetryToCloud();
-      } 
+      }
       else if (msg == "TOGGLE_CONTROL_LOCK") {
         setControlLock(!isControlLocked);
       }
@@ -3889,20 +3909,20 @@ void webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length
         digitalWrite(RELAY1_PIN, relay1State ? HIGH : LOW);
         String rState = "RELAY:" + String(relay1State ? "1" : "0") + "," + String(relay2State ? "1" : "0");
         webSocket.broadcastTXT(rState);
-      } 
+      }
       else if (msg == "R2") {
         relay2State = !relay2State;
         digitalWrite(RELAY2_PIN, relay2State ? HIGH : LOW);
         String rState = "RELAY:" + String(relay1State ? "1" : "0") + "," + String(relay2State ? "1" : "0");
         webSocket.broadcastTXT(rState);
-      } 
+      }
       else if (msg.startsWith("SENTENCE:")) {
         String sentence = msg.substring(9);
         Serial.println("[SENTENCE] Bệnh nhân giao tiếp: " + sentence);
         syncSentenceToCloud(sentence);
       }
       else if (msg == "SOS") {
-        triggerBuzzer(3); // Báo động SOS khẩn cấp 3 hồi dài
+        triggerBuzzer(3);
         Serial.println("[ALERT] BỆNH NHÂN GỌI CẤP CỨU (SOS)!");
         syncSentenceToCloud("SOS - CẤP CỨU KHẨN CẤP");
       }
@@ -3935,7 +3955,6 @@ void handleRoot() {
 // SETUP
 // =========================================================================
 void setup() {
-  // 1. KHỞI ĐỘNG NGAY LẬP TỨC TASK LED RGB CẦU VỒNG LIÊN TỤC
   xTaskCreatePinnedToCore(
     rgbRainbowTask,
     "RGBRainbowTask",
@@ -3943,18 +3962,14 @@ void setup() {
     NULL,
     1,
     &rgbRainbowTaskHandle,
-    1 // Ghim sang Core 1 (cùng Core với loop nhưng chạy ngầm bằng vTaskDelay, tránh xung đột ngắt Wi-Fi ở Core 0)
+    1
   );
 
   Serial.begin(115200);
   delay(1200);
-  // ... (Giữ nguyên toàn bộ phần code bên dưới của setup)
-
-
 
   Serial.println("\n\n==========================================================");
-  Serial.println("  ESP32-S3 HMI - CHỈ GẬT ĐẦU + FULL GIÁM SÁT Y SINH      ");
-  Serial.println("  LED RGB CẦU VỒNG: HOẠT ĐỘNG RIÊNG LẺ TRÊN CORE 0 (GPIO 48)");
+  Serial.println("  ESP32-S3 PRO-CAD V8.1 - HỖ TRỢ GIAO TIẾP & Y SINH      ");
   Serial.println("==========================================================");
 
   pinMode(RELAY1_PIN, OUTPUT);
@@ -3965,12 +3980,13 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
 
+  // Khởi tạo chân LED hồng ngoại ở mức HIGH (Kích âm: HIGH = TẮT LED an toàn)
   pinMode(IR_LED_PULSE_PIN, OUTPUT);
-  digitalWrite(IR_LED_PULSE_PIN, LOW);
+  digitalWrite(IR_LED_PULSE_PIN, HIGH);
 
   pinMode(IR_SENSOR_ADC_PIN, INPUT);
 
-  triggerBuzzer(2); // Kêu 2 bíp khởi động hệ thống
+  triggerBuzzer(2);
 
   pinMode(I2C_SDA_PIN, INPUT_PULLUP);
   pinMode(I2C_SCL_PIN, INPUT_PULLUP);
@@ -3982,7 +3998,7 @@ void setup() {
   initINA226();
   readINA226();
 
-  secureClient.setInsecure(); 
+  secureClient.setInsecure();
 
   WiFi.mode(WIFI_AP_STA);
   WiFi.setSleep(false);
@@ -4023,18 +4039,18 @@ void setup() {
   webSocket.enableHeartbeat(15000, 10000, 2);
 
   xTaskCreatePinnedToCore(
-    cloudSyncTask,   
-    "CloudTask",     
-    8192,            
-    NULL,            
-    1,               
-    NULL,            
-    0                
+    cloudSyncTask,
+    "CloudTask",
+    8192,
+    NULL,
+    1,
+    NULL,
+    0
   );
 
   lastActivityTime = millis();
   lastTelemetrySyncTime = millis();
-  Serial.println("[SYSTEM] Sẵn sàng! Gật 1 cái = Chọn | Cúi giữ 1.2s = Khóa | Gật 3 cái khi khóa = Mở | Full CFI & Spasm Alert!");
+  Serial.println("[SYSTEM] Sẵn sàng! Kính IR + IMU kết hợp chống nhiễu 5 tầng!");
 }
 
 // =========================================================================
@@ -4043,14 +4059,9 @@ void setup() {
 void loop() {
   webSocket.loop();
   server.handleClient();
-  
-  // Đọc và xử lý tín hiệu LSM6DS3 ở tần số chuẩn 200Hz
+
   processLSM6DS3();
-
-  // Đọc vi sai và xử lý tín hiệu TCRT5000 ở tần số 200Hz
   processTCRT5000();
-
-  // Cập nhật trạng thái còi phản hồi xúc giác âm thanh (non-blocking)
   updateBuzzer();
 
   if (Serial.available() > 0) {
@@ -4062,9 +4073,9 @@ void loop() {
     else if (c == 'i' || c == 'I') setInputMode(INPUT_IR_ONLY);
     else if (c == 'n' || c == 'N') setInputMode(INPUT_NOD_ONLY);
     else if (c == 'h' || c == 'H') setInputMode(INPUT_HYBRID_BOTH);
-    else if (c == '4') triggerBuzzer(1); // Gõ phím 4: Test 1 tiếng bíp ngắn (Khi chọn ô)
-    else if (c == '5') triggerBuzzer(2); // Gõ phím 5: Test 2 bíp (Khi Mở khóa / Đánh thức)
-    else if (c == '6') triggerBuzzer(3); // Gõ phím 6: Test 3 hồi còi dài (Báo động SOS / Co giật)
+    else if (c == '4') triggerBuzzer(1);
+    else if (c == '5') triggerBuzzer(2);
+    else if (c == '6') triggerBuzzer(3);
   }
 
   // Đếm ngược khóa nghỉ 30 phút
@@ -4082,23 +4093,23 @@ void loop() {
     }
   }
 
-  // Đọc INA226 và phát dữ liệu đầy đủ (kèm CFI và Nhiệt độ LSM6DS3) lên Web mỗi giây
+  // Đọc INA226 và phát dữ liệu đầy đủ lên Web mỗi giây
   static unsigned long lastSensorBroadcast = 0;
   if (millis() - lastSensorBroadcast > 1000) {
     lastSensorBroadcast = millis();
     readINA226();
 
     if (!isSleeping && webSocket.connectedClients() > 0) {
-      String sensorData = "TGAM:" + String(signalQuality) + "," + 
-                                    String(attention) + "," + 
+      String sensorData = "TGAM:" + String(signalQuality) + "," +
+                                    String(attention) + "," +
                                     String(meditation) + "," +
                                     String((int)cfiScore) + "," +
                                     String(sensorTempC, 1);
       webSocket.broadcastTXT(sensorData);
 
-      String inaData = "INA:" + String(inaBusVoltage, 2) + "," + 
-                                String(inaCurrent_mA, 1) + "," + 
-                                String(inaPower_mW, 1) + "," + 
+      String inaData = "INA:" + String(inaBusVoltage, 2) + "," +
+                                String(inaCurrent_mA, 1) + "," +
+                                String(inaPower_mW, 1) + "," +
                                 String(batteryPercent) + "," +
                                 String(hasINA226 ? 1 : 0);
       webSocket.broadcastTXT(inaData);
@@ -4108,7 +4119,7 @@ void loop() {
   static unsigned long lastWifiCheck = 0;
   if (millis() - lastWifiCheck > 10000) {
     lastWifiCheck = millis();
-    if (WiFi.status() != WL_CONNECTED) { 
+    if (WiFi.status() != WL_CONNECTED) {
       wifiMulti.run();
     }
   }
@@ -4126,6 +4137,6 @@ void loop() {
     lastTelemetrySyncTime = millis();
     syncTelemetryToCloud();
   }
-  
+
   yield();
 }
