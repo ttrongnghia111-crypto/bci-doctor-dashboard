@@ -4,11 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kính Thông Minh V4 Hybrid — Giám Sát & Cảnh Báo Từ Xa</title>
+    <title>Kính Thông Minh V4 Hybrid — Giám Sát & Điều Khiển Từ Xa</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            /* DARK THEME — ĐỒNG BỘ BẢNG MÀU VỚI WEB LOCAL (192.168.4.1) */
             --bg-base: #0b132b;
             --bg-grad-bottom: #131f3a;
             --bg-panel: rgba(20, 30, 52, 0.92);
@@ -35,7 +34,6 @@
         }
 
         [data-theme="light"] {
-            /* LIGHT THEME — ĐỒNG BỘ NỀN SÁNG DỊU MẮT VỚI WEB LOCAL */
             --bg-base: #e0f2fe;
             --bg-grad-bottom: #f8fafc;
             --bg-panel: rgba(255, 255, 255, 0.94);
@@ -157,13 +155,13 @@
 
         .nav-actions {
             display: flex;
-            gap: 8px;
+            gap: 7px;
             align-items: center;
             flex-wrap: wrap;
         }
 
         .btn {
-            padding: 7px 12px;
+            padding: 7px 11px;
             border-radius: 12px;
             border: 1.5px solid var(--border);
             font-size: 12px;
@@ -192,6 +190,18 @@
             border-color: var(--border-light);
             color: var(--cyan);
             background: rgba(56, 189, 248, 0.1);
+        }
+
+        .btn-notif {
+            border-color: var(--indigo);
+            color: var(--indigo);
+            background: rgba(129, 140, 248, 0.12);
+        }
+
+        .btn-notif.granted {
+            border-color: var(--emerald);
+            color: var(--emerald);
+            background: rgba(52, 211, 153, 0.12);
         }
 
         .btn-demo {
@@ -238,11 +248,11 @@
         .status-pill {
             display: flex;
             align-items: center;
-            gap: 7px;
+            gap: 6px;
             font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 700;
-            padding: 6px 12px;
+            padding: 6px 10px;
             background: var(--bg-card);
             border-radius: 12px;
             border: 1.5px solid var(--border);
@@ -343,8 +353,15 @@
             cursor: pointer;
         }
 
-        .btn-rest-timer:hover {
-            filter: brightness(1.1);
+        .btn-ir-quick {
+            background: var(--emerald);
+            color: #0f172a;
+            border: none;
+            font-weight: 900;
+            padding: 8px 14px;
+            border-radius: 12px;
+            font-size: 12px;
+            cursor: pointer;
         }
 
         .btn-dismiss-alert {
@@ -366,7 +383,7 @@
             margin: 0 auto;
         }
 
-        /* ================= HÀNG 1: HỒ SƠ BỆNH NHÂN & 3 THẺ ĐỒNG BỘ LOCAL ================= */
+        /* ================= HÀNG 1: HỒ SƠ & 3 THẺ ĐỒNG BỘ ================= */
         .row-vitals {
             display: grid;
             grid-template-columns: 1.5fr repeat(3, 1fr);
@@ -604,7 +621,85 @@
             margin-top: 7px;
         }
 
-        /* ================= HÀNG 3: ĐỒ THỊ TÍN HIỆU 2 KÊNH + RADAR V4 HYBRID ================= */
+        /* ================= THANH ĐIỀU KHIỂN NHANH TỪ XA (CLOUD -> KÍNH S3 -> GATEWAY C3) ================= */
+        .remote-control-bar {
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid var(--border);
+            border-radius: 18px;
+            padding: 14px 18px;
+            box-shadow: var(--shadow-card);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .remote-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .remote-label {
+            font-size: 11.5px;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
+        .rc-btn {
+            padding: 8px 13px;
+            border-radius: 12px;
+            border: 1.5px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .rc-btn:hover {
+            border-color: var(--cyan);
+            color: var(--text-primary);
+        }
+
+        .rc-btn.active {
+            background: var(--cyan);
+            color: #0f172a;
+            border-color: transparent;
+        }
+
+        .rc-btn.relay-on {
+            background: rgba(52, 211, 153, 0.22);
+            color: var(--emerald);
+            border-color: var(--emerald);
+        }
+
+        .rc-btn.lock-on {
+            background: var(--danger-solid);
+            color: #fff;
+            border-color: transparent;
+        }
+
+        .rc-btn.suggest-ir {
+            border-color: var(--amber);
+            color: var(--amber);
+            box-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+        }
+
+        #rc-feedback {
+            font-size: 11.5px;
+            font-family: ui-monospace, monospace;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-left: auto;
+        }
+
+        /* ================= HÀNG 3: ĐỒ THỊ & RADAR ================= */
         .row-charts {
             display: grid;
             grid-template-columns: 2.8fr 1.2fr;
@@ -713,7 +808,7 @@
             font-family: ui-monospace, monospace;
         }
 
-        /* ================= HÀNG 4: THỐNG KÊ 6 NHÓM AAC & NHẬT KÝ GIAO TIẾP ================= */
+        /* ================= HÀNG 4: THỐNG KÊ 6 NHÓM AAC & NHẬT KÝ ================= */
         .row-bottom {
             display: grid;
             grid-template-columns: 1.05fr 2.35fr;
@@ -1082,7 +1177,6 @@
             padding: 8px 0 18px 0;
         }
 
-        /* ================= RESPONSIVE CHO TABLET & ĐIỆN THOẠI NGƯỜI THÂN ================= */
         @media (max-width: 1180px) {
             .row-vitals {
                 grid-template-columns: repeat(2, 1fr);
@@ -1128,7 +1222,7 @@
 
 <body>
 
-    <!-- THANH ĐIỀU HƯỚNG TRÊN CÙNG -->
+    <!-- THANH ĐIỀU HƯỚNG TRÊN CÙNG (HIỂN THỊ KIẾN TRÚC 2-NODE KÍNH S3 + GATEWAY C3) -->
     <header class="top-nav">
         <div class="dept-brand">
             <div class="clock-box">
@@ -1137,17 +1231,27 @@
             </div>
             <div class="brand-text">
                 <h1 id="txt-brand-title">Kính Thông Minh V4 Hybrid — Giám Sát Từ Xa</h1>
-                <p id="txt-brand-sub">TCRT5000 (IR 200Hz • 60µs) + LSM6DS3 (IMU 6-DOF) • ESP32-S3 • CLOUD RENDER /
-                    MONGODB</p>
+                <p id="txt-brand-sub">TCRT5000 (IR 200Hz • 60µs) + LSM6DS3 (IMU 6-DOF) • ESP32-S3 + GATEWAY C3 • CLOUD
+                    RENDER</p>
             </div>
         </div>
 
         <div class="nav-actions">
             <button class="btn btn-theme" id="btn-theme" onclick="toggleTheme()">☀️ Nền: Sáng</button>
             <button class="btn btn-lang" id="btn-lang" onclick="toggleLanguage()">Ngôn ngữ: VI</button>
+            <button class="btn btn-notif" id="btn-notif" onclick="requestNotifPermission()">🔔 Thông Báo</button>
             <div class="status-pill">
-                <span class="dot dot-green" id="conn-dot"></span>
-                <span id="conn-text">KÍNH ONLINE</span>
+                <span class="dot dot-red" id="conn-dot"></span>
+                <span id="conn-text">KÍNH OFFLINE</span>
+                <span id="sync-age-text" style="color:var(--text-dim); margin-left:4px;">(--)</span>
+            </div>
+            <div class="status-pill">
+                <span class="dot dot-yellow" id="net-dot"></span>
+                <span id="net-mode-text">MẠNG: --</span>
+            </div>
+            <div class="status-pill">
+                <span class="dot dot-red" id="gw-dot"></span>
+                <span id="gw-status-text">GW: OFFLINE</span>
             </div>
             <div class="status-pill">
                 <span class="dot dot-green" id="cloud-dot"></span>
@@ -1156,10 +1260,10 @@
             <button class="btn btn-demo" id="btn-demo" onclick="toggleDemo()">Mô Phỏng Dữ Liệu</button>
             <div class="alert-test-wrap">
                 <select id="test-alert-select" class="select-mini" aria-label="Chọn kịch bản thử cảnh báo">
-                    <option value="CFI">Mỏi cổ (CFI ≥ 75%)</option>
-                    <option value="SOS">Gọi cấp cứu (SOS)</option>
-                    <option value="SPASM">Co giật / Té ngã (≥ 2,5g)</option>
-                    <option value="BEDSORE">Chống loét (120 phút)</option>
+                    <option value="CFI" id="opt-test-cfi">Mỏi cổ (CFI ≥ 75%)</option>
+                    <option value="SOS" id="opt-test-sos">Gọi cấp cứu (SOS)</option>
+                    <option value="SPASM" id="opt-test-spasm">Co giật / Té ngã (≥ 2,5g)</option>
+                    <option value="BEDSORE" id="opt-test-bedsore">Chống loét (120 phút)</option>
                 </select>
                 <button class="btn btn-trigger-alert" id="btn-test-alert" onclick="triggerTestScenario()">Thử Cảnh
                     Báo</button>
@@ -1167,7 +1271,7 @@
         </div>
     </header>
 
-    <!-- BANNER BÁO ĐỘNG Y SINH 4-TRONG-1 (SOS / CO GIẬT / MỎI CỔ CFI / CHỐNG LOÉT 120P) -->
+    <!-- BANNER BÁO ĐỘNG Y SINH 4-TRONG-1 -->
     <div id="clinical-alert-banner" class="clinical-alert-banner">
         <div class="alert-left">
             <div class="alert-tag" id="txt-alarm-tag">CẢNH BÁO AN TOÀN Y SINH 24/7</div>
@@ -1176,6 +1280,8 @@
                 thoại người thân & điều dưỡng.</div>
         </div>
         <div class="alert-actions">
+            <button class="btn-ir-quick" id="btn-banner-ir" onclick="sendRemoteCommand('INPUT_IR')"
+                style="display:none">CHUYỂN CHỈ MẮT (IR)</button>
             <button class="btn-rest-timer" id="btn-rest-toggle" onclick="toggleRestBreak()">NGHỈ 30 PHÚT</button>
             <button class="btn-dismiss-alert" id="btn-dismiss-alert" onclick="dismissClinicalAlert()">XÁC NHẬN ĐÃ XỬ
                 LÝ</button>
@@ -1205,7 +1311,7 @@
                 </div>
             </div>
 
-            <!-- THẺ 2: LỰC PHẢN HỒI THAO TÁC (ĐỒNG BỘ VỚI LOCAL) -->
+            <!-- THẺ 2: LỰC PHẢN HỒI THAO TÁC -->
             <div class="panel metric-card">
                 <div class="metric-header">
                     <span id="lbl-force-title">Lực Phản Hồi Thao Tác</span>
@@ -1221,7 +1327,7 @@
                 <div class="metric-sub-hint" id="hint-force">Nháy mắt (90–420ms) hoặc Gật đầu (&gt; 12°)</div>
             </div>
 
-            <!-- THẺ 3: ĐỘ MỎI CƠ CỔ CFI (ĐỒNG BỘ VỚI LOCAL & NGƯỠNG 75%) -->
+            <!-- THẺ 3: ĐỘ MỎI CƠ CỔ CFI -->
             <div class="panel metric-card">
                 <div class="metric-header">
                     <span id="lbl-cfi-title">Độ Mỏi Cơ Cổ (CFI)</span>
@@ -1229,7 +1335,7 @@
                 </div>
                 <div class="metric-val-row">
                     <span class="metric-value" style="color:var(--amber)" id="val-cfi">12%</span>
-                    <span class="metric-unit">/ 75% ngưỡng</span>
+                    <span class="metric-unit" id="unit-cfi">/ 75% ngưỡng</span>
                 </div>
                 <div class="progress-bar-bg">
                     <div class="progress-bar-fill" id="bar-cfi" style="width: 12%; background: var(--emerald);"></div>
@@ -1237,22 +1343,22 @@
                 <div class="metric-sub-hint" id="cfi-hint">Tự động cảnh báo & gợi ý chuyển Chỉ Mắt khi ≥ 75%</div>
             </div>
 
-            <!-- THẺ 4: DUNG LƯỢNG PIN LI-PO 2×300mAh -->
+            <!-- THẺ 4: NGUỒN HỆ THỐNG (TỰ NHẬN DIỆN USB 5V VS PIN LI-PO) -->
             <div class="panel metric-card">
                 <div class="metric-header">
-                    <span id="lbl-pwr-title">Dung Lượng Pin Li-Po</span>
+                    <span id="lbl-pwr-title">Nguồn Hệ Thống</span>
                     <span id="pwr-status" style="color:var(--emerald)">ỔN ĐỊNH</span>
                 </div>
                 <div class="metric-val-row">
                     <span class="metric-value" style="color:var(--emerald)" id="val-bat">100%</span>
                     <span class="metric-unit" id="val-volt"
-                        style="font-size:14px; color:var(--text-secondary); margin-left:6px;">3.95V</span>
+                        style="font-size:14px; color:var(--text-secondary); margin-left:6px;">5.00V</span>
                     <span class="metric-unit" id="val-pwr" style="margin-left:auto; font-size:12.5px;">0 mW</span>
                 </div>
                 <div class="progress-bar-bg">
                     <div class="progress-bar-fill" id="bar-bat" style="width: 100%; background: var(--emerald);"></div>
                 </div>
-                <div class="metric-sub-hint" id="hint-pwr">2×300mAh đối xứng 2 càng kính • Bảo vệ nguồn</div>
+                <div class="metric-sub-hint" id="hint-pwr">Tự động nhận diện Nguồn USB 5V / Pin Li-Po</div>
             </div>
         </section>
 
@@ -1281,7 +1387,7 @@
                         </div>
                         <div class="bio-main-val">
                             <span id="bio-sensor-val">Kính IR + IMU</span>
-                            <span class="metric-pct" id="bio-sensor-sub">60µs • 200Hz</span>
+                            <span class="metric-pct" id="bio-sensor-sub">Độ nhạy: Kép</span>
                         </div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-bio-sensor"
@@ -1312,7 +1418,7 @@
                     </div>
                 </div>
 
-                <!-- Ô 3: GIÁM SÁT AN TOÀN & CHỐNG LOÉT 120 PHÚT -->
+                <!-- Ô 3: GIÁM SÁT AN TOÀN & CHỐNG LOÉT 120 PHÚT THẬT -->
                 <div class="bio-box">
                     <div>
                         <div class="bio-top">
@@ -1322,46 +1428,67 @@
                                 TOÀN</span>
                         </div>
                         <div class="bio-main-val">
-                            <span id="bio-safety-val">Đang Thức</span>
-                            <span class="metric-pct" id="bio-safety-sub">Uptime: 0p</span>
+                            <span id="bio-safety-val">0 / 120p</span>
+                            <span class="metric-pct" id="bio-safety-sub">Đang Thức</span>
                         </div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-bio-safety"
-                                style="width:20%; background:var(--emerald)"></div>
+                                style="width:4%; background:var(--emerald)"></div>
                         </div>
                     </div>
-                    <div class="bio-desc" id="desc-bio-safety">Phát hiện co giật/té ngã (≥2,5g) & nhắc lật người 120p
-                    </div>
+                    <div class="bio-desc" id="desc-bio-safety">Tiến trình bất động thật từ LSM6DS3 (tự đặt lại khi xoay
+                        &gt;8,5°)</div>
                 </div>
 
-                <!-- Ô 4: NHIỆT ĐỘ CẢM BIẾN & KẾT NỐI PHÒNG -->
+                <!-- Ô 4: NHIỆT ĐỘ CẢM BIẾN & GATEWAY NHÀ THÔNG MINH -->
                 <div class="bio-box">
                     <div>
                         <div class="bio-top">
-                            <span style="font-weight:800; color:var(--text-primary);" id="lbl-bio-env">NHIỆT ĐỘ & THIẾT
-                                BỊ</span>
+                            <span style="font-weight:800; color:var(--text-primary);" id="lbl-bio-env">NHIỆT ĐỘ &
+                                GATEWAY C3</span>
                             <span class="bio-status-badge" id="bio-env-badge" style="color:var(--cyan)">BÌNH
                                 THƯỜNG</span>
                         </div>
                         <div class="bio-main-val">
                             <span id="bio-env-val">34.5°C</span>
-                            <span class="metric-pct" id="bio-env-sub">Rơ-le 2 kênh</span>
+                            <span class="metric-pct" id="bio-env-sub">Đèn: Tắt • Quạt: Tắt</span>
                         </div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-bio-env" style="width:65%; background:var(--cyan)">
                             </div>
                         </div>
                     </div>
-                    <div class="bio-desc" id="desc-bio-env">Cảm biến nhiệt LSM6DS3 • Hỗ trợ Offline & Cloud 24/7</div>
+                    <div class="bio-desc" id="desc-bio-env">Nhiệt độ LSM6DS3 & trạng thái 2 kênh Rơ-le không dây UDP
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- HÀNG 3: ĐỒ THỊ TÍN HIỆU 2 KÊNH (IR & IMU) + RADAR V4 HYBRID -->
+        <!-- THANH ĐIỀU KHIỂN NHANH TỪ XA CHO NGƯỜI THÂN / ĐIỀU DƯỠNG -->
+        <section class="remote-control-bar">
+            <div class="remote-group">
+                <span class="remote-label" id="lbl-rc-mode">Chế độ cảm biến Kính:</span>
+                <button class="rc-btn active" id="rc-mode-hybrid" onclick="sendRemoteCommand('INPUT_HYBRID')">Kính IR +
+                    IMU</button>
+                <button class="rc-btn" id="rc-mode-ir" onclick="sendRemoteCommand('INPUT_IR')">Chỉ Mắt (IR)</button>
+                <button class="rc-btn" id="rc-mode-nod" onclick="sendRemoteCommand('INPUT_NOD')">Chỉ Đầu (IMU)</button>
+            </div>
+
+            <div class="remote-group">
+                <span class="remote-label" id="lbl-rc-iot">Gateway Nhà Thông Minh:</span>
+                <button class="rc-btn" id="rc-relay-1" onclick="toggleRemoteRelay(1)">💡 Đèn (R1): Tắt</button>
+                <button class="rc-btn" id="rc-relay-2" onclick="toggleRemoteRelay(2)">🌀 Quạt (R2): Tắt</button>
+                <button class="rc-btn" id="rc-ctrl-lock" onclick="toggleRemoteControlLock()">🔓 Khóa Tạm Nghỉ</button>
+            </div>
+
+            <span id="rc-feedback">Sẵn sàng điều khiển từ xa (Cloud → Kính S3 → Gateway C3)</span>
+        </section>
+
+        <!-- HÀNG 3: ĐỒ THỊ TÍN HIỆU 2 KÊNH (IR DELTA THẬT & PITCH) + RADAR V4 HYBRID -->
         <section class="row-charts">
             <div class="chart-panel">
                 <div class="section-title">
-                    <span id="lbl-chart-title">ĐỒ THỊ TÍN HIỆU VI SAI HỒNG NGOẠI 60µs & GÓC ĐẦU 6-DOF</span>
+                    <span id="lbl-chart-title">ĐỒ THỊ TÍN HIỆU VI SAI HỒNG NGOẠI 60µs (irDelta) & GÓC ĐẦU 6-DOF</span>
                     <span id="signal-text" style="color: var(--amber); font-size: 11.5px;">ĐANG CHỜ KÍNH KẾT NỐI</span>
                 </div>
                 <div class="chart-container-wave">
@@ -1370,8 +1497,8 @@
                             TÍN HIỆU TỪ KÍNH THÔNG MINH V4 HYBRID</div>
                         <div style="color: var(--text-secondary); font-size: 12.5px; max-width: 560px;"
                             id="lbl-no-sig-desc">
-                            Kiểm tra nguồn pin Li-Po trên càng kính, kết nối Wi-Fi đồng bộ Cloud hoặc nhấn “Mô Phỏng Dữ
-                            Liệu” để xem tín hiệu mẫu.
+                            Kiểm tra nguồn trên càng kính, kết nối Wi-Fi đồng bộ Cloud hoặc nhấn “Mô Phỏng Dữ Liệu” để
+                            xem tín hiệu mẫu.
                         </div>
                     </div>
                     <canvas id="sensorChart"></canvas>
@@ -1406,35 +1533,35 @@
                     </div>
                     <div class="mini-metric-row">
                         <div class="metric-lbl"><span class="m-dot" style="background:var(--rose)"></span><span
-                                id="rl-tkeo">Năng lượng xung TKEO / IR</span></div>
-                        <span class="m-val" id="m-tkeo">0</span>
+                                id="rl-tkeo">Xung vi sai IR (irDelta)</span></div>
+                        <span class="m-val" id="m-tkeo">0.0</span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- HÀNG 4: THỐNG KÊ 6 NHÓM NHU CẦU (KHỚP WEB LOCAL) & NHẬT KÝ GIAO TIẾP -->
+        <!-- HÀNG 4: THỐNG KÊ 6 NHÓM NHU CẦU (KHỚP 100% WEB LOCAL) & NHẬT KÝ GIAO TIẾP -->
         <section class="row-bottom">
             <div class="stats-col">
                 <div class="stat-box">
                     <div class="section-title" style="margin-bottom: 12px;" id="lbl-dist-title">PHÂN BỔ 6 NHÓM NHU CẦU
                         (ĐỒNG BỘ LOCAL)</div>
                     <div class="dist-item">
-                        <div class="dist-info"><span id="lbl-dist-pain">Báo đau & Cấp cứu (SOS)</span><span
-                                id="txt-pain" class="dist-count">0 (0%)</span></div>
+                        <div class="dist-info"><span id="lbl-dist-pain">Báo Đau & Cấp Cứu</span><span id="txt-pain"
+                                class="dist-count">0 (0%)</span></div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-pain" style="width:0%; background:var(--rose)"></div>
                         </div>
                     </div>
                     <div class="dist-item">
-                        <div class="dist-info"><span id="lbl-dist-food">Ăn uống & Thuốc</span><span id="txt-food"
+                        <div class="dist-info"><span id="lbl-dist-food">Ăn Uống & Thuốc</span><span id="txt-food"
                                 class="dist-count">0 (0%)</span></div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-food" style="width:0%; background:var(--cyan)"></div>
                         </div>
                     </div>
                     <div class="dist-item">
-                        <div class="dist-info"><span id="lbl-dist-hygiene">Vệ sinh & Tư thế</span><span id="txt-hygiene"
+                        <div class="dist-info"><span id="lbl-dist-hygiene">Vệ Sinh & Tư Thế</span><span id="txt-hygiene"
                                 class="dist-count">0 (0%)</span></div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-hygiene" style="width:0%; background:var(--emerald)">
@@ -1442,7 +1569,7 @@
                         </div>
                     </div>
                     <div class="dist-item">
-                        <div class="dist-info"><span id="lbl-dist-care">Gọi người & Y tế</span><span id="txt-care"
+                        <div class="dist-info"><span id="lbl-dist-care">Gọi Người & Y Tế</span><span id="txt-care"
                                 class="dist-count">0 (0%)</span></div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-care" style="width:0%; background:var(--amber)">
@@ -1450,7 +1577,7 @@
                         </div>
                     </div>
                     <div class="dist-item">
-                        <div class="dist-info"><span id="lbl-dist-iot">Đèn quạt & Phòng (Rơ-le)</span><span id="txt-iot"
+                        <div class="dist-info"><span id="lbl-dist-iot">Đèn Quạt & Phòng</span><span id="txt-iot"
                                 class="dist-count">0 (0%)</span></div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-iot" style="width:0%; background:var(--indigo)">
@@ -1458,7 +1585,7 @@
                         </div>
                     </div>
                     <div class="dist-item">
-                        <div class="dist-info"><span id="lbl-dist-feel">Cảm xúc & Trò chuyện</span><span id="txt-feel"
+                        <div class="dist-info"><span id="lbl-dist-feel">Cảm Xúc & Trò Chuyện</span><span id="txt-feel"
                                 class="dist-count">0 (0%)</span></div>
                         <div class="progress-bar-bg">
                             <div class="progress-bar-fill" id="bar-feel"
@@ -1498,19 +1625,19 @@
                         <input type="text" id="search-input" class="select-filter" placeholder="Tìm nội dung..."
                             onkeyup="applyFilters()" style="width:145px;">
                         <select id="category-filter" class="select-filter" onchange="applyFilters()">
-                            <option value="all">Tất cả nhóm</option>
-                            <option value="pain">Báo đau & Cấp cứu</option>
-                            <option value="food">Ăn uống & Thuốc</option>
-                            <option value="hygiene">Vệ sinh & Tư thế</option>
-                            <option value="care">Gọi người & Y tế</option>
-                            <option value="iot">Đèn quạt & Phòng</option>
-                            <option value="feel">Cảm xúc & Giao tiếp</option>
+                            <option value="all" id="opt-cat-all">Tất cả nhóm</option>
+                            <option value="pain" id="opt-cat-pain">Báo Đau & Cấp Cứu</option>
+                            <option value="food" id="opt-cat-food">Ăn Uống & Thuốc</option>
+                            <option value="hygiene" id="opt-cat-hygiene">Vệ Sinh & Tư Thế</option>
+                            <option value="care" id="opt-cat-care">Gọi Người & Y Tế</option>
+                            <option value="iot" id="opt-cat-iot">Đèn Quạt & Phòng</option>
+                            <option value="feel" id="opt-cat-feel">Cảm Xúc & Trò Chuyện</option>
                         </select>
                         <select id="time-filter" class="select-filter" onchange="applyFilters()">
-                            <option value="all">Tất cả thời gian</option>
-                            <option value="day">Hôm nay</option>
-                            <option value="week">7 ngày qua</option>
-                            <option value="month">Tháng này</option>
+                            <option value="all" id="opt-time-all">Tất cả thời gian</option>
+                            <option value="day" id="opt-time-day">Hôm nay</option>
+                            <option value="week" id="opt-time-week">7 ngày qua</option>
+                            <option value="month" id="opt-time-month">Tháng này</option>
                         </select>
                         <div class="export-group">
                             <button class="btn-export" id="btn-export-csv" onclick="exportCSV()">XUẤT CSV</button>
@@ -1547,11 +1674,11 @@
 
         <div class="footer-note" id="lbl-footer">
             HỆ THỐNG HỖ TRỢ GIAO TIẾP DÀNH RIÊNG CHO NGƯỜI SUY GIẢM Ý THỨC – VẬN ĐỘNG • KÍNH THÔNG MINH V4 HYBRID
-            (PRO-CAD V8.1) • THIẾT BỊ HỖ TRỢ, KHÔNG THAY THẾ CHẨN ĐOÁN Y KHOA
+            (PRO-CAD V8.2) • THIẾT BỊ HỖ TRỢ, KHÔNG THAY THẾ CHẨN ĐOÁN Y KHOA
         </div>
     </div>
 
-    <!-- MODAL HỒ SƠ BỆNH NHÂN -->
+    <!-- MODAL HỒ SƠ BỆNH NHÂN (ĐÃ DỊCH ĐẦY ĐỦ VI / EN) -->
     <div id="user-modal" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
@@ -1568,24 +1695,29 @@
                 </div>
             </div>
             <div id="view-create-user" style="display: none;">
-                <label style="font-size:11px; color:var(--text-dim); font-weight:800;">HỌ TÊN NGƯỜI BỆNH</label>
+                <label id="lbl-m-name" style="font-size:11px; color:var(--text-dim); font-weight:800;">HỌ TÊN NGƯỜI
+                    BỆNH</label>
                 <input type="text" id="input-new-name" class="form-input" placeholder="VD: Nguyễn Văn An">
 
                 <div style="display: flex; gap: 10px;">
                     <div style="flex:1">
-                        <label style="font-size:11px; color:var(--text-dim); font-weight:800;">TUỔI</label>
+                        <label id="lbl-m-age"
+                            style="font-size:11px; color:var(--text-dim); font-weight:800;">TUỔI</label>
                         <input type="number" id="input-new-age" class="form-input" placeholder="Tuổi">
                     </div>
                     <div style="flex:1">
-                        <label style="font-size:11px; color:var(--text-dim); font-weight:800;">MÃ HỒ SƠ</label>
+                        <label id="lbl-m-code" style="font-size:11px; color:var(--text-dim); font-weight:800;">MÃ HỒ
+                            SƠ</label>
                         <input type="text" id="input-new-code" class="form-input" placeholder="VD: SG-01">
                     </div>
                 </div>
 
-                <label style="font-size:11px; color:var(--text-dim); font-weight:800;">PHÒNG / ĐỊA ĐIỂM CHĂM SÓC</label>
+                <label id="lbl-m-room" style="font-size:11px; color:var(--text-dim); font-weight:800;">PHÒNG / ĐỊA ĐIỂM
+                    CHĂM SÓC</label>
                 <input type="text" id="input-new-room" class="form-input" placeholder="VD: Phòng Chăm Sóc 01 / Tại nhà">
 
-                <label style="font-size:11px; color:var(--text-dim); font-weight:800;">TÌNH TRẠNG VẬN ĐỘNG</label>
+                <label id="lbl-m-diag" style="font-size:11px; color:var(--text-dim); font-weight:800;">TÌNH TRẠNG VẬN
+                    ĐỘNG</label>
                 <input type="text" id="input-new-diag" class="form-input"
                     placeholder="VD: Hội chứng khóa trong (LIS) / Sau tai biến">
 
@@ -1598,32 +1730,77 @@
     </div>
 
     <script>
-        // ================= TIỆN ÍCH AN TOÀN CHỐNG CRASH & XSS =================
         function setText(id, text) {
             const el = document.getElementById(id);
             if (el) el.innerText = text;
         }
         function escapeHtml(str) {
             return String(str || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
-        // Địa chỉ API tương thích cả khi deploy trực tiếp trên Render và khi chạy thử cục bộ
+        // Luôn dùng API_BASE tương đối khi deploy trên Render (không hardcode URL)
         const API_BASE = window.location.protocol.startsWith('http') ? '' : 'https://bci-api-server.onrender.com';
-        const CLOUD_COMMAND_URL = 'https://bci-api-server.onrender.com/api/command';
+        const CLOUD_COMMAND_URL = `${API_BASE}/api/command`;
 
-        // ================= ĐỒNG HỒ THỜI GIAN THỰC (GIỐNG WEB LOCAL) =================
+        // ================= ĐỒNG HỒ & TUỔI BẢN TIN ĐỒNG BỘ =================
+        let lastServerTelemetryAt = 0;
         function updateClock() {
             const now = new Date();
             setText('clock-time', now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false }));
             setText('clock-date', `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`);
+
+            if (isDemoMode) {
+                setText('sync-age-text', currentLang === 'vi' ? '(mô phỏng)' : '(demo)');
+            } else if (lastServerTelemetryAt > 0) {
+                const ageSec = Math.max(0, Math.floor((Date.now() - lastServerTelemetryAt) / 1000));
+                setText('sync-age-text', currentLang === 'vi' ? `(${ageSec}s trước)` : `(${ageSec}s ago)`);
+            } else {
+                setText('sync-age-text', '(--)');
+            }
         }
         setInterval(updateClock, 1000);
         updateClock();
+
+        // ================= WEB NOTIFICATION API (CẢNH BÁO RA MÀN HÌNH ĐIỆN THOẠI) =================
+        function updateNotifButtonUI() {
+            const btn = document.getElementById('btn-notif');
+            if (!btn) return;
+            if (!('Notification' in window)) {
+                btn.style.display = 'none';
+                return;
+            }
+            const t = i18n[currentLang];
+            if (Notification.permission === 'granted') {
+                btn.classList.add('granted');
+                btn.innerText = t.notif_on;
+            } else {
+                btn.classList.remove('granted');
+                btn.innerText = t.notif_ask;
+            }
+        }
+
+        function requestNotifPermission() {
+            if (!('Notification' in window)) return;
+            Notification.requestPermission().then(() => {
+                updateNotifButtonUI();
+                if (Notification.permission === 'granted') {
+                    pushBrowserNotification(
+                        currentLang === 'vi' ? 'Kính Thông Minh V4 Hybrid' : 'Smart Glasses V4 Hybrid',
+                        currentLang === 'vi' ? 'Đã bật thông báo khẩn cấp SOS & Co giật cho người thân.' : 'Emergency SOS & Seizure notifications enabled.'
+                    );
+                }
+            });
+        }
+
+        function pushBrowserNotification(title, body) {
+            try {
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(title, { body, requireInteraction: true });
+                }
+            } catch (e) { }
+        }
 
         // ================= ÂM THANH CÒI CẢNH BÁO WEB AUDIO =================
         let audioCtx = null;
@@ -1643,30 +1820,30 @@
                     osc.frequency.linearRampToValueAtTime(780, now + 0.45);
                     gain.gain.setValueAtTime(0.22, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.50);
-                    osc.start(now);
-                    osc.stop(now + 0.50);
+                    osc.start(now); osc.stop(now + 0.50);
                 } else {
                     osc.type = 'sine';
                     osc.frequency.setValueAtTime(880, now);
                     gain.gain.setValueAtTime(0.14, now);
                     gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-                    osc.start(now);
-                    osc.stop(now + 0.25);
+                    osc.start(now); osc.stop(now + 0.25);
                 }
             } catch (e) { }
         }
 
-        // ================= TỪ ĐIỂN ĐA NGÔN NGỮ (VI / EN — CHUẨN HỒ SƠ V4 HYBRID) =================
+        // ================= TỪ ĐIỂN SONG NGỮ HOÀN CHỈNH (VI / EN) =================
         let currentLang = localStorage.getItem('smartglass_lang') || 'vi';
         let currentTheme = localStorage.getItem('smartglass_theme') || 'dark';
 
         const i18n = {
             vi: {
                 brand_title: 'Kính Thông Minh V4 Hybrid — Giám Sát Từ Xa',
-                brand_sub: 'TCRT5000 (IR 200Hz • 60µs) + LSM6DS3 (IMU 6-DOF) • ESP32-S3 • CLOUD RENDER / MONGODB',
+                brand_sub: 'TCRT5000 (IR 200Hz • 60µs) + LSM6DS3 (IMU 6-DOF) • ESP32-S3 + GATEWAY C3 • CLOUD RENDER',
                 btn_lang: 'Ngôn ngữ: VI',
                 btn_theme_light: '☀️ Nền: Sáng',
                 btn_theme_dark: '🌙 Nền: Tối',
+                notif_ask: '🔔 Bật Thông Báo',
+                notif_on: '🔔 Thông Báo: Bật',
                 conn_online: 'KÍNH ONLINE',
                 conn_offline: 'KÍNH OFFLINE',
                 conn_demo: 'ĐANG MÔ PHỎNG',
@@ -1674,6 +1851,11 @@
                 demo_off: 'Mô Phỏng Dữ Liệu',
                 demo_on: 'Tắt Mô Phỏng',
                 btn_test: 'Thử Cảnh Báo',
+                opt_test_cfi: 'Mỏi cổ (CFI ≥ 75%)',
+                opt_test_sos: 'Gọi cấp cứu (SOS)',
+                opt_test_spasm: 'Co giật / Té ngã (≥ 2,5g)',
+                opt_test_bedsore: 'Chống loét (120 phút)',
+                btn_banner_ir: 'CHUYỂN CHỈ MẮT (IR)',
                 btn_rest: 'NGHỈ 30 PHÚT',
                 btn_dismiss: 'XÁC NHẬN ĐÃ XỬ LÝ',
                 btn_profile: 'ĐỔI HỒ SƠ',
@@ -1681,9 +1863,12 @@
                 lbl_force: 'Lực Phản Hồi Thao Tác',
                 hint_force: 'Nháy mắt (90–420ms) hoặc Gật đầu (> 12°)',
                 lbl_cfi: 'Độ Mỏi Cơ Cổ (CFI)',
+                unit_cfi: '/ 75% ngưỡng',
                 hint_cfi: 'Tự động cảnh báo & gợi ý chuyển Chỉ Mắt khi ≥ 75%',
-                lbl_pwr: 'Dung Lượng Pin Li-Po',
-                hint_pwr: '2×300mAh đối xứng 2 càng kính • Bảo vệ nguồn',
+                lbl_pwr_usb: 'Nguồn USB 5V / Sạc',
+                lbl_pwr_lipo: 'Dung Lượng Pin Li-Po',
+                hint_pwr_usb: 'Đang cấp nguồn trực tiếp USB 5V (Chế độ không ADC pin)',
+                hint_pwr_lipo: '2×300mAh đối xứng 2 càng kính • Bảo vệ nguồn',
                 bio_title: 'HỆ CHUYÊN GIA Y SINH & AN TOÀN 24/7 • V4 HYBRID',
                 bio_sub: 'HỢP NHẤT TCRT5000 (VI SAI 60µs • EMA KÉP) + LSM6DS3 (6-DOF • IMU VETO)',
                 bio_sensor: 'CẢM BIẾN KÉP IR + IMU',
@@ -1691,32 +1876,42 @@
                 bio_pose: 'TƯ THẾ ĐẦU 6-DOF',
                 desc_pose: 'Lọc bù 6-DOF LSM6DS3 • Gật >12° chọn ô, giữ 1,2s khóa',
                 bio_safety: 'AN TOÀN & CHỐNG LOÉT',
-                desc_safety: 'Phát hiện co giật/té ngã (≥2,5g) & nhắc lật người 120p',
-                bio_env: 'NHIỆT ĐỘ & THIẾT BỊ',
-                desc_env: 'Cảm biến nhiệt LSM6DS3 • Hỗ trợ Offline & Cloud 24/7',
-                chart_title: 'ĐỒ THỊ TÍN HIỆU VI SAI HỒNG NGOẠI 60µs & GÓC ĐẦU 6-DOF',
+                desc_safety: 'Tiến trình bất động thật từ LSM6DS3 (tự đặt lại khi xoay >8,5°)',
+                bio_env: 'NHIỆT ĐỘ & GATEWAY C3',
+                desc_env: 'Nhiệt độ LSM6DS3 & trạng thái 2 kênh Rơ-le không dây UDP',
+                lbl_rc_mode: 'Chế độ cảm biến Kính:',
+                lbl_rc_iot: 'Gateway Nhà Thông Minh:',
+                rc_hybrid: 'Kính IR + IMU',
+                rc_ir: 'Chỉ Mắt (IR)',
+                rc_nod: 'Chỉ Đầu (IMU)',
+                chart_title: 'ĐỒ THỊ TÍN HIỆU VI SAI HỒNG NGOẠI 60µs (irDelta) & GÓC ĐẦU 6-DOF',
                 sig_good: 'TÍN HIỆU ỔN ĐỊNH (IR + IMU)',
                 sig_lost: 'CHỜ TÍN HIỆU CẢM BIẾN',
                 no_sig_title: 'CHỜ TÍN HIỆU TỪ KÍNH THÔNG MINH V4 HYBRID',
-                no_sig_desc: 'Kiểm tra nguồn pin Li-Po trên càng kính, kết nối Wi-Fi đồng bộ Cloud hoặc nhấn “Mô Phỏng Dữ Liệu” để xem tín hiệu mẫu.',
+                no_sig_desc: 'Kiểm tra nguồn trên càng kính, kết nối Wi-Fi đồng bộ Cloud hoặc nhấn “Mô Phỏng Dữ Liệu” để xem tín hiệu mẫu.',
                 radar_title: 'HỒ SƠ VẬN ĐỘNG & CẢM BIẾN (V4 HYBRID)',
                 rl_force: 'Lực phản hồi thao tác',
                 rl_stability: 'Độ ổn định nền cảm biến',
                 rl_neck: 'Thể lực cơ cổ (100 - CFI)',
                 rl_angle: 'Biên độ gật đầu (Pitch)',
-                rl_tkeo: 'Năng lượng xung TKEO / IR',
+                rl_tkeo: 'Xung vi sai IR (irDelta)',
                 dist_title: 'PHÂN BỔ 6 NHÓM NHU CẦU (ĐỒNG BỘ LOCAL)',
-                dist_pain: 'Báo đau & Cấp cứu (SOS)',
-                dist_food: 'Ăn uống & Thuốc',
-                dist_hygiene: 'Vệ sinh & Tư thế',
-                dist_care: 'Gọi người & Y tế',
-                dist_iot: 'Đèn quạt & Phòng (Rơ-le)',
-                dist_feel: 'Cảm xúc & Trò chuyện',
+                dist_pain: 'Báo Đau & Cấp Cứu',
+                dist_food: 'Ăn Uống & Thuốc',
+                dist_hygiene: 'Vệ Sinh & Tư Thế',
+                dist_care: 'Gọi Người & Y Tế',
+                dist_iot: 'Đèn Quạt & Phòng',
+                dist_feel: 'Cảm Xúc & Trò Chuyện',
                 hourly_title: 'MẬT ĐỘ GIAO TIẾP THEO KHUNG GIỜ',
                 peak_prefix: 'Khung giờ cao điểm: ',
                 peak_none: 'Chưa ghi nhận',
                 history_title: 'NHẬT KÝ GIAO TIẾP & CẢNH BÁO',
                 search_ph: 'Tìm nội dung...',
+                opt_cat_all: 'Tất cả nhóm',
+                opt_time_all: 'Tất cả thời gian',
+                opt_time_day: 'Hôm nay',
+                opt_time_week: '7 ngày qua',
+                opt_time_month: 'Tháng này',
                 btn_csv: 'XUẤT CSV',
                 btn_json: 'XUẤT JSON',
                 th_time: 'Thời Gian',
@@ -1727,14 +1922,27 @@
                 th_action: 'Giọng Đọc',
                 btn_speak: 'ĐỌC LẠI',
                 waiting_logs: 'Hệ thống đang chờ bản tin giao tiếp từ Kính thông minh V4 Hybrid...',
-                footer: 'HỆ THỐNG HỖ TRỢ GIAO TIẾP DÀNH RIÊNG CHO NGƯỜI SUY GIẢM Ý THỨC – VẬN ĐỘNG • KÍNH THÔNG MINH V4 HYBRID (PRO-CAD V8.1) • THIẾT BỊ HỖ TRỢ, KHÔNG THAY THẾ CHẨN ĐOÁN Y KHOA'
+                footer: 'HỆ THỐNG HỖ TRỢ GIAO TIẾP DÀNH RIÊNG CHO NGƯỜI SUY GIẢM Ý THỨC – VẬN ĐỘNG • KÍNH THÔNG MINH V4 HYBRID (PRO-CAD V8.2) • THIẾT BỊ HỖ TRỢ, KHÔNG THAY THẾ CHẨN ĐOÁN Y KHOA',
+                modal_title: 'HỒ SƠ NGƯỜI SỬ DỤNG',
+                btn_close: 'ĐÓNG',
+                btn_create: 'THÊM MỚI',
+                btn_confirm: 'XÁC NHẬN CHỌN',
+                btn_back: 'QUAY LẠI',
+                btn_save: 'LƯU HỒ SƠ',
+                m_name: 'HỌ TÊN NGƯỜI BỆNH',
+                m_age: 'TUỔI',
+                m_code: 'MÃ HỒ SƠ',
+                m_room: 'PHÒNG / ĐỊA ĐIỂM CHĂM SÓC',
+                m_diag: 'TÌNH TRẠNG VẬN ĐỘNG'
             },
             en: {
                 brand_title: 'Smart Glasses V4 Hybrid — Remote Care Monitor',
-                brand_sub: 'TCRT5000 (IR 200Hz • 60µs) + LSM6DS3 (6-DOF IMU) • ESP32-S3 • RENDER / MONGODB',
+                brand_sub: 'TCRT5000 (IR 200Hz • 60µs) + LSM6DS3 (6-DOF IMU) • ESP32-S3 + GATEWAY C3 • RENDER',
                 btn_lang: 'Language: EN',
                 btn_theme_light: '☀️ Light Mode',
                 btn_theme_dark: '🌙 Dark Mode',
+                notif_ask: '🔔 Enable Alerts',
+                notif_on: '🔔 Alerts: ON',
                 conn_online: 'GLASSES ONLINE',
                 conn_offline: 'GLASSES OFFLINE',
                 conn_demo: 'SIMULATION',
@@ -1742,6 +1950,11 @@
                 demo_off: 'Simulate Data',
                 demo_on: 'Stop Simulation',
                 btn_test: 'Test Alert',
+                opt_test_cfi: 'Neck Fatigue (CFI ≥ 75%)',
+                opt_test_sos: 'Emergency Call (SOS)',
+                opt_test_spasm: 'Seizure / Fall (≥ 2.5g)',
+                opt_test_bedsore: 'Repositioning (120 min)',
+                btn_banner_ir: 'SWITCH TO IR-ONLY',
                 btn_rest: 'REST 30 MIN',
                 btn_dismiss: 'ACKNOWLEDGE',
                 btn_profile: 'SWITCH USER',
@@ -1749,9 +1962,12 @@
                 lbl_force: 'Gesture Response Force',
                 hint_force: 'Intentional Blink (90–420ms) or Head Nod (> 12°)',
                 lbl_cfi: 'Cervical Fatigue Index (CFI)',
+                unit_cfi: '/ 75% limit',
                 hint_cfi: 'Auto alert & suggest IR-Only mode at ≥ 75%',
-                lbl_pwr: 'Li-Po Battery Pack',
-                hint_pwr: 'Dual symmetric 2×300mAh • Power Protection',
+                lbl_pwr_usb: 'USB 5V Power / Charging',
+                lbl_pwr_lipo: 'Li-Po Battery Pack',
+                hint_pwr_usb: 'Direct USB 5V power detected (No Battery ADC)',
+                hint_pwr_lipo: 'Dual symmetric 2×300mAh • Power Protection',
                 bio_title: 'BIOMEDICAL EXPERT SYSTEM & 24/7 SAFETY • V4 HYBRID',
                 bio_sub: 'TCRT5000 (60µs DIFFERENTIAL • DUAL EMA) + LSM6DS3 (6-DOF • IMU VETO)',
                 bio_sensor: 'DUAL SENSOR IR + IMU',
@@ -1759,32 +1975,42 @@
                 bio_pose: '6-DOF HEAD POSTURE',
                 desc_pose: 'Complementary 6-DOF LSM6DS3 • Nod >12° select, hold 1.2s lock',
                 bio_safety: 'SAFETY & BEDSORE (120M)',
-                desc_safety: 'Seizure/Fall alert (≥2.5g) & 120-min repositioning reminder',
-                bio_env: 'TEMPERATURE & ROOM',
-                desc_env: 'LSM6DS3 thermal monitor • Offline Local & Cloud Telemetry',
-                chart_title: 'REAL-TIME 60µs IR DIFFERENTIAL & 6-DOF HEAD MOTION',
+                desc_safety: 'Real static timer from LSM6DS3 (resets on >8.5° tilt shift)',
+                bio_env: 'TEMPERATURE & GATEWAY C3',
+                desc_env: 'LSM6DS3 thermal monitor & 2-ch Wireless UDP Relay',
+                lbl_rc_mode: 'Glasses Input Mode:',
+                lbl_rc_iot: 'Smart Home Gateway:',
+                rc_hybrid: 'Hybrid IR + IMU',
+                rc_ir: 'Eye Only (IR)',
+                rc_nod: 'Head Only (IMU)',
+                chart_title: 'REAL-TIME 60µs IR DIFFERENTIAL (irDelta) & 6-DOF HEAD MOTION',
                 sig_good: 'SIGNAL STABLE (IR + IMU)',
                 sig_lost: 'AWAITING SENSOR SIGNAL',
                 no_sig_title: 'AWAITING V4 HYBRID SMART GLASSES SIGNAL',
-                no_sig_desc: 'Check Li-Po battery power, Wi-Fi Cloud sync or click “Simulate Data” to preview live waveforms.',
+                no_sig_desc: 'Check glasses power, Wi-Fi Cloud sync or click “Simulate Data” to preview live waveforms.',
                 radar_title: 'MULTIMODAL SENSOR PROFILE (V4 HYBRID)',
                 rl_force: 'Gesture Response Force',
                 rl_stability: 'Sensor Baseline Stability',
                 rl_neck: 'Neck Endurance (100 - CFI)',
                 rl_angle: 'Head Nod Angle (Pitch)',
-                rl_tkeo: 'TKEO / IR Pulse Energy',
+                rl_tkeo: 'IR Differential Pulse (irDelta)',
                 dist_title: '6 AAC NEED CATEGORIES (LOCAL SYNC)',
-                dist_pain: 'Pain & Emergency (SOS)',
+                dist_pain: 'Pain & Emergency',
                 dist_food: 'Food, Drink & Meds',
                 dist_hygiene: 'Hygiene & Posture',
                 dist_care: 'Call Family & Medical',
-                dist_iot: 'Light, Fan & Room (Relay)',
+                dist_iot: 'Light, Fan & Room',
                 dist_feel: 'Emotions & Chat',
                 hourly_title: 'HOURLY COMMUNICATION DENSITY',
                 peak_prefix: 'Peak Window: ',
                 peak_none: 'None',
                 history_title: 'COMMUNICATION & ALERT LOGS',
                 search_ph: 'Search logs...',
+                opt_cat_all: 'All Categories',
+                opt_time_all: 'All Time',
+                opt_time_day: 'Today',
+                opt_time_week: 'Last 7 Days',
+                opt_time_month: 'This Month',
                 btn_csv: 'EXPORT CSV',
                 btn_json: 'EXPORT JSON',
                 th_time: 'Timestamp',
@@ -1795,11 +2021,22 @@
                 th_action: 'Voice',
                 btn_speak: 'SPEAK',
                 waiting_logs: 'Awaiting telemetry & messages from Smart Glasses V4 Hybrid...',
-                footer: 'ASSISTIVE COMMUNICATION SYSTEM FOR MOTOR-IMPAIRED PATIENTS • SMART GLASSES V4 HYBRID (PRO-CAD V8.1) • ASSISTIVE DEVICE, NOT A MEDICAL DIAGNOSTIC INSTRUMENT'
+                footer: 'ASSISTIVE COMMUNICATION SYSTEM FOR MOTOR-IMPAIRED PATIENTS • SMART GLASSES V4 HYBRID (PRO-CAD V8.2) • ASSISTIVE DEVICE, NOT A MEDICAL DIAGNOSTIC INSTRUMENT',
+                modal_title: 'PATIENT PROFILE',
+                btn_close: 'CLOSE',
+                btn_create: 'ADD NEW',
+                btn_confirm: 'CONFIRM',
+                btn_back: 'BACK',
+                btn_save: 'SAVE PROFILE',
+                m_name: 'FULL NAME',
+                m_age: 'AGE',
+                m_code: 'PROFILE ID',
+                m_room: 'CARE ROOM / LOCATION',
+                m_diag: 'MOTOR CONDITION'
             }
         };
 
-        // ================= KHỞI TẠO BIỂU ĐỒ (2 KÊNH IR + PITCH & RADAR 5 TRỤC) =================
+        // ================= BIỂU ĐỒ 2 KÊNH (PITCH + IR DELTA THẬT) & RADAR =================
         Chart.defaults.font.family = 'Segoe UI, monospace';
 
         const sensorChart = new Chart(document.getElementById('sensorChart').getContext('2d'), {
@@ -1818,7 +2055,7 @@
                         fill: true
                     },
                     {
-                        label: 'Tín hiệu IR / Lực phản hồi',
+                        label: 'Xung vi sai IR (irDelta)',
                         data: Array(50).fill(0),
                         borderColor: '#fbbf24',
                         borderWidth: 1.8,
@@ -1837,7 +2074,7 @@
                     y: {
                         display: true,
                         suggestedMin: -25,
-                        suggestedMax: 40,
+                        suggestedMax: 45,
                         grid: { color: '#1a2744' },
                         ticks: { color: '#94a3b8', font: { size: 10.5 } }
                     }
@@ -1916,11 +2153,17 @@
             const t = i18n[currentLang];
             setText('btn-lang', t.btn_lang);
             setText('btn-theme', currentTheme === 'light' ? t.btn_theme_dark : t.btn_theme_light);
+            updateNotifButtonUI();
             setText('txt-brand-title', t.brand_title);
             setText('txt-brand-sub', t.brand_sub);
             setText('cloud-text', t.cloud_ok);
             setText('btn-demo', isDemoMode ? t.demo_on : t.demo_off);
             setText('btn-test-alert', t.btn_test);
+            setText('opt-test-cfi', t.opt_test_cfi);
+            setText('opt-test-sos', t.opt_test_sos);
+            setText('opt-test-spasm', t.opt_test_spasm);
+            setText('opt-test-bedsore', t.opt_test_bedsore);
+            setText('btn-banner-ir', t.btn_banner_ir);
             setText('btn-rest-toggle', isRestBreakActive ? document.getElementById('btn-rest-toggle').innerText : t.btn_rest);
             setText('btn-dismiss-alert', t.btn_dismiss);
             setText('patient-code', t.btn_profile);
@@ -1929,9 +2172,8 @@
             setText('lbl-force-title', t.lbl_force);
             setText('hint-force', t.hint_force);
             setText('lbl-cfi-title', t.lbl_cfi);
+            setText('unit-cfi', t.unit_cfi);
             setText('cfi-hint', t.hint_cfi);
-            setText('lbl-pwr-title', t.lbl_pwr);
-            setText('hint-pwr', t.hint_pwr);
 
             setText('lbl-bio-section-title', t.bio_title);
             setText('lbl-bio-section-sub', t.bio_sub);
@@ -1943,6 +2185,12 @@
             setText('desc-bio-safety', t.desc_safety);
             setText('lbl-bio-env', t.bio_env);
             setText('desc-bio-env', t.desc_env);
+
+            setText('lbl-rc-mode', t.lbl_rc_mode);
+            setText('lbl-rc-iot', t.lbl_rc_iot);
+            setText('rc-mode-hybrid', t.rc_hybrid);
+            setText('rc-mode-ir', t.rc_ir);
+            setText('rc-mode-nod', t.rc_nod);
 
             setText('lbl-chart-title', t.chart_title);
             setText('lbl-no-sig-title', t.no_sig_title);
@@ -1962,6 +2210,19 @@
             setText('lbl-dist-iot', t.dist_iot);
             setText('lbl-dist-feel', t.dist_feel);
 
+            setText('opt-cat-all', t.opt_cat_all);
+            setText('opt-cat-pain', t.dist_pain);
+            setText('opt-cat-food', t.dist_food);
+            setText('opt-cat-hygiene', t.dist_hygiene);
+            setText('opt-cat-care', t.dist_care);
+            setText('opt-cat-iot', t.dist_iot);
+            setText('opt-cat-feel', t.dist_feel);
+
+            setText('opt-time-all', t.opt_time_all);
+            setText('opt-time-day', t.opt_time_day);
+            setText('opt-time-week', t.opt_time_week);
+            setText('opt-time-month', t.opt_time_month);
+
             setText('lbl-hourly-title', t.hourly_title);
             setText('lbl-history-title', t.history_title);
             const searchEl = document.getElementById('search-input');
@@ -1977,13 +2238,26 @@
             setText('th-action', t.th_action);
             setText('lbl-footer', t.footer);
 
+            // Dịch Modal hồ sơ
+            setText('modal-title', t.modal_title);
+            setText('btn-close-modal', t.btn_close);
+            setText('btn-modal-create', t.btn_create);
+            setText('btn-modal-confirm', t.btn_confirm);
+            setText('btn-cancel-create', t.btn_back);
+            setText('btn-save-patient', t.btn_save);
+            setText('lbl-m-name', t.m_name);
+            setText('lbl-m-age', t.m_age);
+            setText('lbl-m-code', t.m_code);
+            setText('lbl-m-room', t.m_room);
+            setText('lbl-m-diag', t.m_diag);
+
             radarChart.data.labels = currentLang === 'vi'
                 ? ['Lực chọn', 'Ổn định', 'Thể lực cổ', 'Góc gật', 'Xung IR']
                 : ['Force', 'Stability', 'Neck', 'Pitch', 'IR Pulse'];
             radarChart.update('none');
 
             sensorChart.data.datasets[0].label = currentLang === 'vi' ? 'Góc gật đầu Pitch (°)' : 'Head Pitch Angle (°)';
-            sensorChart.data.datasets[1].label = currentLang === 'vi' ? 'Tín hiệu IR / Lực phản hồi' : 'IR Pulse / Response Force';
+            sensorChart.data.datasets[1].label = currentLang === 'vi' ? 'Xung vi sai IR (irDelta)' : 'IR Differential Pulse (irDelta)';
             sensorChart.update('none');
 
             applyFilters();
@@ -2046,7 +2320,7 @@
 
         function saveNewPatient() {
             const name = document.getElementById('input-new-name').value.trim();
-            if (!name) return alert('Vui lòng nhập họ tên người sử dụng');
+            if (!name) return alert(currentLang === 'vi' ? 'Vui lòng nhập họ tên người sử dụng' : 'Please enter patient name');
             const newPatient = {
                 id: 'pat-' + Date.now(),
                 name: name,
@@ -2083,31 +2357,49 @@
             setText('patient-initials', initials);
         }
 
-        // ================= PHÂN LOẠI 6 NHÓM NHU CẦU AAC (KHỚP WEB LOCAL) =================
+        // ================= PHÂN LOẠI 6 NHÓM AAC KHỚP 100% CẢ 36 CÂU TỪ web_ui.h =================
         let allLogs = [];
-        let lastKnownLogCount = 0;
+        let lastLatestLogKey = '';
+        let lastLogsVersion = -1;
+        let lastChartTimestamp = 0;
         let isDemoMode = false;
         let activeAlertType = null;
         let isRestBreakActive = false;
         let restBreakSecondsLeft = 30 * 60;
         let restTimerInterval = null;
         let userDismissedLockUntil = 0;
+        let latestTelemetryState = { relay1: false, relay2: false, isControlLocked: false, inputMode: 'HYBRID' };
 
-        function identifyCategory(sentence) {
+        function identifyCategory(sentence, serverCategory) {
+            if (serverCategory && ['pain', 'food', 'hygiene', 'care', 'iot', 'feel'].includes(serverCategory)) {
+                return serverCategory;
+            }
             const s = String(sentence || '').toUpperCase();
-            if (s.includes('SOS') || s.includes('CẤP CỨU') || s.includes('CO GIẬT') || s.includes('TÉ NGÃ') || s.includes('ĐAU') || s.includes('NHỨC') || s.includes('KHÓ THỞ') || s.includes('VẾT MỔ') || s.includes('PAIN')) {
+            if (s.includes('SOS') || s.includes('CẤP CỨU') || s.includes('CO GIẬT') || s.includes('TÉ NGÃ') ||
+                s.includes('ĐAU') || s.includes('NHỨC') || s.includes('KHÓ THỞ') || s.includes('VẾT MỔ') ||
+                s.includes('TÊ MỎI') || s.includes('TAY CHÂN') || s.includes('CHÓNG MẶT') ||
+                s.includes('BUỒN NÔN') || s.includes('NGỨA') || s.includes('PAIN')) {
                 return 'pain';
             }
-            if (s.includes('NƯỚC') || s.includes('UỐNG') || s.includes('ĂN') || s.includes('CƠM') || s.includes('CHÁO') || s.includes('SỮA') || s.includes('THUỐC') || s.includes('TRÁI CÂY') || s.includes('KHÁT') || s.includes('ĐÓI')) {
+            if (s.includes('NƯỚC') || s.includes('UỐNG') || s.includes('ĂN') || s.includes('CƠM') ||
+                s.includes('CHÁO') || s.includes('SỮA') || s.includes('THUỐC') || s.includes('TRÁI CÂY') ||
+                s.includes('KHÁT') || s.includes('ĐÓI')) {
                 return 'food';
             }
-            if (s.includes('CHỐNG LOÉT') || s.includes('120 PHÚT') || s.includes('VỆ SINH') || s.includes('NGỒI') || s.includes('NẰM') || s.includes('NGHIÊNG') || s.includes('LẬT') || s.includes('CHĂN') || s.includes('QUẦN ÁO') || s.includes('TƯ THẾ')) {
+            if (s.includes('CHỐNG LOÉT') || s.includes('120 PHÚT') || s.includes('VỆ SINH') ||
+                s.includes('NGỒI') || s.includes('NẰM') || s.includes('NGHIÊNG') || s.includes('LẬT') ||
+                s.includes('TRỞ MÌNH') || s.includes('CHĂN') || s.includes('GỐI') || s.includes('GIƯỜNG') ||
+                s.includes('THAY ÁO') || s.includes('LAU NGƯỜI') || s.includes('QUẦN ÁO') || s.includes('TƯ THẾ')) {
                 return 'hygiene';
             }
-            if (s.includes('BÁC SĨ') || s.includes('Y TÁ') || s.includes('ĐIỀU DƯỠNG') || s.includes('NGƯỜI NHÀ') || s.includes('GIA ĐÌNH') || s.includes('HUYẾT ÁP') || s.includes('HÚT ĐỜM') || s.includes('XOA BÓP') || s.includes('GỌI')) {
+            if (s.includes('BÁC SĨ') || s.includes('Y TÁ') || s.includes('ĐIỀU DƯỠNG') || s.includes('NGƯỜI NHÀ') ||
+                s.includes('GIA ĐÌNH') || s.includes('HUYẾT ÁP') || s.includes('HÔ HẤP') || s.includes('HÚT ĐỜM') ||
+                s.includes('XOA BÓP') || s.includes('GỌI')) {
                 return 'care';
             }
-            if (s.includes('ĐÈN') || s.includes('QUẠT') || s.includes('RƠ-LE') || s.includes('NÓNG') || s.includes('LẠNH') || s.includes('ĐỌC BÁO') || s.includes('ĐỌC SÁCH') || s.includes('KHÓA') || s.includes('BẬT') || s.includes('TẮT')) {
+            if (s.includes('ĐÈN') || s.includes('QUẠT') || s.includes('RƠ-LE') || s.includes('NÓNG') ||
+                s.includes('LẠNH') || s.includes('ĐỌC BÁO') || s.includes('ĐỌC SÁCH') || s.includes('KHÓA') ||
+                s.includes('BẬT') || s.includes('TẮT')) {
                 return 'iot';
             }
             return 'feel';
@@ -2159,12 +2451,10 @@
             const hours = [0, 0, 0, 0, 0, 0];
 
             logs.forEach(l => {
-                const cat = identifyCategory(l.sentence);
+                const cat = identifyCategory(l.sentence, l.category);
                 if (counts[cat] !== undefined) counts[cat]++;
                 const d = new Date(l.timestamp);
-                if (!isNaN(d.getTime())) {
-                    hours[Math.floor(d.getHours() / 4)]++;
-                }
+                if (!isNaN(d.getTime())) hours[Math.floor(d.getHours() / 4)]++;
             });
 
             ['pain', 'food', 'hygiene', 'care', 'iot', 'feel'].forEach(c => {
@@ -2197,7 +2487,8 @@
 
             const filtered = allLogs.filter(l => {
                 const sentence = String(l.sentence || '');
-                const matchCat = catFilter === 'all' || identifyCategory(sentence) === catFilter;
+                const cat = identifyCategory(sentence, l.category);
+                const matchCat = catFilter === 'all' || cat === catFilter;
                 const matchSearch = !search || sentence.toLowerCase().includes(search);
                 const logTime = new Date(l.timestamp);
                 let matchTime = true;
@@ -2225,13 +2516,13 @@
                 const timeObj = formatTime(l.timestamp);
                 const upper = String(l.sentence || '').toUpperCase();
                 let rowCls = '';
-                if (upper.includes('SOS') || upper.includes('CO GIẬT') || upper.includes('TÉ NGÃ')) rowCls = 'row-emergency';
-                else if (upper.includes('120 PHÚT') || upper.includes('CHỐNG LOÉT')) rowCls = 'row-warning';
+                if (l.severity === 'emergency' || upper.includes('SOS') || upper.includes('CO GIẬT') || upper.includes('TÉ NGÃ')) rowCls = 'row-emergency';
+                else if (l.severity === 'warning' || upper.includes('120 PHÚT') || upper.includes('CHỐNG LOÉT')) rowCls = 'row-warning';
 
                 return `<tr class="${rowCls}">
                     <td><div class="time-hm">${timeObj.hm}</div><div class="time-date">${timeObj.date}</div></td>
                     <td class="col-sentence">${escapeHtml(l.sentence)}</td>
-                    <td>${getTagHtml(identifyCategory(l.sentence), l.sentence)}</td>
+                    <td>${getTagHtml(identifyCategory(l.sentence, l.category), l.sentence)}</td>
                     <td align="center" style="color:var(--cyan); font-weight:800;">${l.attention || 0}%</td>
                     <td align="center" style="color:var(--emerald); font-weight:800;">${l.meditation || 95}%</td>
                     <td align="center"><button class="btn-speak" data-idx="${idx}" onclick="speakFilteredLog(${idx})">${t.btn_speak}</button></td>
@@ -2246,24 +2537,44 @@
             if (item && item.sentence) speakText(item.sentence);
         }
 
-        // ================= ĐỒNG BỘ LỆNH KHÓA/MỞ NGHỈ XUỐNG CLOUD RENDER CHO ESP32-S3 =================
+        // ================= GỬI LỆNH ĐIỀU KHIỂN TỪ XA XUỐNG CLOUD -> KÍNH S3 -> GATEWAY C3 =================
         async function syncRestCommandToCloud(action, durationSec = 1800) {
             try {
-                await fetch(CLOUD_COMMAND_URL, {
+                const res = await fetch(CLOUD_COMMAND_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        command: action,
-                        duration: durationSec,
-                        timestamp: Date.now()
-                    })
+                    body: JSON.stringify({ command: action, duration: durationSec, timestamp: Date.now() })
                 });
+                return res.ok;
             } catch (err) {
                 console.warn('[CLOUD CMD] Lỗi gửi lệnh:', err);
+                return false;
             }
         }
 
-        // ================= HỆ THỐNG BÁO ĐỘNG 4 KỊCH BẢN (KHỚP BẢNG 8 PHỤ LỤC IIIa) =================
+        async function sendRemoteCommand(cmd) {
+            setText('rc-feedback', currentLang === 'vi' ? `Đang gửi lệnh ${cmd} xuống kính...` : `Sending ${cmd} to glasses...`);
+            const ok = await syncRestCommandToCloud(cmd, 0);
+            if (ok) {
+                setText('rc-feedback', currentLang === 'vi'
+                    ? `✅ Đã xếp lệnh ${cmd} (đồng bộ xuống kính trong ~3s)`
+                    : `✅ Queued ${cmd} (syncing to glasses in ~3s)`);
+            } else {
+                setText('rc-feedback', currentLang === 'vi' ? '❌ Lỗi gửi lệnh lên Cloud' : '❌ Failed to send command');
+            }
+        }
+
+        function toggleRemoteRelay(ch) {
+            const cur = (ch === 1) ? latestTelemetryState.relay1 : latestTelemetryState.relay2;
+            const cmd = (ch === 1) ? (cur ? 'R1_OFF' : 'R1_ON') : (cur ? 'R2_OFF' : 'R2_ON');
+            sendRemoteCommand(cmd);
+        }
+
+        function toggleRemoteControlLock() {
+            sendRemoteCommand(latestTelemetryState.isControlLocked ? 'UNLOCK_CONTROL' : 'LOCK_CONTROL');
+        }
+
+        // ================= HỆ THỐNG BÁO ĐỘNG 4 KỊCH BẢN =================
         function startRestCountdown(secondsLeft) {
             if (restTimerInterval) clearInterval(restTimerInterval);
             isRestBreakActive = true;
@@ -2298,58 +2609,68 @@
         function showClinicalAlert(type, customMsg = '', sendLockToESP = false, durationSec = 1800) {
             const banner = document.getElementById('clinical-alert-banner');
             const restBtn = document.getElementById('btn-rest-toggle');
+            const irBtn = document.getElementById('btn-banner-ir');
             if (!banner) return;
 
             activeAlertType = type;
             banner.style.display = 'flex';
             banner.classList.remove('warn-mode');
+            if (irBtn) irBtn.style.display = 'none';
 
             if (type === 'SOS') {
-                setText('txt-alarm-tag', currentLang === 'vi' ? '🚨 BÁO ĐỘNG ĐỎ: NGƯỜI BỆNH GỌI CẤP CỨU (SOS)' : '🚨 RED ALERT: PATIENT SOS CALL');
-                setText('clinical-banner-msg', customMsg || (currentLang === 'vi'
+                const msg = customMsg || (currentLang === 'vi'
                     ? 'Người bệnh vừa kích hoạt tín hiệu cấp cứu khẩn cấp SOS từ Kính thông minh V4 Hybrid!'
-                    : 'Emergency SOS triggered from Smart Glasses V4 Hybrid!'));
+                    : 'Emergency SOS triggered from Smart Glasses V4 Hybrid!');
+                setText('txt-alarm-tag', currentLang === 'vi' ? '🚨 BÁO ĐỘNG ĐỎ: NGƯỜI BỆNH GỌI CẤP CỨU (SOS)' : '🚨 RED ALERT: PATIENT SOS CALL');
+                setText('clinical-banner-msg', msg);
                 setText('txt-alarm-nurse', currentLang === 'vi'
                     ? 'Phản hồi tại chỗ: Còi Buzzer SMD 5020 đã hú 3 hồi dài • Đề nghị người thân kiểm tra ngay lập tức.'
                     : 'Local buzzer activated (3 long beeps) • Immediate caregiver check required.');
                 if (restBtn) restBtn.style.display = 'none';
                 playAlarmSiren('HIGH');
+                pushBrowserNotification('🚨 SOS KHẨN CẤP', msg);
                 speakText(currentLang === 'vi' ? 'Cảnh báo khẩn cấp! Người bệnh đang gọi cấp cứu S O S!' : 'Emergency! Patient triggered SOS alert!');
             } else if (type === 'SPASM') {
-                setText('txt-alarm-tag', currentLang === 'vi' ? '🚨 CẢNH BÁO NGUY HIỂM: RUNG CHẤN CO GIẬT / TÉ NGÃ (≥ 2,5g)' : '🚨 DANGER: SEIZURE / FALL MOTION (≥ 2.5g)');
-                setText('clinical-banner-msg', customMsg || (currentLang === 'vi'
+                const msg = customMsg || (currentLang === 'vi'
                     ? 'Cảm biến LSM6DS3 ghi nhận gia tốc bất thường vượt ngưỡng 2,5g và vận tốc góc ≥ 200°/s!'
-                    : 'LSM6DS3 detected abnormal acceleration ≥ 2.5g and angular velocity ≥ 200°/s!'));
+                    : 'LSM6DS3 detected abnormal acceleration ≥ 2.5g and angular velocity ≥ 200°/s!');
+                setText('txt-alarm-tag', currentLang === 'vi' ? '🚨 CẢNH BÁO NGUY HIỂM: RUNG CHẤN CO GIẬT / TÉ NGÃ (≥ 2,5g)' : '🚨 DANGER: SEIZURE / FALL MOTION (≥ 2.5g)');
+                setText('clinical-banner-msg', msg);
                 setText('txt-alarm-nurse', currentLang === 'vi'
                     ? 'Lưu ý an toàn: Đây là tín hiệu cảnh báo sớm cần kiểm tra ngay, không thay thế chẩn đoán y khoa.'
                     : 'Safety note: Early warning requiring immediate physical check, not a medical diagnosis.');
                 if (restBtn) restBtn.style.display = 'none';
                 playAlarmSiren('HIGH');
+                pushBrowserNotification('🚨 CẢNH BÁO CO GIẬT / TÉ NGÃ', msg);
                 speakText(currentLang === 'vi' ? 'Cảnh báo nguy hiểm! Phát hiện rung chấn bất thường nghi co giật hoặc té ngã!' : 'Warning! Abnormal motion detected, possible seizure or fall!');
             } else if (type === 'BEDSORE') {
                 banner.classList.add('warn-mode');
-                setText('txt-alarm-tag', currentLang === 'vi' ? '⏰ NHẮC CHĂM SÓC: CHỐNG LOÉT TÌ ĐÈ (120 PHÚT)' : '⏰ CARE REMINDER: REPOSITIONING (120 MIN)');
-                setText('clinical-banner-msg', customMsg || (currentLang === 'vi'
+                const msg = customMsg || (currentLang === 'vi'
                     ? 'Người bệnh đã nằm nguyên một tư thế quá 120 phút. Cần hỗ trợ lật trở mình chống loét tì đè.'
-                    : 'Patient remained static for over 120 minutes. Please assist with repositioning.'));
+                    : 'Patient remained static for over 120 minutes. Please assist with repositioning.');
+                setText('txt-alarm-tag', currentLang === 'vi' ? '⏰ NHẮC CHĂM SÓC: CHỐNG LOÉT TÌ ĐÈ (120 PHÚT)' : '⏰ CARE REMINDER: REPOSITIONING (120 MIN)');
+                setText('clinical-banner-msg', msg);
                 setText('txt-alarm-nurse', currentLang === 'vi'
                     ? 'Bộ đếm tư thế LSM6DS3 sẽ tự đặt lại khi góc đầu/thân thay đổi trên 8,5°.'
                     : 'LSM6DS3 posture timer resets automatically once head orientation shifts over 8.5°.');
                 if (restBtn) restBtn.style.display = 'none';
                 playAlarmSiren('LOW');
+                pushBrowserNotification('⏰ NHẮC CHỐNG LOÉT 120 PHÚT', msg);
                 speakText(currentLang === 'vi' ? 'Nhắc nhở chăm sóc: Bệnh nhân đã nằm bất động 120 phút, cần hỗ trợ lật trở mình.' : 'Care reminder: 120 minutes static posture, assist repositioning.');
             } else {
-                // CFI >= 75%
                 banner.classList.add('warn-mode');
-                setText('txt-alarm-tag', currentLang === 'vi' ? '⚠️ CẢNH BÁO MỎI CƠ CỔ (CFI ≥ 75%)' : '⚠️ NECK MUSCLE FATIGUE ALERT (CFI ≥ 75%)');
-                setText('clinical-banner-msg', customMsg || (currentLang === 'vi'
+                const msg = customMsg || (currentLang === 'vi'
                     ? 'Chỉ số mỏi cơ cổ CFI vượt ngưỡng 75%. Gợi ý chuyển sang chế độ “Chỉ dùng Mắt (IR)” hoặc tạm nghỉ 30 phút.'
-                    : 'Cervical Fatigue Index reached 75%. Suggest switching to IR-Only mode or taking a 30-min rest.'));
+                    : 'Cervical Fatigue Index reached 75%. Suggest switching to IR-Only mode or taking a 30-min rest.');
+                setText('txt-alarm-tag', currentLang === 'vi' ? '⚠️ CẢNH BÁO MỎI CƠ CỔ (CFI ≥ 75%)' : '⚠️ NECK MUSCLE FATIGUE ALERT (CFI ≥ 75%)');
+                setText('clinical-banner-msg', msg);
                 setText('txt-alarm-nurse', currentLang === 'vi'
-                    ? 'Hệ thống hỗ trợ tạm khóa gật đầu 30 phút để bảo vệ đốt sống cổ và đồng bộ trạng thái xuống kính ESP32-S3.'
-                    : 'Supports 30-minute rest lock synchronized to ESP32-S3 smart glasses.');
+                    ? 'Có thể bấm nút “CHUYỂN CHỈ MẮT (IR)” ngay bên phải để tắt cảm biến gật đầu từ xa trên kính ESP32-S3.'
+                    : 'Click “SWITCH TO IR-ONLY” to disable head-nod input remotely on ESP32-S3.');
                 if (restBtn) restBtn.style.display = 'inline-block';
+                if (irBtn) irBtn.style.display = 'inline-block';
                 playAlarmSiren('LOW');
+                pushBrowserNotification('⚠️ CẢNH BÁO MỎI CƠ CỔ (CFI ≥ 75%)', msg);
                 speakText(currentLang === 'vi' ? 'Cảnh báo mỏi cơ cổ. Gợi ý chuyển sang chế độ chỉ dùng mắt hoặc nghỉ ngơi.' : 'Neck fatigue alert. Suggest switching to eye-only mode.');
                 if (sendLockToESP) {
                     syncRestCommandToCloud('LOCK_REST', durationSec);
@@ -2360,11 +2681,8 @@
 
         function triggerTestScenario() {
             const sel = document.getElementById('test-alert-select')?.value || 'CFI';
-            if (sel === 'CFI') {
-                showClinicalAlert('CFI', '', true, 1800);
-            } else {
-                showClinicalAlert(sel, '', false);
-            }
+            if (sel === 'CFI') showClinicalAlert('CFI', '', true, 1800);
+            else showClinicalAlert(sel, '', false);
         }
 
         function dismissClinicalAlert() {
@@ -2373,10 +2691,7 @@
             userDismissedLockUntil = Date.now() + 30000;
             activeAlertType = null;
             isRestBreakActive = false;
-            if (restTimerInterval) {
-                clearInterval(restTimerInterval);
-                restTimerInterval = null;
-            }
+            if (restTimerInterval) { clearInterval(restTimerInterval); restTimerInterval = null; }
             const restBtn = document.getElementById('btn-rest-toggle');
             if (restBtn) {
                 restBtn.style.background = 'var(--danger-solid)';
@@ -2387,9 +2702,8 @@
         }
 
         function toggleRestBreak() {
-            if (isRestBreakActive) {
-                dismissClinicalAlert();
-            } else {
+            if (isRestBreakActive) dismissClinicalAlert();
+            else {
                 syncRestCommandToCloud('LOCK_REST', 1800);
                 startRestCountdown(1800);
             }
@@ -2409,17 +2723,20 @@
                 sensorChart.update('none');
                 radarChart.data.datasets[0].data = [0, 0, 0, 0, 0];
                 radarChart.update('none');
-                updateUI({ signalQuality: 200, attention: 0, meditation: 0, cfi: 12, pitch: 0, roll: 0, temperature: 34.5, battery: 0, voltage: 0, current: 0 });
+                lastChartTimestamp = 0;
+                updateUI({ signalQuality: 200, attention: 0, meditation: 0, cfi: 12, pitch: 0, roll: 0, temperature: 34.5, battery: 0, voltage: 0, current: 0, staticMinutes: 0 });
             }
         }
 
         // ================= CẬP NHẬT GIAO DIỆN TỪ TELEMETRY THẬT CỦA ESP32-S3 =================
         function updateUI(tData) {
             const t = i18n[currentLang];
-            const sig = isDemoMode ? 0 : (tData.signalQuality !== undefined ? Number(tData.signalQuality) : 200);
-            const hasSignal = isDemoMode || sig === 0;
+            if (!isDemoMode && tData.lastUpdate) lastServerTelemetryAt = Number(tData.lastUpdate);
 
-            // Dữ liệu thực từ main.cpp (ESP32-S3)
+            const sig = isDemoMode ? 0 : (tData.signalQuality !== undefined ? Number(tData.signalQuality) : 200);
+            const isRecent = isDemoMode || (tData.lastUpdate ? (Date.now() - Number(tData.lastUpdate) < 20000) : false);
+            const hasSignal = isDemoMode || (isRecent && sig === 0);
+
             const force = hasSignal ? Math.min(100, Math.max(0, Number(tData.attention || 0))) : 0;
             const stability = hasSignal ? Math.min(100, Math.max(0, Number(tData.meditation !== undefined ? tData.meditation : 95))) : 0;
             const cfi = tData.cfi !== undefined ? Math.min(100, Math.max(0, Math.round(Number(tData.cfi)))) : 12;
@@ -2427,19 +2744,38 @@
             const roll = tData.roll !== undefined ? Number(tData.roll) : 0;
             const tempC = tData.temperature !== undefined ? Number(tData.temperature) : 34.5;
             const angleDeg = tData.delta ? (Number(tData.delta) / 100.0) : Math.abs(pitch);
-            const tkeoEnergy = tData.theta ? Number(tData.theta) : 0;
-            const uptimeMin = tData.uptime ? Math.floor(Number(tData.uptime) / 60) : 0;
+            const irDeltaVal = tData.irDelta !== undefined ? Number(tData.irDelta) : 0;
+            const staticMin = tData.staticMinutes !== undefined ? Math.max(0, Math.round(Number(tData.staticMinutes))) : 0;
 
             const bat = tData.battery !== undefined ? Math.min(100, Math.max(0, Math.round(Number(tData.battery)))) : (isDemoMode ? 88 : 0);
-            const volt = tData.voltage ? Number(tData.voltage).toFixed(2) : (isDemoMode ? '3.94' : '0.00');
-            const pwr = tData.power !== undefined ? Math.round(Number(tData.power)) : Math.round(Number(volt) * Number(tData.current || 0));
+            const voltNum = tData.voltage !== undefined ? Number(tData.voltage) : (isDemoMode ? 3.94 : 0);
+            const volt = voltNum.toFixed(2);
+            const pwr = tData.power !== undefined ? Math.round(Number(tData.power)) : Math.round(voltNum * Number(tData.current || 0));
+            const isUsb5v = tData.powerSource === 'USB_5V' || voltNum >= 4.6;
 
-            // 1. Trạng thái kết nối & Khóa điều khiển (đồng bộ Local)
-            const isRecent = isDemoMode || (tData.lastUpdate ? (Date.now() - tData.lastUpdate < 45000) : hasSignal);
+            latestTelemetryState = {
+                relay1: Boolean(tData.relay1),
+                relay2: Boolean(tData.relay2),
+                isControlLocked: Boolean(tData.isControlLocked),
+                inputMode: tData.inputMode || 'HYBRID'
+            };
+
+            // 1. Huy hiệu Top Nav: Kính Online, Mạng Kính (Router/Local AP), Gateway C3
             const connDot = document.getElementById('conn-dot');
             if (connDot) connDot.className = isRecent ? 'dot dot-green' : 'dot dot-red';
             setText('conn-text', isDemoMode ? t.conn_demo : (isRecent ? t.conn_online : t.conn_offline));
 
+            const netMode = tData.netMode || (isRecent ? 'ROUTER' : '--');
+            const netDot = document.getElementById('net-dot');
+            if (netDot) netDot.className = (netMode === 'ROUTER') ? 'dot dot-green' : ((netMode === 'LOCAL_AP') ? 'dot dot-yellow' : 'dot dot-red');
+            setText('net-mode-text', (currentLang === 'vi' ? 'MẠNG: ' : 'NET: ') + netMode);
+
+            const gwOnline = Boolean(tData.gatewayOnline) && isRecent;
+            const gwDot = document.getElementById('gw-dot');
+            if (gwDot) gwDot.className = gwOnline ? 'dot dot-green' : 'dot dot-red';
+            setText('gw-status-text', gwOnline ? 'GW: ONLINE' : 'GW: OFFLINE');
+
+            // Chip trạng thái bệnh nhân
             const stateChip = document.getElementById('patient-state-badge');
             if (stateChip) {
                 if (tData.isSleeping) {
@@ -2460,7 +2796,7 @@
                 }
             }
 
-            // 2. Hàng 1: 3 thẻ đồng bộ Local (Lực phản hồi, Độ mỏi cơ CFI, Pin)
+            // 2. Hàng 1: Lực phản hồi, Độ mỏi cổ CFI, Nguồn USB 5V / Pin Li-Po
             setText('val-force', `${force}%`);
             const barForce = document.getElementById('bar-force');
             if (barForce) barForce.style.width = `${force}%`;
@@ -2486,24 +2822,32 @@
                 if (stCfiEl) { stCfiEl.innerText = currentLang === 'vi' ? 'TỐI ƯU' : 'OPTIMAL'; stCfiEl.style.color = 'var(--emerald)'; }
             }
 
-            setText('val-bat', `${bat}%`);
+            // Tự động phân biệt Nguồn USB 5V vs Pin Li-Po
+            setText('lbl-pwr-title', isUsb5v ? t.lbl_pwr_usb : t.lbl_pwr_lipo);
+            setText('hint-pwr', isUsb5v ? t.hint_pwr_usb : t.hint_pwr_lipo);
+            setText('val-bat', isUsb5v ? 'USB 5V' : `${bat}%`);
             setText('val-volt', `${volt}V`);
             setText('val-pwr', `${pwr} mW`);
             const barBat = document.getElementById('bar-bat');
             if (barBat) {
-                barBat.style.width = `${bat}%`;
-                barBat.style.background = bat < 20 ? 'var(--rose)' : (bat < 45 ? 'var(--amber)' : 'var(--emerald)');
+                barBat.style.width = isUsb5v ? '100%' : `${bat}%`;
+                barBat.style.background = isUsb5v ? 'var(--cyan)' : (bat < 20 ? 'var(--rose)' : (bat < 45 ? 'var(--amber)' : 'var(--emerald)'));
             }
-            setText('pwr-status', bat < 20 ? (currentLang === 'vi' ? 'PIN YẾU' : 'LOW') : (currentLang === 'vi' ? 'ỔN ĐỊNH' : 'GOOD'));
+            setText('pwr-status', isUsb5v ? (currentLang === 'vi' ? 'NGUỒN TRỰC TIẾP' : 'USB DIRECT') : (bat < 20 ? (currentLang === 'vi' ? 'PIN YẾU' : 'LOW') : (currentLang === 'vi' ? 'ỔN ĐỊNH' : 'GOOD')));
 
-            // 3. Hàng 2: 4 khối Hệ Chuyên Gia Y Sinh V4 Hybrid
+            // 3. Hàng 2: 4 khối Hệ Chuyên Gia Y Sinh
             const inputModeMap = {
                 HYBRID: currentLang === 'vi' ? 'Kính IR + IMU' : 'Hybrid IR + IMU',
                 IR_ONLY: currentLang === 'vi' ? 'Chỉ dùng Mắt (IR)' : 'IR Eye Only',
                 NOD_ONLY: currentLang === 'vi' ? 'Chỉ Gật Đầu (IMU)' : 'Head IMU Only'
             };
-            const activeModeLabel = inputModeMap[tData.inputMode] || inputModeMap.HYBRID;
-            setText('bio-sensor-val', activeModeLabel);
+            const nodModeMap = {
+                LIGHT: currentLang === 'vi' ? 'Độ nhạy: Nhẹ' : 'Sens: Light',
+                HEAVY: currentLang === 'vi' ? 'Độ nhạy: Mạnh' : 'Sens: Heavy',
+                DUAL: currentLang === 'vi' ? 'Độ nhạy: Kép' : 'Sens: Dual'
+            };
+            setText('bio-sensor-val', inputModeMap[tData.inputMode] || inputModeMap.HYBRID);
+            setText('bio-sensor-sub', nodModeMap[tData.nodMode] || nodModeMap.DUAL);
             setText('bio-sensor-badge', hasSignal ? (currentLang === 'vi' ? 'SẴN SÀNG' : 'READY') : (currentLang === 'vi' ? 'CHỜ TÍN HIỆU' : 'WAITING'));
             const bioSensorBadge = document.getElementById('bio-sensor-badge');
             if (bioSensorBadge) bioSensorBadge.style.color = hasSignal ? 'var(--emerald)' : 'var(--amber)';
@@ -2513,7 +2857,7 @@
                 barBioSensor.style.background = hasSignal ? 'var(--emerald)' : 'var(--amber)';
             }
 
-            // Tư thế đầu 6-DOF (Pitch / Roll)
+            // Tư thế đầu 6-DOF
             setText('bio-pose-val', `${pitch.toFixed(1)}° / ${roll.toFixed(1)}°`);
             const tiltMag = Math.min(100, Math.round((Math.max(Math.abs(pitch), Math.abs(roll)) / 30) * 100));
             const barPose = document.getElementById('bar-bio-pose');
@@ -2532,33 +2876,73 @@
                 }
             }
 
-            // An toàn & Chống loét 120p
-            setText('bio-safety-val', tData.isSleeping
+            // Tiến trình chống loét thật từ LSM6DS3 (staticMinutes / 120 phút)
+            const bedsorePct = Math.min(100, Math.round((staticMin / 120) * 100));
+            setText('bio-safety-val', `${staticMin} / 120p`);
+            setText('bio-safety-sub', tData.isSleeping
                 ? (currentLang === 'vi' ? 'Đang Ngủ' : 'Sleeping')
                 : (currentLang === 'vi' ? 'Đang Thức' : 'Awake'));
-            setText('bio-safety-sub', `Uptime: ${uptimeMin}p`);
             const barSafety = document.getElementById('bar-bio-safety');
             if (barSafety) {
-                barSafety.style.width = `${Math.min(100, Math.max(12, Math.round((uptimeMin % 120) / 120 * 100)))}%`;
-                barSafety.style.background = tData.isSleeping ? 'var(--indigo)' : 'var(--emerald)';
+                barSafety.style.width = `${Math.max(4, bedsorePct)}%`;
+                barSafety.style.background = staticMin >= 110 ? 'var(--rose)' : (staticMin >= 80 ? 'var(--amber)' : 'var(--emerald)');
+            }
+            const safetyBadge = document.getElementById('bio-safety-badge');
+            if (safetyBadge) {
+                if (staticMin >= 120) {
+                    safetyBadge.innerText = currentLang === 'vi' ? 'CẦN LẬT NGƯỜI' : 'TURN NEEDED';
+                    safetyBadge.style.color = 'var(--rose)';
+                } else if (staticMin >= 90) {
+                    safetyBadge.innerText = currentLang === 'vi' ? 'SẮP ĐẾN HẠN' : 'SOON';
+                    safetyBadge.style.color = 'var(--amber)';
+                } else {
+                    safetyBadge.innerText = currentLang === 'vi' ? 'AN TOÀN' : 'SAFE';
+                    safetyBadge.style.color = 'var(--emerald)';
+                }
             }
 
-            // Nhiệt độ LSM6DS3 & Rơ-le
+            // Nhiệt độ LSM6DS3 & Trạng thái Gateway R1/R2
             setText('bio-env-val', `${tempC.toFixed(1)}°C`);
-            if (tData.relay1 !== undefined || tData.relay2 !== undefined) {
-                const r1 = tData.relay1 ? (currentLang === 'vi' ? 'Bật' : 'On') : (currentLang === 'vi' ? 'Tắt' : 'Off');
-                const r2 = tData.relay2 ? (currentLang === 'vi' ? 'Bật' : 'On') : (currentLang === 'vi' ? 'Tắt' : 'Off');
-                setText('bio-env-sub', currentLang === 'vi' ? `Đèn: ${r1} • Quạt: ${r2}` : `Light: ${r1} • Fan: ${r2}`);
-            } else {
-                setText('bio-env-sub', currentLang === 'vi' ? 'Rơ-le 2 kênh' : '2-Ch Relay');
+            const r1Txt = latestTelemetryState.relay1 ? (currentLang === 'vi' ? 'Bật' : 'ON') : (currentLang === 'vi' ? 'Tắt' : 'OFF');
+            const r2Txt = latestTelemetryState.relay2 ? (currentLang === 'vi' ? 'Bật' : 'ON') : (currentLang === 'vi' ? 'Tắt' : 'OFF');
+            setText('bio-env-sub', currentLang === 'vi' ? `Đèn: ${r1Txt} • Quạt: ${r2Txt}` : `Light: ${r1Txt} • Fan: ${r2Txt}`);
+            const envBadge = document.getElementById('bio-env-badge');
+            if (envBadge) {
+                envBadge.innerText = gwOnline ? 'GW ONLINE' : 'GW OFFLINE';
+                envBadge.style.color = gwOnline ? 'var(--emerald)' : 'var(--rose)';
             }
 
-            // 4. Tự động hiển thị banner khóa mỏi cổ khi ESP32-S3 đang khóa thật
+            // 4. Đồng bộ Thanh Điều Khiển Từ Xa
+            document.getElementById('rc-mode-hybrid')?.classList.toggle('active', latestTelemetryState.inputMode === 'HYBRID');
+            const irBtn = document.getElementById('rc-mode-ir');
+            if (irBtn) {
+                irBtn.classList.toggle('active', latestTelemetryState.inputMode === 'IR_ONLY');
+                irBtn.classList.toggle('suggest-ir', cfi >= 75 && latestTelemetryState.inputMode !== 'IR_ONLY');
+            }
+            document.getElementById('rc-mode-nod')?.classList.toggle('active', latestTelemetryState.inputMode === 'NOD_ONLY');
+
+            const r1Btn = document.getElementById('rc-relay-1');
+            if (r1Btn) {
+                r1Btn.classList.toggle('relay-on', latestTelemetryState.relay1);
+                r1Btn.innerText = (currentLang === 'vi' ? '💡 Đèn (R1): ' : '💡 Light (R1): ') + r1Txt;
+            }
+            const r2Btn = document.getElementById('rc-relay-2');
+            if (r2Btn) {
+                r2Btn.classList.toggle('relay-on', latestTelemetryState.relay2);
+                r2Btn.innerText = (currentLang === 'vi' ? '🌀 Quạt (R2): ' : '🌀 Fan (R2): ') + r2Txt;
+            }
+            const lockBtn = document.getElementById('rc-ctrl-lock');
+            if (lockBtn) {
+                lockBtn.classList.toggle('lock-on', latestTelemetryState.isControlLocked);
+                lockBtn.innerText = latestTelemetryState.isControlLocked
+                    ? (currentLang === 'vi' ? '🔒 Đang Khóa (Mở lại)' : '🔒 Locked (Unlock)')
+                    : (currentLang === 'vi' ? '🔓 Khóa Tạm Nghỉ' : '🔓 Lock Control');
+            }
+
+            // 5. Banner khóa mỏi cổ tự động từ ESP32-S3
             if (tData.isFatigueLocked && Date.now() > userDismissedLockUntil) {
                 const secLeft = parseInt(tData.fatigueSecLeft, 10) || 1800;
-                if (activeAlertType !== 'CFI') {
-                    showClinicalAlert('CFI', '', false, secLeft);
-                }
+                if (activeAlertType !== 'CFI') showClinicalAlert('CFI', '', false, secLeft);
                 if (!isRestBreakActive) startRestCountdown(secLeft);
             } else if (activeAlertType === 'CFI' && !isRestBreakActive && !tData.isFatigueLocked) {
                 const banner = document.getElementById('clinical-alert-banner');
@@ -2566,47 +2950,52 @@
                 activeAlertType = null;
             }
 
-            // 5. Cập nhật Đồ thị sóng 2 kênh (Chạy được cả dữ liệu THẬT lẫn DEMO)
+            // 6. Đồ thị 2 kênh — chỉ đẩy điểm mới khi nhận gói Telemetry mới (lastUpdate thay đổi)
             const overlay = document.getElementById('no-signal-overlay');
             if (overlay) overlay.style.display = hasSignal ? 'none' : 'flex';
             setText('signal-text', hasSignal ? t.sig_good : t.sig_lost);
             const sigTextEl = document.getElementById('signal-text');
             if (sigTextEl) sigTextEl.style.color = hasSignal ? 'var(--emerald)' : 'var(--amber)';
 
-            if (hasSignal) {
+            const curTs = isDemoMode ? Date.now() : Number(tData.lastUpdate || 0);
+            if (hasSignal && curTs !== lastChartTimestamp) {
+                lastChartTimestamp = curTs;
                 const dPitch = sensorChart.data.datasets[0].data;
                 const dIr = sensorChart.data.datasets[1].data;
                 dPitch.push(Number(pitch.toFixed(2)));
                 dPitch.shift();
-
-                // Nếu có irDelta thật thì vẽ irDelta, nếu không vẽ lực phản hồi quy đổi
-                const irPlotVal = tData.irDelta !== undefined ? Number(tData.irDelta) : Number((force * 0.35).toFixed(1));
-                dIr.push(irPlotVal);
+                dIr.push(Number(irDeltaVal.toFixed(1)));
                 dIr.shift();
                 sensorChart.update('none');
             }
 
-            // 6. Cập nhật Radar 5 trục & danh sách thông số thực
+            // 7. Radar 5 trục
             const neckHealth = Math.max(0, 100 - cfi);
             const angleScore = Math.min(100, Math.round((angleDeg / 18) * 100));
-            const tkeoScore = Math.min(100, Math.round((tkeoEnergy / 120) * 100));
+            const irScore = Math.min(100, Math.round((irDeltaVal / 100) * 100));
 
             setText('m-force', `${force}%`);
             setText('m-stability', `${stability}%`);
             setText('m-neck', `${neckHealth}%`);
             setText('m-angle', `${angleDeg.toFixed(1)}°`);
-            setText('m-tkeo', `${Math.round(tkeoEnergy)}`);
+            setText('m-tkeo', `${irDeltaVal.toFixed(1)}`);
 
             radarChart.data.datasets[0].data = hasSignal
-                ? [force, stability, neckHealth, angleScore, tkeoScore]
+                ? [force, stability, neckHealth, angleScore, irScore]
                 : [0, 0, 0, 0, 0];
             radarChart.update('none');
         }
 
-        // ================= TỰ ĐỘNG PHÁT HIỆN CẢNH BÁO TỪ BẢN TIN MỚI =================
+        // ================= PHÁT HIỆN CẢNH BÁO MỚI THEO ID BẢN TIN (KHÔNG ĐỨNG HÌNH Ở 200/1000) =================
+        function getLogKey(log) {
+            if (!log) return '';
+            return String(log._id || `${log.timestamp}|${log.sentence}`);
+        }
+
         function checkIncomingEmergencyLogs(newLogs) {
             if (!Array.isArray(newLogs) || newLogs.length === 0) return;
-            if (lastKnownLogCount > 0 && newLogs.length > lastKnownLogCount) {
+            const newestKey = getLogKey(newLogs[0]);
+            if (lastLatestLogKey && newestKey !== lastLatestLogKey) {
                 const latest = newLogs[0];
                 const text = String(latest?.sentence || '').toUpperCase();
                 if (text.includes('CO GIẬT') || text.includes('TÉ NGÃ')) {
@@ -2617,7 +3006,7 @@
                     showClinicalAlert('BEDSORE', latest.sentence, false);
                 }
             }
-            lastKnownLogCount = newLogs.length;
+            lastLatestLogKey = newestKey;
         }
 
         // ================= MÔ PHỎNG TÍN HIỆU V4 HYBRID =================
@@ -2625,13 +3014,13 @@
         function runDemoTick() {
             if (!isDemoMode) return;
             demoPhase += 0.35;
-            const blinkPulse = Math.random() > 0.82 ? (22 + Math.random() * 14) : (2 + Math.random() * 3);
+            const blinkPulse = Math.random() > 0.80 ? (28 + Math.random() * 25) : (3 + Math.random() * 4);
             const nodWave = Math.sin(demoPhase) * 6 + (Math.random() > 0.86 ? 13 : 0);
             const simCfi = activeAlertType === 'CFI' ? 82 : Math.round(14 + Math.abs(Math.sin(demoPhase * 0.15)) * 18);
 
             updateUI({
                 signalQuality: 0,
-                attention: blinkPulse > 15 ? Math.round(62 + Math.random() * 28) : Math.round(12 + Math.random() * 15),
+                attention: blinkPulse > 20 ? Math.round(62 + Math.random() * 28) : Math.round(12 + Math.random() * 15),
                 meditation: 96,
                 cfi: simCfi,
                 pitch: nodWave,
@@ -2641,21 +3030,28 @@
                 voltage: 3.94,
                 current: 112,
                 power: 441,
+                powerSource: 'LIPO',
                 delta: Math.round(Math.abs(nodWave) * 100),
                 theta: Math.round(blinkPulse * 3.2),
                 irDelta: blinkPulse,
+                inputMode: 'HYBRID',
+                nodMode: 'DUAL',
+                relay1: latestTelemetryState.relay1,
+                relay2: latestTelemetryState.relay2,
+                gatewayOnline: true,
+                netMode: 'ROUTER',
+                staticMinutes: Math.min(120, Math.floor(demoPhase * 2) % 120),
                 uptime: Math.floor(performance.now() / 1000) + 900,
                 isSleeping: false,
-                isControlLocked: false,
-                inputMode: 'HYBRID'
+                isControlLocked: false
             });
         }
 
-        // ================= XUẤT FILE CSV / JSON (ĐẶT TÊN CHUẨN V4 HYBRID) =================
+        // ================= XUẤT FILE CSV / JSON =================
         function exportCSV() {
             if (!allLogs.length) return alert(currentLang === 'vi' ? 'Chưa có dữ liệu để xuất' : 'No logs to export');
-            const csv = 'Time,Sentence,Category,ForcePct,StabilityPct\n' + allLogs.map(l =>
-                `"${l.timestamp}","${String(l.sentence || '').replace(/"/g, '""')}","${identifyCategory(l.sentence)}",${l.attention || 0},${l.meditation || 95}`
+            const csv = 'Time,Sentence,Category,Severity,ForcePct,StabilityPct\n' + allLogs.map(l =>
+                `"${l.timestamp}","${String(l.sentence || '').replace(/"/g, '""')}","${identifyCategory(l.sentence, l.category)}","${l.severity || 'normal'}",${l.attention || 0},${l.meditation || 95}`
             ).join('\n');
             const a = document.createElement('a');
             a.href = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' }));
@@ -2666,12 +3062,12 @@
         function exportJSON() {
             if (!allLogs.length) return alert(currentLang === 'vi' ? 'Chưa có dữ liệu để xuất' : 'No logs to export');
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([JSON.stringify({ device: 'SmartGlass_V4_Hybrid_PRO-CAD_V8.1', patient: currentPatient, logs: allLogs }, null, 2)], { type: 'application/json' }));
+            a.href = URL.createObjectURL(new Blob([JSON.stringify({ device: 'SmartGlass_V4_Hybrid_PRO-CAD_V8.2', patient: currentPatient, logs: allLogs }, null, 2)], { type: 'application/json' }));
             a.download = 'SmartGlass_V4_Logs.json';
             a.click();
         }
 
-        // ================= POLLING DỮ LIỆU TỪ RENDER / MONGODB =================
+        // ================= POLLING DỮ LIỆU TỪ RENDER (RAM CACHE) =================
         setInterval(async () => {
             if (isDemoMode) {
                 runDemoTick();
@@ -2686,7 +3082,10 @@
                     if (data.telemetry) updateUI(data.telemetry);
                     if (data.logs && Array.isArray(data.logs)) {
                         checkIncomingEmergencyLogs(data.logs);
-                        if (data.logs.length !== allLogs.length) {
+                        const newestKey = data.logs.length > 0 ? getLogKey(data.logs[0]) : '';
+                        const ver = data.logsVersion !== undefined ? data.logsVersion : -1;
+                        if (ver !== lastLogsVersion || newestKey !== (allLogs[0] ? getLogKey(allLogs[0]) : '') || data.logs.length !== allLogs.length) {
+                            lastLogsVersion = ver;
                             allLogs = data.logs;
                             applyFilters();
                         }

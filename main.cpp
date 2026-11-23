@@ -11,7 +11,11 @@
 #include <math.h>
 
 // File include/web_ui.h chuẩn cấu trúc PlatformIO (src/main.cpp + include/web_ui.h)
-#include "web_ui.h"
+#if __has_include("web_ui.h")
+  #include "web_ui.h"
+#else
+  #include "include/web_ui.h"
+#endif
 
 // =========================================================================
 // CẤU HÌNH PHẦN CỨNG & TÍNH NĂNG (BẬT = 1, TẮT = 0)
@@ -757,7 +761,7 @@ void processGatewayUdp() {
   // 0. Lặp gửi CMD:REJOIN_ROUTER 3 lần (cách 250ms) chống trượt gói
   if (pendingRejoinRepeats > 0 && (now - lastRejoinRepeatMs >= 250)) {
     lastRejoinRepeatMs = now;
-    pendingRejoinRepeats--;
+    pendingRejoinRepeats = pendingRejoinRepeats - 1;
     sendRejoinRouterToGateway();
   }
 
@@ -1612,7 +1616,7 @@ void rgbRainbowTask(void * parameter) {
 
   for (;;) {
     hsvToRgb(hue, 255, RGB_BRIGHTNESS_LEVEL, r, g, b);
-    neopixelWrite(RGB_LED_PIN, r, g, b);
+    rgbLedWrite(RGB_LED_PIN, r, g, b);
     hue++;
     vTaskDelay(pdMS_TO_TICKS(20));
   }
